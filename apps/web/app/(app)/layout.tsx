@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { getTranslations } from 'next-intl/server';
 import {
   Banknote,
+  BookOpenCheck,
   Building2,
   CheckSquare,
   FileCheck,
@@ -55,6 +56,7 @@ const NAV: NavItem[] = [
   { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, permission: 'budget.manage' },
   { key: 'documents', href: '/documents/health', icon: <FileWarning className={ICON} />, permission: 'payment.view' },
   { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} /> },
+  { key: 'onec', href: '/onec', icon: <BookOpenCheck className={ICON} />, permission: 'report.export' },
   { key: 'migration', href: '/migration', icon: <Upload className={ICON} />, permission: 'budget.manage' },
   { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, permission: 'tenant.settings' },
 ];

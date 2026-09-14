@@ -53,11 +53,11 @@
 
 ## Phase E — Documents & adapters
 - [x] E-01 Document Health экран (9 красных зон, owner+task, document score)
-- [ ] E-02 EdoAdapter mock полностью (BR-024 e2e)
-- [ ] E-03 PosAdapter: три импортёра
-- [ ] E-04 AccountingAdapter: export/import 1С
+- [x] E-02 EdoAdapter mock полностью: статусы в БД, dev-панель, сценарии CORRECTED/CANCELLED (BR-024)
+- [x] E-03 PosAdapter: три импортёра (daily sales / inventory / banquet→event), POS-затраты в Event P&L
+- [x] E-04 AccountingAdapter: маппинг НСБУ-21 (админ+сид), export postings CSV, import posted→CLOSED, платёжки 1CClientBankExchange, экран /onec, docs/13-onec-guide.md
 - [x] E-05 Excel migration templates (6 xlsx c примерами и инструкцией) + импортёры all-or-nothing + экран /migration
-- [ ] E-06 Backdated/BR-025, POA, contract registration UI
+- [x] E-06 Backdated/BR-025 бейдж, POA в upload, бейдж регистрации договора. **Phase E завершена.**
 
 ## Phase F — Compliance, close, dashboards
 - [ ] F-01 TaxCalendarRule + TaxObligation + Tax Calendar

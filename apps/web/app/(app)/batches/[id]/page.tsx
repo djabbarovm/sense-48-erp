@@ -229,6 +229,13 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
             </Button>
           </form>
         ) : null}
+        {['APPROVED', 'PARTIALLY_APPROVED', 'EXPORTED', 'SENT'].includes(batch.status) && canExport ? (
+          <form method="post" action={`/batches/${batch.id}/export-1c`}>
+            <Button type="submit" variant="outline">
+              {t('export1c')}
+            </Button>
+          </form>
+        ) : null}
         {batch.status === 'EXPORTED' && canSend ? (
           <form action={markSentAction}>
             <input type="hidden" name="id" value={batch.id} />

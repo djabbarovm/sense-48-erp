@@ -34,6 +34,11 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold">{contract.number}</h1>
         <Badge tone={contract.status === 'ACTIVE' ? 'green' : 'gray'}>{t(`status.${contract.status}`)}</Badge>
+        {contract.registrationRequired ? (
+          <Badge tone={contract.registeredAt ? 'green' : 'red'}>
+            {contract.registeredAt ? t('registered') : t('registrationRequired')}
+          </Badge>
+        ) : null}
         <span className="text-gray-500">{vendor?.displayName ?? customer?.legalName}</span>
       </div>
 

@@ -492,6 +492,14 @@ export async function importEdoRegistry(ctx: TenantContext, rows: EdoRegistryRow
       report.errors.push({ row: rowNum, field: '', message: e instanceof Error ? e.message : String(e) });
     }
   }
+  // E-02: регистрируем документы в mock-панели ЭДО (динамический импорт против цикла)
+  const { syncEdoMockDocuments } = await import('./edo.js');
+  await syncEdoMockDocuments(
+    ctx.tenantId,
+    rows
+      .filter((row) => EDO_STATUSES.includes(row.status))
+      .map((row) => ({ edoDocumentId: row.edoDocumentId, status: row.status as EdoStatus })),
+  );
   return report;
 }
 

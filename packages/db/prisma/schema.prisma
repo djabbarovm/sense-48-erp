@@ -995,6 +995,7 @@ model PaymentRequest {
   batchId             String?               @map("batch_id") @db.Uuid
   bankTransactionId   String?               @map("bank_transaction_id") @db.Uuid
   paidAt              DateTime?             @map("paid_at")
+  onecRef             String?               @map("onec_ref") // E-04: ссылка проводки 1С
   status              PaymentRequestStatus  @default(DRAFT)
   preparedBy          String?               @map("prepared_by") @db.Uuid // = created_by (BR-040)
   createdAt           DateTime              @default(now()) @map("created_at")
@@ -1275,4 +1276,182 @@ model CashForecastSnapshot {
 
   @@unique([tenantId, weekStart])
   @@map("cash_forecast_snapshot")
+}
+
+// ───────────────────────────── §E adapters / §F compliance ─────────────────────────────
+
+// E-02: mock-хранилище статусов Didox (docs/07 §2)
+model EdoMockDocument {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  edoDocumentId String    @map("edo_document_id")
+  status        EdoStatus @default(SENT)
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@unique([tenantId, edoDocumentId])
+  @@map("edo_mock_document")
+}
+
+// E-03: POS/iiko (docs/07 §3)
+model PosDailySales {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  date              DateTime @db.Date
+  outlet            String
+  category          String
+  revenueGrossMinor BigInt   @map("revenue_gross_minor")
+  vatMinor          BigInt   @default(0) @map("vat_minor")
+  discountsMinor    BigInt   @default(0) @map("discounts_minor")
+  costOfSalesMinor  BigInt   @default(0) @map("cost_of_sales_minor")
+  covers            Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, date, outlet, category])
+  @@map("pos_daily_sales")
+}
+
+model PosInventorySnapshot {
+  id                       String   @id @default(uuid(7)) @db.Uuid
+  tenantId                 String   @map("tenant_id") @db.Uuid
+  date                     DateTime @db.Date
+  outlet                   String
+  stockValueMinor          BigInt   @map("stock_value_minor")
+  purchasesMinor           BigInt   @default(0) @map("purchases_minor")
+  consumptionMinor         BigInt   @default(0) @map("consumption_minor")
+  wasteMinor               BigInt   @default(0) @map("waste_minor")
+  transfersMinor           BigInt   @default(0) @map("transfers_minor")
+  theoreticalFoodCostMinor BigInt   @default(0) @map("theoretical_food_cost_minor")
+  actualFoodCostMinor      BigInt   @default(0) @map("actual_food_cost_minor")
+  createdAt                DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, date, outlet])
+  @@map("pos_inventory_snapshot")
+}
+
+model PosBanquetCost {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  iikoOrderId       String   @map("iiko_order_id")
+  eventId           String   @map("event_id") @db.Uuid
+  foodCostMinor     BigInt   @default(0) @map("food_cost_minor")
+  beverageCostMinor BigInt   @default(0) @map("beverage_cost_minor")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, iikoOrderId])
+  @@index([tenantId, eventId])
+  @@map("pos_banquet_cost")
+}
+
+// E-04: category → счёт 1С (docs/07 §4)
+model AccountMapping {
+  id             String   @id @default(uuid(7)) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  categoryId     String   @map("category_id") @db.Uuid
+  accountCode    String   @map("account_code")
+  vatAccountCode String?  @map("vat_account_code")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, categoryId])
+  @@map("account_mapping")
+}
+
+// F-01: налоговый календарь (docs/02 §6)
+enum TaxType {
+  VAT
+  PROFIT
+  PAYROLL_TAX
+  SOCIAL
+  PROPERTY
+  OTHER
+}
+
+enum TaxObligationStatus {
+  PLANNED
+  CALCULATED
+  APPROVED
+  PAID
+  FILED
+  OVERDUE
+}
+
+model TaxCalendarRule {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  type              TaxType
+  name              String
+  // recurrence: MONTHLY | QUARTERLY | YEARLY (docs/02: cron-like "monthly day 20")
+  recurrence        String   @default("MONTHLY")
+  dueDay            Int      @map("due_day")
+  expectedMinMinor  BigInt?  @map("expected_min_minor")
+  expectedMaxMinor  BigInt?  @map("expected_max_minor")
+  ownerId           String?  @map("owner_id") @db.Uuid
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("tax_calendar_rule")
+}
+
+model TaxObligation {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  type             TaxType
+  name             String              @default("")
+  period           String // YYYY-MM или YYYY-Qn
+  dueDate          DateTime            @map("due_date") @db.Date
+  expectedMinMinor BigInt?             @map("expected_min_minor")
+  expectedMaxMinor BigInt?             @map("expected_max_minor")
+  calculatedMinor  BigInt?             @map("calculated_minor")
+  ownerId          String?             @map("owner_id") @db.Uuid
+  paymentRequestId String?             @map("payment_request_id") @db.Uuid
+  filedAt          DateTime?           @map("filed_at")
+  status           TaxObligationStatus @default(PLANNED)
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  updatedBy        String?             @map("updated_by") @db.Uuid
+
+  @@unique([tenantId, type, period])
+  @@index([tenantId, status])
+  @@map("tax_obligation")
+}
+
+// F-02: payroll (только агрегаты — docs/02 §6)
+enum PayrollRunStatus {
+  DRAFT
+  CHECKED
+  APPROVED
+  PAID
+  POSTED
+}
+
+model PayrollRun {
+  id                         String           @id @default(uuid(7)) @db.Uuid
+  tenantId                   String           @map("tenant_id") @db.Uuid
+  period                     String // YYYY-MM
+  employeeCount              Int              @map("employee_count")
+  grossMinor                 BigInt           @map("gross_minor")
+  netMinor                   BigInt           @map("net_minor")
+  taxesMinor                 BigInt           @map("taxes_minor")
+  registerDocumentId         String?          @map("register_document_id") @db.Uuid
+  status                     PayrollRunStatus @default(DRAFT)
+  checkedAgainstActiveListAt DateTime?        @map("checked_against_active_list_at")
+  createdAt                  DateTime         @default(now()) @map("created_at")
+  updatedAt                  DateTime         @updatedAt @map("updated_at")
+  createdBy                  String?          @map("created_by") @db.Uuid
+  updatedBy                  String?          @map("updated_by") @db.Uuid
+
+  @@unique([tenantId, period])
+  @@map("payroll_run")
+}
+
+// F-06: ежедневный снапшот KPI
+model KpiSnapshot {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  date      DateTime @db.Date
+  metrics   Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, date])
+  @@map("kpi_snapshot")
 }

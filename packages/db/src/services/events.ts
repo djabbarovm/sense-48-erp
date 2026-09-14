@@ -252,6 +252,9 @@ export interface EventPl {
   marginPlanMinor: bigint;
   marginCurrentMinor: bigint; // revenue invoiced − (actual + committed)
   costByCategory: { categoryId: string; plannedMinor: bigint; committedMinor: bigint; actualMinor: bigint }[];
+  /** E-03: фактические затраты банкета из iiko (аналитика, в margin не дублируются) */
+  posFoodCostMinor: bigint;
+  posBeverageCostMinor: bigint;
 }
 
 const PAY_PENDING = ['SUBMITTED', 'DOCS_CHECK', 'ON_HOLD', 'READY_FOR_BATCH', 'IN_BATCH', 'APPROVED', 'SENT_TO_BANK'] as const;
@@ -287,7 +290,11 @@ export async function getEventPl(ctx: TenantContext, eventId: string): Promise<E
     return { categoryId: line.categoryId, plannedMinor: line.plannedMinor, committedMinor: catPending + catPrs, actualMinor: catActual };
   });
 
+  const { getEventPosCost } = await import('./pos.js');
+  const posCost = await getEventPosCost(ctx.tenantId, eventId);
   return {
+    posFoodCostMinor: posCost.foodCostMinor,
+    posBeverageCostMinor: posCost.beverageCostMinor,
     revenueBudgetMinor: event.revenueBudgetMinor,
     revenueInvoicedMinor: invoiced,
     depositsReceivedMinor: deposits,

@@ -26,3 +26,6 @@ export * from './services/events.js';
 export * from './services/forecast.js';
 export * from './services/documentHealth.js';
 export * from './services/migration.js';
+export * from './services/edo.js';
+export * from './services/pos.js';
+export * from './services/accounting.js';

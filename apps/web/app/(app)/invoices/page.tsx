@@ -73,7 +73,10 @@ export default async function InvoicesPage() {
                 <Td>{inv.type}</Td>
                 <Td>{inv.edoStatus !== 'NONE' ? <Badge tone="gray">{inv.edoStatus}</Badge> : '—'}</Td>
                 <Td>
-                  <Badge tone={TONE[inv.status]}>{t(`status.${inv.status}`)}</Badge>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge tone={TONE[inv.status]}>{t(`status.${inv.status}`)}</Badge>
+                    {inv.backdatedReason ? <Badge tone="yellow">{t('backdated')}</Badge> : null}
+                  </div>
                 </Td>
                 <Td>
                   <div className="flex flex-col gap-1.5">

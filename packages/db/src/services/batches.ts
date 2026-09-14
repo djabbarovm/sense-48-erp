@@ -535,6 +535,71 @@ export async function exportBatch(
   });
 }
 
+/**
+ * E-04+: платёжки батча в формате 1CClientBankExchange (для загрузки в
+ * Клиент-Банк или в 1С). Не меняет статус batch — это дополнительный формат
+ * к основному CSV-экспорту (BR-057); доступ тот же batch.export.
+ */
+export async function exportBatchClientBank(ctx: TenantContext, batchId: string): Promise<{ file: Buffer; fileName: string }> {
+  requirePermission(ctx, 'batch.export');
+  const { buildClientBankExchange } = await import('@finance-os/adapters');
+  const batch = await findScopedOr404(prisma.paymentBatch, ctx, batchId);
+  if (!['APPROVED', 'PARTIALLY_APPROVED', 'EXPORTED', 'SENT'].includes(batch.status)) {
+    throw new ValidationError('BATCH_NOT_APPROVED', 'Выгрузка платёжек — после утверждения батча');
+  }
+  const [tenant, account, items] = await Promise.all([
+    prisma.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
+    prisma.bankAccount.findUniqueOrThrow({ where: { id: batch.bankAccountId } }),
+    prisma.paymentRequest.findMany({
+      where: { batchId, status: { in: ['APPROVED' as const, 'SENT_TO_BANK' as const] } },
+      orderBy: { number: 'asc' },
+    }),
+  ]);
+  if (items.length === 0) throw new ValidationError('NO_APPROVED_ITEMS');
+  const key = bankDataKey();
+  const orders = [];
+  for (const [i, item] of items.entries()) {
+    const vendor = item.vendorId ? await prisma.vendor.findUnique({ where: { id: item.vendorId } }) : null;
+    const vba = item.vendorBankAccountId
+      ? await prisma.vendorBankAccount.findUnique({ where: { id: item.vendorBankAccountId } })
+      : null;
+    orders.push({
+      number: String(i + 1),
+      date: batch.batchDate,
+      amountMinor: item.requestedMinor,
+      purpose: item.purposeNote,
+      payee: {
+        name: vendor?.legalName ?? '',
+        taxId: vendor?.taxId ?? '',
+        account: vba ? decryptSecret(vba.accountEncrypted, key) : '',
+        bankName: vba?.bankName ?? '',
+        mfo: vba?.mfo ?? '',
+      },
+    });
+  }
+  const file = buildClientBankExchange({
+    sender: 'Finance OS',
+    payer: {
+      name: tenant.legalName,
+      taxId: tenant.taxId,
+      account: account.accountEncrypted === 'MIGRATION' ? '' : decryptSecret(account.accountEncrypted, key),
+      bankName: account.bankName,
+      mfo: account.mfo,
+    },
+    orders,
+  });
+  await withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async () => ({
+    result: null,
+    audit: {
+      action: 'batch.export_1c',
+      objectType: 'payment_batch',
+      objectId: batchId,
+      after: { orders: orders.length, format: '1CClientBankExchange' },
+    },
+  }));
+  return { file, fileName: `${batch.number}-1c.txt` };
+}
+
 export async function markBatchSent(ctx: TenantContext, batchId: string) {
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const batch = await findScopedOr404(tx.paymentBatch, ctx, batchId);

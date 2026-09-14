@@ -4,7 +4,11 @@
 
 ## [Unreleased]
 
-## [Phase E] 2026-09-14
+## [Phase E] 2026-09-14 — завершена: документы, POS, ЭДО-панель, обмен c 1С, миграция
+- E-02: статусы Didox-документов в таблице edo_mock_document (sync при импорте реестра), dev-панель setEdoMockStatus → BR-024 applyEdoStatus по связанной СФ (CORRECTED/CANCELLED + Task); тест.
+- E-03: PosCsvAdapter (daily_sales / inventory_snapshot / banquet_mapping по docs/07 §3) + идемпотентные импортёры в таблицы PosDailySales/PosInventorySnapshot/PosBanquetCost; затраты банкета из iiko видны в Event P&L (posFood/posBeverage); тест.
+- E-04: AccountMapping category→счёт НСБУ-21 (сид стартовых значений: 1010/2910/9410/9420/0820, НДС 4410; правка ADMIN на экране /onec), exportPostingsCsv за период (docs/07 §4), importPostedStatus → CLOSED + onec_ref; ПЛЮС по итогам ресёрча 1С: выгрузка платёжек утверждённого батча в формате 1CClientBankExchange v1.02 (cp1251, МФО в поле БИК) — файл принимают и Клиент-Банк, и 1С (builder+parser в adapters, кнопка на карточке батча, ADR-009); руководство бухгалтера docs/13-onec-guide.md (доступ к 1С, три потока обмена, типовые проводки, чеклист месяца); 2 теста.
+- E-06: бейджи «Требуется регистрация (E-ijara)»/«Зарегистрирован» на договоре, бейдж Backdated (BR-025) в списке СФ; POA уже в селекторе загрузки документов.
 - E-05: миграция из Excel — 6 шаблонов в /templates и на скачивание c экрана (vendors/contracts/open_ap/open_ar/employees/budgets; листы «Данные»+«Пример»+«Инструкция», генератор `pnpm --filter @finance-os/adapters build:templates`); parseMigrationSheet в adapters; импортёры в db c валидацией all-or-nothing (отчёт строка+поле), идемпотентностью по бизнес-ключам и аудитом; исторические оплаты open_ap — служебные CLOSED-платежи через архивный счёт is_active=false (BR-054 не ослаблен, ADR-008); клиенты open_ar создаются на лету, просрочка сразу OVERDUE; employees без персональных данных; экран /migration (Owner/Lead/Admin) c шаблонами, порядком загрузки и отчётом ошибок; 4 теста.
 - E-01: getDocumentHealth — 9 красных зон blueprint §10.3 (оплачено без СФ / без акта дольше SLA категории, истёкшие договоры, несопоставленные СФ, приёмка без доверенности, неподписанные ДС, просроченные подотчёты, незакрытые расторжения, смена реквизитов vendor), каждая запись c owner и открытой задачей; экран /documents/health (счётчики, document score, drill-down ссылки на объекты); 2 теста (+tenant isolation).
 
