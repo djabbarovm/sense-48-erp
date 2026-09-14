@@ -17,11 +17,13 @@ import {
   LogOut,
   PartyPopper,
   PieChart,
+  Scale,
   Settings,
   ShoppingCart,
   Store,
   TrendingUp,
   Upload,
+  UsersRound,
   Wallet,
 } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
@@ -56,6 +58,8 @@ const NAV: NavItem[] = [
   { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, permission: 'budget.manage' },
   { key: 'documents', href: '/documents/health', icon: <FileWarning className={ICON} />, permission: 'payment.view' },
   { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} /> },
+  { key: 'tax', href: '/tax', icon: <Scale className={ICON} />, permission: 'payment.view' },
+  { key: 'payroll', href: '/payroll', icon: <UsersRound className={ICON} />, permission: 'payroll.prepare' },
   { key: 'onec', href: '/onec', icon: <BookOpenCheck className={ICON} />, permission: 'report.export' },
   { key: 'migration', href: '/migration', icon: <Upload className={ICON} />, permission: 'budget.manage' },
   { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, permission: 'tenant.settings' },

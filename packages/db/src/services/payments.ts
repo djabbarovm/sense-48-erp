@@ -134,7 +134,40 @@ export async function resolveSource(
         eventId: advance.eventId,
       };
     }
-    // TAX_OBLIGATION / PAYROLL_RUN — Phase F; LOAN/BANK_FEE — свободная сумма
+    case 'TAX_OBLIGATION': {
+      const obligation = await tx.taxObligation.findFirst({ where: { id: sourceId, tenantId } });
+      if (!obligation) throw new NotFoundError('Source tax obligation not found');
+      if (!['APPROVED', 'OVERDUE'].includes(obligation.status)) {
+        throw new ValidationError('SOURCE_NOT_PAYABLE', `TaxObligation в статусе ${obligation.status} (нужен APPROVED)`);
+      }
+      const calculated = obligation.calculatedMinor ?? 0n;
+      return {
+        grossMinor: calculated,
+        outstandingMinor: calculated - used,
+        vendorId: null,
+        contractId: null,
+        categoryId: null,
+        costCenterId: null,
+        eventId: null,
+      };
+    }
+    case 'PAYROLL_RUN': {
+      const run = await tx.payrollRun.findFirst({ where: { id: sourceId, tenantId } });
+      if (!run) throw new NotFoundError('Source payroll run not found');
+      if (!['APPROVED', 'PAID', 'POSTED'].includes(run.status)) {
+        throw new ValidationError('SOURCE_NOT_PAYABLE', `PayrollRun в статусе ${run.status} (нужен APPROVED, BR-047)`);
+      }
+      return {
+        grossMinor: run.netMinor,
+        outstandingMinor: run.netMinor - used,
+        vendorId: null,
+        contractId: null,
+        categoryId: null,
+        costCenterId: null,
+        eventId: null,
+      };
+    }
+    // LOAN/BANK_FEE — свободная сумма
     default:
       return {
         grossMinor: 0n,

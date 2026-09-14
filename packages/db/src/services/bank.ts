@@ -216,6 +216,19 @@ async function confirmPaidInternal(
     if (paid.isPrepayment) {
       await createVendorPrepaymentAdvance(tx, ctx, paid);
     }
+    // F-01/F-02: оплата налога/зарплаты двигает источник в PAID
+    if (paid.sourceType === 'TAX_OBLIGATION') {
+      await tx.taxObligation.updateMany({
+        where: { id: paid.sourceId, tenantId: ctx.tenantId, status: { notIn: ['PAID', 'FILED'] } },
+        data: { status: 'PAID' },
+      });
+    }
+    if (paid.sourceType === 'PAYROLL_RUN') {
+      await tx.payrollRun.updateMany({
+        where: { id: paid.sourceId, tenantId: ctx.tenantId, status: 'APPROVED' },
+        data: { status: 'PAID' },
+      });
+    }
     // PAID → RECONCILED, если after-payment документы не требуются (упрощение: не prepayment)
     let final = paid;
     if (!paid.isPrepayment) {

@@ -47,7 +47,8 @@
     "ar": "Дебиторка (AR)",
     "forecast": "Cash-прогноз",
     "migration": "Миграция данных",
-    "onec": "1С (обмен)"
+    "onec": "1С (обмен)",
+    "payroll": "Зарплата"
   },
   "home": {
     "title": "Finance OS",
@@ -676,5 +677,71 @@
     "category": "Категория",
     "accountCode": "Счёт затрат",
     "vatAccountCode": "Счёт НДС"
+  },
+  "tax": {
+    "title": "Налоговый календарь",
+    "open": "Открытых обязательств",
+    "overdueCount": "Просрочено",
+    "nextDeadline": "Ближайший дедлайн",
+    "tax": "Налог",
+    "period": "Период",
+    "due": "Срок",
+    "expected": "Ожидаемо",
+    "calculated": "Рассчитано",
+    "statusLabel": "Статус",
+    "actions": "Действия",
+    "amountSoum": "Сумма, UZS",
+    "calculate": "Рассчитать",
+    "approve": "Утвердить",
+    "createPayment": "Создать платёж",
+    "paymentCreated": "Платёж создан",
+    "file": "Сдано (FILED)",
+    "rulesTitle": "Правила календаря (Lead/Owner)",
+    "everyDay": "до {day} числа",
+    "ruleName": "Название",
+    "dueDay": "Число",
+    "expectedMin": "Мин, UZS",
+    "expectedMax": "Макс, UZS",
+    "addRule": "Добавить правило",
+    "recurrence": {
+      "MONTHLY": "ежемесячно",
+      "QUARTERLY": "ежеквартально",
+      "YEARLY": "ежегодно"
+    },
+    "status": {
+      "PLANNED": "Запланирован",
+      "CALCULATED": "Рассчитан",
+      "APPROVED": "Утверждён",
+      "PAID": "Оплачен",
+      "FILED": "Сдан",
+      "OVERDUE": "Просрочен"
+    }
+  },
+  "payroll": {
+    "title": "Зарплатные ведомости",
+    "intro": "В системе — только агрегаты (сумма, кол-во людей). Построчный реестр остаётся документом; проверка BR-047 сверяет ФИО из реестра c активным списком сотрудников — «мёртвые души» блокируют ведомость.",
+    "newRun": "Новая ведомость",
+    "period": "Период",
+    "employees": "Чел.",
+    "gross": "Начислено, UZS",
+    "net": "К выплате, UZS",
+    "taxes": "Налоги, UZS",
+    "create": "Создать",
+    "statusLabel": "Статус",
+    "actions": "Действия",
+    "check": "Проверить реестр (BR-047)",
+    "checking": "Проверяю…",
+    "checkOk": "Реестр чист — CHECKED",
+    "checkFail": "Расхождений: {count} — см. задачу",
+    "approve": "Утвердить",
+    "createPayment": "Создать платёж (net)",
+    "markPosted": "Проведено в 1С",
+    "status": {
+      "DRAFT": "Черновик",
+      "CHECKED": "Проверена",
+      "APPROVED": "Утверждена",
+      "PAID": "Выплачена",
+      "POSTED": "Проведена"
+    }
   }
 }

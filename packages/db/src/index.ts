@@ -29,3 +29,5 @@ export * from './services/migration.js';
 export * from './services/edo.js';
 export * from './services/pos.js';
 export * from './services/accounting.js';
+export * from './services/tax.js';
+export * from './services/payroll.js';
