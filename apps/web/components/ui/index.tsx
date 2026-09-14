@@ -17,9 +17,10 @@ export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
 const BUTTON_VARIANTS = {
   default:
-    'bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800 focus-visible:outline-brand-600',
+    'bg-volt-500 text-ink-950 font-semibold shadow-sm hover:bg-volt-400 hover:shadow-volt active:bg-volt-600 focus-visible:outline-volt-600',
+  dark: 'bg-ink-900 text-white font-medium shadow-sm hover:bg-ink-700 focus-visible:outline-ink-600',
   outline:
-    'border border-gray-300 bg-white text-gray-700 shadow-sm hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-gray-400',
+    'border border-gray-300 bg-white text-gray-700 shadow-sm hover:border-ink-900 hover:text-ink-900 focus-visible:outline-gray-400',
   danger:
     'bg-red-600 text-white shadow-sm hover:bg-red-700 active:bg-red-800 focus-visible:outline-red-600',
   ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-gray-400',
@@ -37,7 +38,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-150',
+        'inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-md font-medium tracking-tight transition-all duration-150',
         'focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50',
         size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3.5 py-2 text-sm',
         BUTTON_VARIANTS[variant],
@@ -51,7 +52,7 @@ export function Button({
 // ── Form controls ──
 
 const CONTROL =
-  'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 hover:border-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-gray-50';
+  'w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm transition-colors placeholder:text-gray-400 hover:border-ink-600 focus:border-ink-900 focus:outline-none focus:ring-2 focus:ring-volt-500/60 disabled:bg-gray-50';
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(CONTROL, className)} {...props} />;
@@ -81,7 +82,7 @@ export function Card({
   children: ReactNode;
 }) {
   return (
-    <div className={cn('rounded-xl border border-gray-200/80 bg-white p-5 shadow-card', className)}>
+    <div className={cn('rounded-lg border border-gray-200/80 bg-white p-5 shadow-card', className)}>
       {title || actions ? (
         <div className="mb-4 flex items-center justify-between gap-3">
           {title ? <h2 className="text-[15px] font-semibold tracking-tight text-gray-900">{title}</h2> : <span />}
@@ -109,26 +110,41 @@ export function StatCard({
   tone?: 'default' | 'danger' | 'success' | 'warning';
 }) {
   return (
-    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-card">
+    <div className="pixel-grid rounded-lg border border-ink-700 bg-ink-900 p-5 shadow-card">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[13px] font-medium text-gray-500">{label}</p>
+          <p className="text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">{label}</p>
           <p
             className={cn(
-              'tnum mt-1.5 text-2xl font-semibold tracking-tight',
-              tone === 'danger' && 'text-red-600',
-              tone === 'success' && 'text-emerald-600',
-              tone === 'warning' && 'text-amber-600',
+              'tnum mt-2 text-3xl font-bold',
+              tone === 'default' && 'text-white',
+              tone === 'danger' && 'text-red-400',
+              tone === 'success' && 'text-volt-500',
+              tone === 'warning' && 'text-volt-500',
             )}
           >
             {value}
           </p>
-          {hint ? <p className="mt-1 text-xs text-gray-400">{hint}</p> : null}
+          {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
         </div>
         {icon ? (
-          <div className="rounded-lg bg-brand-50 p-2.5 text-brand-600 [&>svg]:h-5 [&>svg]:w-5">{icon}</div>
+          <div className="rounded-md bg-volt-500/10 p-2.5 text-volt-500 [&>svg]:h-5 [&>svg]:w-5">{icon}</div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/** Игровой прогресс-бар (бюджет, закрытие месяца): volt до 100%, красный при переливе. */
+export function Meter({ value, max, className }: { value: number; max: number; className?: string }) {
+  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  const over = max > 0 && value > max;
+  return (
+    <div className={cn('h-1.5 w-full overflow-hidden rounded-sm bg-gray-200', className)}>
+      <div
+        className={cn('h-full rounded-sm transition-all', over ? 'bg-red-500' : 'bg-volt-600')}
+        style={{ width: `${over ? 100 : pct}%` }}
+      />
     </div>
   );
 }
@@ -163,7 +179,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+        'inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[11px] font-semibold tracking-wide ring-1 ring-inset',
         BADGE_TONES[tone],
       )}
     >
@@ -228,7 +244,7 @@ export function PageHeader({
 
 export function EmptyState({ icon, text }: { icon?: ReactNode; text: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white/60 py-12 text-gray-400">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-white/60 py-12 text-gray-400">
       {icon ? <div className="[&>svg]:h-8 [&>svg]:w-8">{icon}</div> : null}
       <p className="text-sm">{text}</p>
     </div>

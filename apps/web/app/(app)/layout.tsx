@@ -64,13 +64,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 flex-col bg-ink-900 md:flex">
+      <aside className="pixel-grid hidden w-60 shrink-0 flex-col bg-ink-950 md:flex">
         <div className="flex items-center gap-2.5 px-5 py-5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-sm font-bold text-white shadow-pop">
-            F
+          <div className="grid h-8 w-8 grid-cols-3 grid-rows-3 gap-[2px]" aria-hidden>
+            {[0, 2, 4, 6, 8].map((i) => (
+              <span key={i} className="rounded-[1px] bg-volt-500" style={{ gridArea: `${Math.floor(i / 3) + 1} / ${(i % 3) + 1}` }} />
+            ))}
           </div>
-          <div className="text-[15px] font-semibold tracking-tight text-white">
-            Finance<span className="text-brand-400">OS</span>
+          <div className="font-display text-[15px] font-bold tracking-tight text-white uppercase">
+            Finance<span className="text-volt-500">OS</span>
           </div>
         </div>
         <nav className="flex-1 space-y-0.5 px-3 pb-4">
@@ -78,15 +80,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             <Link
               key={item.key}
               href={item.href}
-              className="group flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] font-medium text-slate-400 transition-colors hover:bg-ink-700 hover:text-white"
+              className="group flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] font-medium text-slate-400 transition-colors hover:bg-ink-800 hover:text-white"
             >
-              <span className="text-slate-500 transition-colors group-hover:text-brand-400">{item.icon}</span>
+              <span className="text-slate-600 transition-colors group-hover:text-volt-500">{item.icon}</span>
               {t(item.key)}
             </Link>
           ))}
         </nav>
-        <div className="border-t border-ink-700 px-5 py-4">
-          <p className="text-[11px] tracking-wider text-slate-500 uppercase">{ctx.tenantSlug}</p>
+        <div className="border-t border-ink-800 px-5 py-4">
+          <p className="font-mono text-[11px] tracking-[0.18em] text-volt-600 uppercase">{ctx.tenantSlug}</p>
           <p className="mt-0.5 truncate text-xs text-slate-400">{ctx.roles.join(' · ')}</p>
         </div>
       </aside>
@@ -113,7 +115,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </form>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink-900 font-mono text-xs font-semibold text-volt-500">
                 {initials}
               </div>
               <span className="hidden text-sm font-medium text-gray-700 sm:block">{user.fullName}</span>

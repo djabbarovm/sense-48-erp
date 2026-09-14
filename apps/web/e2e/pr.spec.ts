@@ -34,6 +34,7 @@ test('PR: chef создаёт → submit → согласование → APPROV
   await page.goto(url);
   const financeRow = page.locator('tr', { hasText: 'FINANCE' }).first();
   await financeRow.getByRole('button', { name: 'Согласовать' }).click();
+  await expect(page.locator('tr', { hasText: 'FINANCE' }).first()).toContainText('APPROVED');
 
   // chef согласует BUSINESS_OWNER
   const prId = url.match(/\/pr\/([0-9a-f-]{36})/)![1]!;
@@ -44,6 +45,8 @@ test('PR: chef создаёт → submit → согласование → APPROV
     .first()
     .getByRole('button', { name: 'Согласовать' })
     .click();
+  // ждём завершения server action: карточка исчезает из pending-списка
+  await expect(page.locator(`form:has(input[name="id"][value="${prId}"])`)).toHaveCount(0);
 
   await page.goto(url);
   await expect(page.getByText('Утверждена')).toBeVisible();

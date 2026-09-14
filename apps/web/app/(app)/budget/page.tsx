@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { can, formatMoney, money } from '@finance-os/core';
 import { listBudgetMatrix, listCategories, listCostCenters } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
-import { Badge, Button, Card, Input, Label, Select, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, Card, Input, Label, Meter, Select, Table, Td, Th } from '@/components/ui';
 import { upsertBudgetLineAction } from './actions';
 
 export default async function BudgetPage({
@@ -43,6 +43,7 @@ export default async function BudgetPage({
             <Th className="text-right">{t('planned')}</Th>
             <Th className="text-right">{t('committed')}</Th>
             <Th className="text-right">{t('actual')}</Th>
+            <Th />
             <Th className="text-right">{t('remaining')}</Th>
           </tr>
         </thead>
@@ -54,6 +55,12 @@ export default async function BudgetPage({
               <Td className="money text-right">{formatMoney(money(row.plannedMinor, 'UZS'))}</Td>
               <Td className="money text-right">{formatMoney(money(row.status.committedMinor, 'UZS'))}</Td>
               <Td className="money text-right">{formatMoney(money(row.status.actualMinor, 'UZS'))}</Td>
+              <Td className="w-32">
+                <Meter
+                  value={Number((row.status.committedMinor + row.status.actualMinor) / 100n)}
+                  max={Number(row.plannedMinor / 100n)}
+                />
+              </Td>
               <Td className="money text-right">
                 {row.status.remainingMinor < 0n ? (
                   <Badge tone="red">{formatMoney(money(row.status.remainingMinor, 'UZS'))}</Badge>
