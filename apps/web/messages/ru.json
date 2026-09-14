@@ -280,5 +280,24 @@
       "CORRECTED": "Скорректирован",
       "CANCELLED": "Аннулирован"
     }
+  },
+  "tasks": {
+    "title": "Задачи",
+    "empty": "Задач нет — зелёный поток чист",
+    "nextAction": "Что делать",
+    "due": "Срок",
+    "typeCol": "Тип",
+    "statusLabel": "Статус",
+    "take": "В работу",
+    "done": "Готово",
+    "cancel": "Отменить",
+    "cancelReason": "Причина отмены",
+    "status": {
+      "OPEN": "Открыта",
+      "IN_PROGRESS": "В работе",
+      "DONE": "Готова",
+      "CANCELLED": "Отменена",
+      "OVERDUE": "Просрочена"
+    }
   }
 }

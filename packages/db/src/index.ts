@@ -15,3 +15,4 @@ export * from './services/purchaseRequests.js';
 export * from './services/receiving.js';
 export * from './services/invoices.js';
 export * from './services/documents.js';
+export * from './services/tasks.js';
