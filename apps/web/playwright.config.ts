@@ -23,6 +23,7 @@ export default defineConfig({
       DATABASE_URL:
         process.env.DATABASE_URL ?? 'postgresql://finance:finance@localhost:5432/finance_os',
       AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET ?? 'dev-only-secret',
+      BANK_DATA_KEY: process.env.BANK_DATA_KEY ?? 'DHqPbmDW3nUOytHplLmVMkP2mSVJlRlXWLh2GYYx4hg=',
     },
   },
 });

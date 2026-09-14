@@ -493,3 +493,50 @@ model AuditLog {
   @@index([tenantId, seq])
   @@map("audit_log")
 }
+
+// ───────────────────────────── §7 Task ─────────────────────────────
+
+enum TaskType {
+  CLOSING_DOCS
+  MISSING_DOC
+  VERIFY_BANK
+  RECEIPT_PENDING
+  CONTRACT_EXPIRY
+  AR_FOLLOWUP
+  TAX_PREP
+  UNMATCHED_TX
+  ADVANCE_RETURN
+  REVIEW_EXCEPTION
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+  OVERDUE
+}
+
+model Task {
+  id           String     @id @default(uuid(7)) @db.Uuid
+  tenantId     String     @map("tenant_id") @db.Uuid
+  type         TaskType
+  objectType   String     @map("object_type")
+  objectId     String     @map("object_id") @db.Uuid
+  ownerId      String?    @map("owner_id") @db.Uuid
+  dueAt        DateTime?  @map("due_at")
+  escalateToId String?    @map("escalate_to_id") @db.Uuid
+  escalatedAt  DateTime?  @map("escalated_at")
+  status       TaskStatus @default(OPEN)
+  // junior всегда видит, что делать дальше (docs/02 §7)
+  nextAction   String     @map("next_action")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  createdBy    String?    @map("created_by") @db.Uuid
+  updatedBy    String?    @map("updated_by") @db.Uuid
+
+  @@index([tenantId, status])
+  @@index([tenantId, ownerId, status])
+  @@index([tenantId, objectType, objectId])
+  @@map("task")
+}

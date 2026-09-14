@@ -17,8 +17,8 @@
 - [x] A-12 Admin экран: tenant settings, users+roles (grant/revoke), cost centers, categories; audit на каждую мутацию; e2e admin/404
 
 ## Phase B — Master data & P2P core
-- [ ] B-01 Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034)
-- [ ] B-02 Contract CRUD + state machine + Contract 360 + `v_contract_balance` (BR-012, BR-026)
+- [x] B-01 Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034), reveal c audit (BR-074) Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034)
+- [~] B-02 Contract CRUD + state machine + Contract 360 + `v_contract_balance` (BR-012, BR-026)
 - [ ] B-03 Customer CRUD (минимум)
 - [ ] B-04 Budget + `v_budget_status` + Budget экран (BR-014)
 - [ ] B-05 ApprovalPolicy + policy engine (BR-041, D-12, BR-035/036/033)

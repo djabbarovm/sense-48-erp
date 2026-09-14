@@ -6,3 +6,4 @@ export * from './repository.js';
 export * from './permissions.js';
 export * from './sequence.js';
 export * from './services/admin.js';
+export * from './services/vendors.js';

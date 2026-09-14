@@ -71,5 +71,43 @@
     "addUser": "Добавить пользователя",
     "addCostCenter": "Добавить центр затрат",
     "addCategory": "Добавить категорию"
+  },
+  "vendors": {
+    "title": "Поставщики",
+    "new": "Новый поставщик",
+    "name": "Название",
+    "taxId": "ИНН",
+    "statusLabel": "Статус",
+    "flags": "Флаги",
+    "contact": "Контакт",
+    "requiresContract": "Требует договор",
+    "profile": "Профиль",
+    "bankAccounts": "Банковские счета",
+    "contracts": "Договоры",
+    "auditTab": "Аудит",
+    "bank": "Банк",
+    "mfo": "МФО",
+    "account": "Счёт",
+    "accountFull": "Полный номер счёта (20 цифр)",
+    "changeBank": "Сменить реквизиты",
+    "verifyStep1": "Проверка (шаг 1)",
+    "verifyStep2": "Подтвердить (шаг 2)",
+    "verificationMethod": "Метод проверки",
+    "verify": "Активировать поставщика",
+    "block": "Заблокировать",
+    "unblock": "Разблокировать",
+    "blockReason": "Причина блокировки",
+    "create": "Создать",
+    "openTasks": "Открытые задачи",
+    "status": {
+      "ACTIVE": "Активен",
+      "BLOCKED": "Заблокирован",
+      "PENDING_VERIFICATION": "Ожидает проверки"
+    },
+    "accountStatus": {
+      "UNVERIFIED": "Не проверен",
+      "VERIFIED": "Проверен",
+      "RETIRED": "Выведен"
+    }
   }
 }
