@@ -6,6 +6,7 @@ import {
   approvePaymentException,
   cancelPaymentRequest,
   createPaymentRequest,
+  previewPaymentControls,
   resolvePaymentHold,
   submitPaymentRequest,
 } from '../src/services/payments.js';
@@ -383,5 +384,30 @@ describe('C-01 PaymentRequest + run_controls', () => {
     expect(control(payment, 'NEW_VENDOR')?.result).toBe('WARN');
     const cancelled = await cancelPaymentRequest(junior(), pay.id, 'не требуется');
     expect(cancelled.status).toBe('CANCELLED');
+  });
+
+  it('C-03 preview: показывает outstanding и контроли, ничего не сохраняя', async () => {
+    const { invoice } = await mkMatchedInvoiceWithPr();
+    const before = await prisma.paymentRequest.count({ where: { tenantId } });
+    const preview = await previewPaymentControls(junior(), {
+      sourceType: 'INVOICE',
+      sourceId: invoice.id,
+      requestedMinor: 400_000_000n,
+      purposeNote: 'preview',
+    });
+    expect(preview.outstandingMinor).toBe(400_000_000n);
+    expect(preview.wouldBeReady).toBe(true);
+    expect(preview.controls.find((c) => c.code === 'OVER_OUTSTANDING')?.result).toBe('PASS');
+    // превышение остатка видно до submit
+    const over = await previewPaymentControls(junior(), {
+      sourceType: 'INVOICE',
+      sourceId: invoice.id,
+      requestedMinor: 500_000_000n,
+      purposeNote: 'preview',
+    });
+    expect(over.wouldBeReady).toBe(false);
+    expect(over.controls.find((c) => c.code === 'OVER_OUTSTANDING')?.result).toBe('FAIL');
+    const after = await prisma.paymentRequest.count({ where: { tenantId } });
+    expect(after).toBe(before); // ничего не создано
   });
 });

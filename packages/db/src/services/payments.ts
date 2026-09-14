@@ -18,6 +18,7 @@ import type {
   Prisma,
   UrgencyReason,
 } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
@@ -323,6 +324,57 @@ export async function runControls(tx: Tx, ctx: TenantContext, pr: PaymentRequest
   }
 
   return controls;
+}
+
+// ── Preview (C-03: визард показывает outstanding и controls до submit) ──
+
+export interface PaymentPreview {
+  grossMinor: bigint;
+  outstandingMinor: bigint;
+  vendorId: string | null;
+  vendorBankAccountId: string | null;
+  controls: ControlResult[];
+  wouldBeReady: boolean;
+}
+
+export async function previewPaymentControls(ctx: TenantContext, input: PaymentInput): Promise<PaymentPreview> {
+  requirePermission(ctx, 'payment.create');
+  if (input.requestedMinor <= 0n) throw new ValidationError('AMOUNT_INVALID');
+  if (!input.sourceId) throw new ValidationError('NO_SOURCE', 'Платёж без source object запрещён (BR-001)');
+  const tx = prisma as unknown as Tx;
+  const source = await resolveSource(tx, ctx.tenantId, input.sourceType, input.sourceId);
+  let accountId = input.vendorBankAccountId ?? null;
+  if (!accountId && source.vendorId) {
+    const account = await tx.vendorBankAccount.findFirst({
+      where: { vendorId: source.vendorId, status: 'VERIFIED', isDefault: true, currency: input.currency ?? 'UZS' },
+    });
+    accountId = account?.id ?? null;
+  }
+  // transient PaymentRequest: не сохраняется, id нужен только для self-exclude в запросах
+  const draft = {
+    id: randomUUID(),
+    tenantId: ctx.tenantId,
+    sourceType: input.sourceType,
+    sourceId: input.sourceId,
+    vendorId: source.vendorId,
+    vendorBankAccountId: accountId,
+    requestedMinor: input.requestedMinor,
+    currency: input.currency ?? 'UZS',
+    dueDate: input.dueDate ?? null,
+    isPrepayment: input.isPrepayment ?? false,
+    categoryId: source.categoryId,
+    costCenterId: source.costCenterId,
+    createdAt: new Date(),
+  } as unknown as PaymentRequest;
+  const controls = await runControls(tx, ctx, draft);
+  return {
+    grossMinor: source.grossMinor,
+    outstandingMinor: source.outstandingMinor,
+    vendorId: source.vendorId,
+    vendorBankAccountId: accountId,
+    controls,
+    wouldBeReady: controlsSatisfied(controls, null),
+  };
 }
 
 // ── CRUD / workflow ──

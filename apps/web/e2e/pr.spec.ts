@@ -10,6 +10,7 @@ async function login(page: Page, email: string) {
 }
 
 test('PR: chef создаёт → submit → согласование → APPROVED', async ({ page }) => {
+  test.setTimeout(90_000); // многошаговый сценарий: 3 логина + холодная компиляция роутов
   await login(page, 'chef@rooftop.test');
   await page.goto('/pr/new');
   await page.locator('#pr-what').fill('Лосось 20 кг');
