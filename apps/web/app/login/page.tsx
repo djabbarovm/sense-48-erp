@@ -11,7 +11,7 @@ export default function LoginPage() {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden pixel-grid bg-ink-950 px-4">
       {/* фоновые свечения */}
-      <div className="pointer-events-none absolute -top-40 -left-40 h-[480px] w-[480px] rounded-full bg-volt-500/15 blur-[140px]" />
+      <div className="pointer-events-none absolute -top-40 -left-40 h-[480px] w-[480px] rounded-full bg-volt-500/20 blur-[140px]" />
       <div className="pointer-events-none absolute -right-40 -bottom-40 h-[480px] w-[480px] rounded-full bg-brand-600/25 blur-[140px]" />
 
       <div className="relative w-full max-w-sm">

@@ -9,19 +9,19 @@
   --font-display: 'Space Grotesk', 'Inter Variable', sans-serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
 
-  /* Xsolla-направление: чёрная база + кислотный лайм */
-  --color-ink-950: #060607;
-  --color-ink-900: #0a0a0b;
-  --color-ink-800: #121214;
-  --color-ink-700: #1b1b1f;
-  --color-ink-600: #26262c;
+  /* Своя айдентика: глубокий графит-синий + мятно-изумрудный акцент («живые деньги») */
+  --color-ink-950: #07090d;
+  --color-ink-900: #0b0e14;
+  --color-ink-800: #12161f;
+  --color-ink-700: #1a202c;
+  --color-ink-600: #252d3d;
 
-  --color-volt-300: #eaff66;
-  --color-volt-400: #ddff33;
-  --color-volt-500: #d7ff00; /* акцент */
-  --color-volt-600: #b8db00;
-  --color-volt-700: #93b000;
-  --color-volt: #d7ff00;
+  --color-volt-300: #7df5c8;
+  --color-volt-400: #4dedb2;
+  --color-volt-500: #23e39c; /* акцент */
+  --color-volt-600: #14bf80;
+  --color-volt-700: #0e9765;
+  --color-volt: #23e39c;
 
   /* вторичный электрик для связок (графики, ссылки на светлом) */
   --color-brand-50: #eef2ff;
@@ -37,7 +37,7 @@
 
   --shadow-card: 0 1px 2px 0 rgb(10 10 11 / 0.05), 0 1px 3px 0 rgb(10 10 11 / 0.07);
   --shadow-pop: 0 6px 16px -4px rgb(10 10 11 / 0.16);
-  --shadow-volt: 0 0 0 1px rgb(215 255 0 / 0.4), 0 4px 24px -4px rgb(215 255 0 / 0.35);
+  --shadow-volt: 0 0 0 1px rgb(35 227 156 / 0.35), 0 4px 24px -4px rgb(35 227 156 / 0.3);
 }
 
 body {
@@ -74,5 +74,5 @@ td.money,
 
 ::selection {
   background: var(--color-volt-500);
-  color: #060607;
+  color: #07090d;
 }

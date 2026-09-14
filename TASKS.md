@@ -35,8 +35,8 @@
 - [~] C-03 Payment Desk экран
 - [x] C-04 PaymentBatch полный цикл + summary (cash_after, by_*, exceptions, related party) + BR-040/051/052/053/057; cron freeze — в D-05
 - [ ] C-05 My Approvals экран (mobile)
-- [ ] C-06 Bank import, auto-match, ReconciliationMatch, PAID только через match (BR-054/055/056)
-- [ ] C-07 Advance: prepayment→closing task (BR-022/046), employee advance, corp card
+- [x] C-06 Bank import (Unified CSV + Trustbank XLSX по реальной выписке), idempotency BR-056, auto-match BR-055, PAID только через match BR-054 (+DB-триггер), FAILED path, cash position
+- [x] C-07 Advance: BR-022 prepayment→Advance+CLOSING_DOCS (SLA раб. дни), BR-046 блок при OVERDUE (Owner override), закрытие частями, write-off Owner, overdue-job
 - [x] C-08 Urgent batch flow (BR-043: только urgent, approve Owner/Lead, ITEM-approval, пост-review Task, U-нумерация)
 - [ ] C-09 Seed Phase C
 - [ ] C-10 Demo script `scripts/demo-p2p.md`

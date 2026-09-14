@@ -18,3 +18,5 @@ export * from './services/documents.js';
 export * from './services/tasks.js';
 export * from './services/payments.js';
 export * from './services/batches.js';
+export * from './services/bank.js';
+export * from './services/advances.js';
