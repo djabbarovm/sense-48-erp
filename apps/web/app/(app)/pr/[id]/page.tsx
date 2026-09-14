@@ -1,10 +1,18 @@
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { NotFoundError, can, formatMoney, money } from '@finance-os/core';
-import { getPoForPr, getPr, listReceiptsForPr } from '@finance-os/db';
+import { getPoForPr, getPr, listDocumentsFor, listReceiptsForPr } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Table, Td, Th } from '@/components/ui';
-import { cancelPrAction, createPoAction, createReceiptAction, decideApprovalAction, submitPrAction } from '../actions';
+import {
+  cancelPrAction,
+  createPoAction,
+  createReceiptAction,
+  decideApprovalAction,
+  markDocReceivedAction,
+  submitPrAction,
+  uploadPrDocumentAction,
+} from '../actions';
 
 export default async function PrPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireTenantContext();
@@ -19,7 +27,11 @@ export default async function PrPage({ params }: { params: Promise<{ id: string 
     throw e;
   }
   const { pr, approvals, audit, vendor, category, costCenter } = dto;
-  const [po, receipts] = await Promise.all([getPoForPr(ctx, pr.id), listReceiptsForPr(ctx, pr.id)]);
+  const [po, receipts, documents] = await Promise.all([
+    getPoForPr(ctx, pr.id),
+    listReceiptsForPr(ctx, pr.id),
+    listDocumentsFor(ctx, 'purchase_request', pr.id),
+  ]);
 
   return (
     <div className="space-y-4">
@@ -175,6 +187,52 @@ export default async function PrPage({ params }: { params: Promise<{ id: string 
             ))}
           </tbody>
         </Table>
+      </Card>
+
+      <Card title={t('documents')}>
+        {documents.length > 0 ? (
+          <ul className="mb-3 space-y-1.5 text-sm">
+            {documents.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-2">
+                <Badge tone="gray">{d.docType}</Badge>
+                <span>{d.fileName}</span>
+                <span className="text-xs text-gray-400">v{d.version}</span>
+                <Badge tone={d.status === 'RECEIVED' ? 'green' : d.status === 'REJECTED' ? 'red' : 'yellow'}>
+                  {t(`docStatus.${d.status}`)}
+                </Badge>
+                {d.status === 'PENDING' && can(ctx, 'document.mark_received') ? (
+                  <form action={markDocReceivedAction}>
+                    <input type="hidden" name="documentId" value={d.id} />
+                    <input type="hidden" name="id" value={pr.id} />
+                    <Button type="submit" variant="outline" size="sm">
+                      {t('markReceived')}
+                    </Button>
+                  </form>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {can(ctx, 'document.upload') ? (
+          <form action={uploadPrDocumentAction} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="id" value={pr.id} />
+            <select
+              name="docType"
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              aria-label={t('docType')}
+            >
+              {['KP', 'INVOICE', 'ACT', 'WAYBILL', 'SF', 'POA', 'SPEC', 'OTHER'].map((dt) => (
+                <option key={dt} value={dt}>
+                  {dt}
+                </option>
+              ))}
+            </select>
+            <Input type="file" name="file" required className="w-auto flex-1" />
+            <Button type="submit" variant="outline">
+              {t('upload')}
+            </Button>
+          </form>
+        ) : null}
       </Card>
 
       <Card>

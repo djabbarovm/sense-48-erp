@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { UrgencyReason } from '@finance-os/db';
+import type { DocType, UrgencyReason } from '@finance-os/db';
 import { createPr, decidePrApproval, submitPr, transitionPr } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
@@ -73,4 +73,29 @@ export async function createReceiptAction(formData: FormData): Promise<void> {
     status: formData.get('partial') === '1' ? 'PARTIAL' : 'FULL',
   });
   revalidatePath(`/pr/${id}`);
+}
+
+export async function uploadPrDocumentAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const { uploadDocument } = await import('@finance-os/db');
+  const { createStorageFromEnv } = await import('@finance-os/adapters');
+  const file = formData.get('file');
+  const id = String(formData.get('id'));
+  if (!(file instanceof File) || file.size === 0) return;
+  await uploadDocument(ctx, createStorageFromEnv(), {
+    objectType: 'purchase_request',
+    objectId: id,
+    docType: String(formData.get('docType')) as DocType,
+    fileName: file.name,
+    mime: file.type || 'application/octet-stream',
+    body: Buffer.from(await file.arrayBuffer()),
+  });
+  revalidatePath(`/pr/${id}`);
+}
+
+export async function markDocReceivedAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const { markDocumentReceived } = await import('@finance-os/db');
+  await markDocumentReceived(ctx, String(formData.get('documentId')));
+  revalidatePath(`/pr/${String(formData.get('id'))}`);
 }

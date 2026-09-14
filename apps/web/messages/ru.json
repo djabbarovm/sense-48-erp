@@ -230,7 +230,17 @@
     "receipts": "Приёмка",
     "receiveFull": "Принять полностью",
     "receivePartial": "Принять частично",
-    "receiver": "Принял"
+    "receiver": "Принял",
+    "documents": "Документы",
+    "upload": "Загрузить",
+    "docType": "Тип документа",
+    "markReceived": "Принят",
+    "docStatus": {
+      "PENDING": "Ожидает проверки",
+      "RECEIVED": "Принят",
+      "REJECTED": "Отклонён",
+      "EXPIRED": "Истёк"
+    }
   },
   "approvals": {
     "title": "Мои согласования",

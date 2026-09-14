@@ -14,6 +14,7 @@
 - UI: дизайн-система «power» — Inter Variable, индиго-палитра, тёмный ink-sidebar с иконками lucide, стеклянный топбар, StatCard-дашборд на главной с живыми метриками, тёмный логин с glassmorphism, единые кнопки/поля/бейджи/таблицы (tabular-nums для сумм), PageHeader/EmptyState.
 - B-07: createPo (PR APPROVED → ORDERED, номер PO-…), setPoStatus, createReceipt (FULL → PR RECEIVED, PARTIAL не переводит, BR-042 SOD для Tier 2+), блок PO/приёмки на карточке PR; 5 тестов.
 - B-08: invoice-сервис (BR-002 duplicate→SUSPECT+Task+resolve, BR-025 backdated, match c vendor-guard → PR INVOICED, dispute, BR-024 edo CORRECTED/CANCELLED, suggestions ±5%, интерфейс v_invoice_balance), MockEdoAdapter (XLSX parse/build), importEdoRegistry (auto-vendor PENDING, buyer-mismatch errors, идемпотентность), экран /invoices c импортом и разбором дубликатов; 7 тестов.
+- B-09: StorageAdapter (S3/MinIO + LocalFs ADR-005), documents-сервис (upload c sha256+версиями+25МБ лимит, mark_received/reject, checkRequiredDocs BR-023 c alsoObjects, seedDefaultRequirements), блок документов на карточке PR; 4 теста.
 
 ## [Phase A] 2026-09-14 — завершена: monorepo, инфраструктура, схема master data, audit, auth/RBAC/tenant isolation, sequences, money, i18n, UI shell, seed, admin
 - A-01: pnpm monorepo — apps/web (Next.js 15 + TS strict), packages/{core,db,adapters,workers}; eslint 9 (flat) + prettier + vitest 3 + Playwright + husky pre-commit (lint+typecheck). `pnpm install && pnpm build && pnpm test` зелёные.

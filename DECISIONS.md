@@ -25,3 +25,9 @@
 **Контекст:** A-02 перечисляет mailhog; email fallback появится в Phase D.
 **Решение:** MailHog в compose (SMTP 1025, UI 8025); nodemailer в Phase D шлёт туда в dev.
 **Последствия:** Письма в dev видны в web-интерфейсе, реальный SMTP — только в prod env.
+
+## ADR-005: StorageAdapter c LocalFs-fallback для dev
+**Дата:** 2026-09-14 · **Фаза/задача:** B-09
+**Контекст:** D-04 требует S3-совместимое хранилище (MinIO в compose). В песочнице/CI MinIO может быть недоступен.
+**Решение:** `StorageAdapter` interface в packages/adapters: `S3Storage` (aws-sdk v3, forcePathStyle для MinIO, signed URL 15 мин) — прод/dev c compose; `LocalFsStorage` — фолбэк для песочниц и юнит-тестов (`createStorageFromEnv` выбирает по env S3_*). Метаданные, sha256 и версии — всегда в таблице Document.
+**Последствия:** Тесты не требуют MinIO; смена бэкенда хранения не трогает домен.

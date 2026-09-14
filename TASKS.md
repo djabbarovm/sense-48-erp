@@ -25,8 +25,8 @@
 - [x] B-06 PurchaseRequest: форма, state machine, approvals по слотам, budget check, urgency, fast lane (BR-042-045); экраны /pr, /approvals; e2e
 - [x] B-07 PurchaseOrder + Receipt (BR-042: Tier 2+ приёмщик ≠ инициатор), PR → ORDERED/RECEIVED, UI на карточке PR
 - [x] B-08 Invoice: create, XLSX-реестр импорт (EdoAdapter mock), дубликаты BR-002, match+suggestions, Invoice Inbox, BR-024/025/037
-- [~] B-09 Document + DocumentRequirement + S3 upload (BR-023)
-- [ ] B-10 Task: модель, «Мои задачи», next_action, escalation
+- [x] B-09 Document + DocumentRequirement + S3 upload (sha256, версии, signed URL; LocalFs-fallback ADR-005), mark_received, BR-023 checkRequiredDocs
+- [~] B-10 Task: модель, «Мои задачи», next_action, escalation
 - [ ] B-11 Seed Phase B
 
 ## Phase C — Payments, batch, bank
