@@ -13,3 +13,4 @@ export * from './services/budgets.js';
 export * from './services/policies.js';
 export * from './services/purchaseRequests.js';
 export * from './services/receiving.js';
+export * from './services/invoices.js';

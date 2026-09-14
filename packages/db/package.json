@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
-    "@finance-os/core": "workspace:*"
+    "@finance-os/core": "workspace:*",
+    "@finance-os/adapters": "workspace:*"
   }
 }

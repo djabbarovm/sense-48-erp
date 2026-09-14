@@ -238,5 +238,37 @@
     "role": "Роль",
     "approve": "Согласовать",
     "reject": "Отклонить"
+  },
+  "invoices": {
+    "title": "Счета и СФ",
+    "importRegistry": "Импорт реестра ЭДО (XLSX)",
+    "importBtn": "Импортировать",
+    "importResult": "Импортировано: {imported}, пропущено: {skipped}, ошибок: {errors}",
+    "numberCol": "Номер",
+    "vendorCol": "Поставщик",
+    "date": "Дата",
+    "amount": "Сумма",
+    "typeCol": "Тип",
+    "edo": "ЭДО",
+    "statusLabel": "Статус",
+    "match": "Сопоставить",
+    "dispute": "Оспорить",
+    "disputeReason": "Причина спора",
+    "notDuplicate": "Не дубликат",
+    "confirmDuplicate": "Дубликат",
+    "reason": "Причина",
+    "suggestions": "Предложения",
+    "toPr": "к заявке {number}",
+    "toContract": "к договору {number}",
+    "status": {
+      "RECEIVED": "Получен",
+      "DUPLICATE_SUSPECT": "Подозрение на дубликат",
+      "MATCHED": "Сопоставлен",
+      "DISPUTED": "Спорный",
+      "PARTIALLY_PAID": "Частично оплачен",
+      "PAID": "Оплачен",
+      "CORRECTED": "Скорректирован",
+      "CANCELLED": "Аннулирован"
+    }
   }
 }
