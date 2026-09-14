@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { can } from '@finance-os/core';
 import { listVendors } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
-import { Badge, Button, Card, Input, Label, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, Card, Input, Label, PageHeader, Table, Td, Th } from '@/components/ui';
 import { createVendorAction } from './actions';
 
 const STATUS_TONE = { ACTIVE: 'green', BLOCKED: 'red', PENDING_VERIFICATION: 'yellow' } as const;
@@ -20,9 +20,7 @@ export default async function VendorsPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
-      </div>
+      <PageHeader title={t('title')} />
       <form className="max-w-sm">
         <Input name="q" defaultValue={q ?? ''} placeholder="…" aria-label={t('name')} />
       </form>
@@ -49,7 +47,7 @@ export default async function VendorsPage({
               </Td>
               <Td className="space-x-1">
                 {v.riskFlags.map((f) => (
-                  <Badge key={f} tone="red">
+                  <Badge key={f} tone="red" dot>
                     {f}
                   </Badge>
                 ))}

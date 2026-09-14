@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { can, formatMoney, money } from '@finance-os/core';
 import { listContracts, listVendors } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
-import { Badge, Button, Card, Input, Label, Select, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, Card, Input, Label, PageHeader, Select, Table, Td, Th } from '@/components/ui';
 import { createContractAction } from './actions';
 
 export default async function ContractsPage() {
@@ -14,14 +14,14 @@ export default async function ContractsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <PageHeader title={t('title')} />
       <Table>
         <thead>
           <tr>
             <Th>{t('number')}</Th>
             <Th>{t('counterparty')}</Th>
             <Th>{t('subject')}</Th>
-            <Th>{t('limit')}</Th>
+            <Th className="text-right">{t('limit')}</Th>
             <Th>{t('period')}</Th>
             <Th>{t('statusLabel')}</Th>
           </tr>
@@ -36,7 +36,7 @@ export default async function ContractsPage() {
               </Td>
               <Td>{c.vendor?.displayName ?? c.customer?.legalName}</Td>
               <Td>{c.subject}</Td>
-              <Td>{c.limitMinor != null ? formatMoney(money(c.limitMinor, c.currency)) : '—'}</Td>
+              <Td className="money text-right">{c.limitMinor != null ? formatMoney(money(c.limitMinor, c.currency)) : '—'}</Td>
               <Td>
                 {c.startDate.toISOString().slice(0, 10)} — {c.endDate?.toISOString().slice(0, 10) ?? '…'}
               </Td>

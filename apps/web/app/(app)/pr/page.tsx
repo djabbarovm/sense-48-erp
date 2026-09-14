@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { formatMoney, money } from '@finance-os/core';
 import { listPrs } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
-import { Badge, Button, Table, Td, Th } from '@/components/ui';
+import { Badge, Button, PageHeader, Table, Td, Th } from '@/components/ui';
 
 const TONE = {
   DRAFT: 'gray', SUBMITTED: 'blue', APPROVED: 'green', REJECTED: 'red', ORDERED: 'blue',
@@ -16,18 +16,20 @@ export default async function PrListPage() {
   const prs = await listPrs(ctx);
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
-        <Link href="/pr/new">
-          <Button>{t('new')}</Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={t('title')}
+        actions={
+          <Link href="/pr/new">
+            <Button>{t('new')}</Button>
+          </Link>
+        }
+      />
       <Table>
         <thead>
           <tr>
             <Th>{t('numberCol')}</Th>
             <Th>{t('what')}</Th>
-            <Th>{t('amount')}</Th>
+            <Th className="text-right">{t('amount')}</Th>
             <Th>{t('statusLabel')}</Th>
             <Th>{t('budget')}</Th>
           </tr>
@@ -41,7 +43,7 @@ export default async function PrListPage() {
                 </Link>
               </Td>
               <Td>{pr.what}</Td>
-              <Td>{formatMoney(money(pr.totalMinor, pr.currency))}</Td>
+              <Td className="money text-right">{formatMoney(money(pr.totalMinor, pr.currency))}</Td>
               <Td>
                 <Badge tone={TONE[pr.status]}>{t(`status.${pr.status}`)}</Badge>
                 {pr.isFastLane ? <Badge tone="blue">{t('fastLane')}</Badge> : null}

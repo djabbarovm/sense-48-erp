@@ -40,10 +40,10 @@ export default async function BudgetPage({
           <tr>
             <Th>{t('costCenter')}</Th>
             <Th>{t('category')}</Th>
-            <Th>{t('planned')}</Th>
-            <Th>{t('committed')}</Th>
-            <Th>{t('actual')}</Th>
-            <Th>{t('remaining')}</Th>
+            <Th className="text-right">{t('planned')}</Th>
+            <Th className="text-right">{t('committed')}</Th>
+            <Th className="text-right">{t('actual')}</Th>
+            <Th className="text-right">{t('remaining')}</Th>
           </tr>
         </thead>
         <tbody>
@@ -51,10 +51,10 @@ export default async function BudgetPage({
             <tr key={row.id}>
               <Td>{row.costCenter.code}</Td>
               <Td>{row.category.name}</Td>
-              <Td>{formatMoney(money(row.plannedMinor, 'UZS'))}</Td>
-              <Td>{formatMoney(money(row.status.committedMinor, 'UZS'))}</Td>
-              <Td>{formatMoney(money(row.status.actualMinor, 'UZS'))}</Td>
-              <Td>
+              <Td className="money text-right">{formatMoney(money(row.plannedMinor, 'UZS'))}</Td>
+              <Td className="money text-right">{formatMoney(money(row.status.committedMinor, 'UZS'))}</Td>
+              <Td className="money text-right">{formatMoney(money(row.status.actualMinor, 'UZS'))}</Td>
+              <Td className="money text-right">
                 {row.status.remainingMinor < 0n ? (
                   <Badge tone="red">{formatMoney(money(row.status.remainingMinor, 'UZS'))}</Badge>
                 ) : (

@@ -9,8 +9,8 @@ test('login → shell с навигацией по роли → tenant switcher'
 
   await expect(page).toHaveURL('/');
   // Lead видит операционную навигацию, но не админку
-  await expect(page.getByRole('link', { name: 'Поставщики' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Администрирование' })).toHaveCount(0);
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'Поставщики' })).toBeVisible();
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'Администрирование' })).toHaveCount(0);
   // Портфель: lead имеет 3 tenant в переключателе
   const options = page.locator('select[name="tenant"] option');
   await expect(options).toHaveCount(3);

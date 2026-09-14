@@ -36,10 +36,14 @@ test('PR: chef создаёт → submit → согласование → APPROV
   await financeRow.getByRole('button', { name: 'Согласовать' }).click();
 
   // chef согласует BUSINESS_OWNER
+  const prId = url.match(/\/pr\/([0-9a-f-]{36})/)![1]!;
   await login(page, 'chef@rooftop.test');
   await page.goto('/approvals');
-  const card = page.locator('div', { hasText: 'Лосось 20 кг' }).last();
-  await card.getByRole('button', { name: 'Согласовать' }).first().click();
+  await page
+    .locator(`form:has(input[name="id"][value="${prId}"]):has(input[name="decision"][value="APPROVED"])`)
+    .first()
+    .getByRole('button', { name: 'Согласовать' })
+    .click();
 
   await page.goto(url);
   await expect(page.getByText('Утверждена')).toBeVisible();

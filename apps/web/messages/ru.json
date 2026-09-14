@@ -47,7 +47,15 @@
   "home": {
     "title": "Finance OS",
     "subtitle": "Платформа Finance Operations",
-    "welcome": "Здравствуйте, {name}"
+    "welcome": "Здравствуйте, {name}",
+    "pendingApprovals": "Ждут вашего решения",
+    "openPrs": "Открытые заявки",
+    "pendingVendors": "Поставщики на проверке",
+    "openTasks": "Открытые задачи",
+    "quick": "Быстрые действия",
+    "newPr": "Создать заявку",
+    "goApprovals": "Открыть согласования",
+    "goVendors": "Поставщики"
   },
   "admin": {
     "title": "Администрирование",
