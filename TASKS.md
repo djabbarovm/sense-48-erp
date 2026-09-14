@@ -7,8 +7,8 @@
 - [x] A-02 Docker Compose: postgres 16, redis, minio, mailhog; auth-mock по ADR-002; `make dev`; `scripts/dev-db.sh` для песочниц
 - [x] A-03 Prisma schema §1–2 (Tenant … Sequence) + миграция с partial unique/CHECK из §8
 - [x] A-04 AuditLog: append-only (DB-триггер), `withAudit()`, hash chain, `verifyAuditChain()` (BR-070/071)
-- [~] A-05 Auth + TenantContext, middleware, tenant switcher, Repository c контекстом (BR-073)
-- [ ] A-06 RBAC: Permission/RolePermission миграция, `requirePermission()`, permission test-генератор
+- [x] A-05 Auth (dev JWT, ADR-002) + TenantContext (брендированный тип, фабрика из UserTenantRole), login/logout/switch tenant, findScopedOr404 (BR-073)
+- [~] A-06 RBAC: Permission/RolePermission миграция, `requirePermission()`, permission test-генератор
 - [ ] A-07 Sequences `PR-YYYY-NNNNNN` (D-24), конкурентный тест
 - [ ] A-08 Money utils: `Money {minor, currency}`, UZS formatting, FX (D-08/09)
 - [ ] A-09 i18n: next-intl, `ru.json` полный для Phase A экранов
