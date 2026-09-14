@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ## [Phase D] 2026-09-14
+- D-02: CustomerInvoice (CINV-нумерация, due из payment_terms клиента) + ArReminderLog + CashPlanLine/CashForecastSnapshot (миграция ar_forecast); поступления только через банковскую IN-транзакцию (matchArReceipt → ReconciliationMatch AR_INVOICE, PARTIALLY_PAID/PAID, overpay-guard) — симметрично BR-054; dispute/promise-to-pay/cancel; getArAging по клиентам; jobs: runArReminders BR-060 (T−3/0/+1/+3/+7, идемпотентен по unique-ключу, отдаёт список для Telegram AR-owner) и markOverdueCustomerInvoices (→ OVERDUE + Task AR_FOLLOWUP); экран /ar (выставление, черновики, aging c промисами и спорами), в /bank — привязка зачислений к счетам клиентов; 6 тестов.
 - D-01: AP aging — getApAging (buckets NOT_DUE/1-7/8-30/31-60/60+, due = дата СФ + POSTPAY_DAYS договора, outstanding за вычетом PAID), экран /ap (сводные StatCard, матрица vendor × buckets c drill-down по счетам и итогами, красные 31+); сверка c поставщиком: parseStatementCsv (number;date;amount) + reconcileVendorStatement (matched / расхождение суммы / нет в системе / нет в акте) c формой и отчётом на экране; 4 теста (buckets, оплаты, tenant isolation, diff).
 
 ## [Phase C] 2026-09-14 — завершена: P2P-платежи от контролей до банковской сверки, UI всего цикла

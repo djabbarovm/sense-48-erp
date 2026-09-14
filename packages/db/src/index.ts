@@ -21,3 +21,4 @@ export * from './services/batches.js';
 export * from './services/bank.js';
 export * from './services/advances.js';
 export * from './services/aging.js';
+export * from './services/arInvoices.js';

@@ -2,11 +2,11 @@ import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { Landmark } from 'lucide-react';
 import { can, formatMoney, money } from '@finance-os/core';
-import { getCashPosition, listBankTransactions, listPayments, prisma } from '@finance-os/db';
+import { getCashPosition, listBankTransactions, listCustomerInvoices, listPayments, prisma } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, EmptyState, Input, Select, StatCard, Table, Td, Th } from '@/components/ui';
 import { BankImportForm } from './import-form';
-import { ignoreTxAction, manualMatchAction, markFailedAction } from './actions';
+import { ignoreTxAction, manualMatchAction, markFailedAction, matchArAction } from './actions';
 
 const TONE = {
   UNMATCHED: 'red',
@@ -21,11 +21,12 @@ export default async function BankPage() {
   if (!can(ctx, 'bank.import')) notFound();
   const t = await getTranslations('bank');
 
-  const [cash, transactions, sentPayments, accounts] = await Promise.all([
+  const [cash, transactions, sentPayments, accounts, openArInvoices] = await Promise.all([
     getCashPosition(ctx),
     listBankTransactions(ctx),
     listPayments(ctx, { status: ['SENT_TO_BANK'] }),
     prisma.bankAccount.findMany({ where: { tenantId: ctx.tenantId, isActive: true }, orderBy: { bankName: 'asc' } }),
+    listCustomerInvoices(ctx, { status: ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'] }),
   ]);
   const canManual = can(ctx, 'bank.reconcile.manual');
   // кандидаты на ручной матч: только дебеты с подходящей суммой, иначе весь SENT-список
@@ -82,6 +83,23 @@ export default async function BankPage() {
               </Td>
               {canManual ? (
                 <Td>
+                  {['UNMATCHED', 'SUGGESTED'].includes(tx.matchStatus) && tx.amountMinor > 0n && openArInvoices.length > 0 ? (
+                    <form action={matchArAction} className="flex items-center gap-1.5">
+                      <input type="hidden" name="transactionId" value={tx.id} />
+                      <Select name="customerInvoiceId" className="w-auto text-xs">
+                        {openArInvoices
+                          .filter((inv) => inv.amountGrossMinor - inv.receivedMinor >= tx.amountMinor)
+                          .map((inv) => (
+                            <option key={inv.id} value={inv.id}>
+                              {inv.number} · {formatMoney(money(inv.amountGrossMinor - inv.receivedMinor, inv.currency))}
+                            </option>
+                          ))}
+                      </Select>
+                      <Button type="submit" variant="outline" size="sm">
+                        {t('matchAr')}
+                      </Button>
+                    </form>
+                  ) : null}
                   {['UNMATCHED', 'SUGGESTED'].includes(tx.matchStatus) && tx.amountMinor < 0n ? (
                     <div className="flex flex-col gap-1.5">
                       {candidatesFor(tx.amountMinor).length > 0 ? (
@@ -107,9 +125,8 @@ export default async function BankPage() {
                         </Button>
                       </form>
                     </div>
-                  ) : (
-                    '—'
-                  )}
+                  ) : null}
+                  {!['UNMATCHED', 'SUGGESTED'].includes(tx.matchStatus) ? '—' : null}
                 </Td>
               ) : null}
             </tr>

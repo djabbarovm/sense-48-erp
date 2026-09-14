@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { TrustbankXlsxParser, UnifiedCsvParser } from '@finance-os/adapters';
 import type { BankImportReport } from '@finance-os/db';
-import { ignoreTransaction, importBankStatement, manualMatch, markPaymentFailed } from '@finance-os/db';
+import { ignoreTransaction, importBankStatement, manualMatch, markPaymentFailed, matchArReceipt } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
 export interface ImportState {
@@ -34,6 +34,14 @@ export async function manualMatchAction(formData: FormData): Promise<void> {
   await manualMatch(ctx, String(formData.get('transactionId')), String(formData.get('paymentId')));
   revalidatePath('/bank');
   revalidatePath('/payments');
+}
+
+/** D-02: зачисление → поступление по CustomerInvoice. */
+export async function matchArAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await matchArReceipt(ctx, String(formData.get('transactionId')), String(formData.get('customerInvoiceId')));
+  revalidatePath('/bank');
+  revalidatePath('/ar');
 }
 
 export async function ignoreTxAction(formData: FormData): Promise<void> {
