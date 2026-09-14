@@ -468,3 +468,28 @@ model Sequence {
   @@unique([tenantId, key, year])
   @@map("sequence")
 }
+
+// ───────────────────────────── §7 AuditLog (append-only, BR-070/071) ─────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorRole  String?  @map("actor_role")
+  action     String // payment_request.submit, vendor.bank_account.change …
+  objectType String   @map("object_type")
+  objectId   String   @map("object_id") @db.Uuid
+  before     Json?
+  after      Json?
+  diffHash   String   @map("diff_hash") // sha256(prev_hash + canonical(before) + canonical(after))
+  prevHash   String   @map("prev_hash")
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  at         DateTime @default(now())
+  // Монотонный порядок в цепочке per tenant
+  seq        BigInt   @default(autoincrement())
+
+  @@index([tenantId, objectType, objectId])
+  @@index([tenantId, seq])
+  @@map("audit_log")
+}

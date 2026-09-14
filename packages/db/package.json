@@ -25,6 +25,7 @@
     "tsx": "^4.20.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.0"
+    "@prisma/client": "^6.16.0",
+    "@finance-os/core": "workspace:*"
   }
 }
