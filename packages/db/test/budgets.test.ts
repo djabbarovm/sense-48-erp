@@ -97,4 +97,57 @@ describe('B-04 Budget (BR-014)', () => {
       upsertBudgetLine(lead(), { period: '2026-13', costCenterId: ccId, categoryId: catRequiredId, plannedMinor: 1n }),
     ).rejects.toThrow(/YYYY-MM/);
   });
+
+  it('D-07: actual из PAID-платежей по paid_at; PR c платежом не считается дважды', async () => {
+    // PR committed 3 млн (INVOICED) + платёж по нему PAID 3 млн → PR исключается, actual = 3 млн
+    const pr = await prisma.purchaseRequest.create({
+      data: {
+        tenantId,
+        number: 'PR-B04-D07',
+        requesterId: crypto.randomUUID(),
+        what: 'x',
+        purpose: 'p',
+        totalMinor: 3_000_000_00n,
+        costCenterId: ccId,
+        categoryId: catRequiredId,
+        status: 'INVOICED',
+        createdAt: new Date('2026-09-05'),
+      },
+    });
+    const account = await prisma.bankAccount.create({
+      data: { tenantId, bankName: 'TB', mfo: '00444', accountMasked: '****7777', accountEncrypted: 'enc' },
+    });
+    const tx = await prisma.bankTransaction.create({
+      data: {
+        tenantId,
+        bankAccountId: account.id,
+        externalId: 'B04-D07',
+        bookingDate: new Date('2026-09-10'),
+        valueDate: new Date('2026-09-10'),
+        amountMinor: -3_000_000_00n,
+        counterpartyName: 'V',
+        matchStatus: 'AUTO_MATCHED',
+      },
+    });
+    await prisma.paymentRequest.create({
+      data: {
+        tenantId,
+        number: 'PAY-B04-D07',
+        sourceType: 'PR',
+        sourceId: pr.id,
+        requestedMinor: 3_000_000_00n,
+        purposeNote: 'x',
+        costCenterId: ccId,
+        categoryId: catRequiredId,
+        status: 'PAID',
+        bankTransactionId: tx.id,
+        paidAt: new Date('2026-09-10'),
+      },
+    });
+    const status = await getBudgetStatus(lead(), PERIOD, ccId, catRequiredId);
+    expect(status!.actualMinor).toBe(3_000_000_00n);
+    // PR исключён из committed (осталось 15 млн из предыдущего теста, без двойного счёта)
+    expect(status!.committedMinor).toBe(15_000_000_00n);
+    expect(status!.remainingMinor).toBe(2_000_000_00n); // 20 − 15 − 3
+  });
 });

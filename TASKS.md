@@ -48,7 +48,7 @@
 - [x] D-04 13-week cash forecast
 - [ ] D-05 Workers: все repeatable jobs
 - [ ] D-06 Telegram bot + NotificationAdapter + email fallback (BR-072)
-- [ ] D-07 Budget vs actual отчёт
+- [x] D-07 Budget vs actual отчёт (committed = PR без платежей + pending-платежи; actual = PAID по paid_at)
 - [ ] D-08 Seed Phase D
 
 ## Phase E — Documents & adapters

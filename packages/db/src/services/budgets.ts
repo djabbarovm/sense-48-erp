@@ -1,7 +1,7 @@
 /**
- * B-04: Budget + v_budget_status (BR-014).
- * committed = PR APPROVED/ORDERED/RECEIVED/INVOICED (+ pending PAY, Phase C);
- * actual = PR PAID/CLOSED (уточняется в Phase C до PAID платежей).
+ * B-04/D-07: Budget + v_budget_status (BR-014).
+ * committed = PR APPROVED/ORDERED/RECEIVED/INVOICED без платежей + pending-платежи;
+ * actual = PAID/RECONCILED/CLOSED платежи по paid_at периода.
  */
 import type { TenantContext } from '@finance-os/core';
 import { ValidationError, requirePermission } from '@finance-os/core';
@@ -11,7 +11,8 @@ import { prisma } from '../client.js';
 import { whereTenant } from '../repository.js';
 
 const COMMITTED_PR_STATUSES = ['APPROVED', 'ORDERED', 'RECEIVED', 'INVOICED'] as const;
-const ACTUAL_PR_STATUSES = ['PAID', 'CLOSED'] as const;
+const PENDING_PAY_STATUSES = ['SUBMITTED', 'DOCS_CHECK', 'ON_HOLD', 'READY_FOR_BATCH', 'IN_BATCH', 'APPROVED', 'SENT_TO_BANK'] as const;
+const PAID_PAY_STATUSES = ['PAID', 'RECONCILED', 'CLOSED'] as const;
 
 export function assertPeriod(period: string): void {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) throw new ValidationError('PERIOD_INVALID', 'Период — YYYY-MM');
@@ -78,29 +79,71 @@ export interface BudgetStatusRow {
   remainingMinor: bigint;
 }
 
-async function sumPr(
+function periodRange(period: string): { from: Date; to: Date } {
+  const [y, m] = period.split('-').map(Number) as [number, number];
+  return { from: new Date(Date.UTC(y, m - 1, 1)), to: new Date(Date.UTC(y, m, 1)) };
+}
+
+/** D-07: committed = PR без платежей (по created_at) + pending-платежи; actual = PAID-платежи по paid_at. */
+async function sumCommittedAndActual(
   tx: Prisma.TransactionClient,
   tenantId: string,
   period: string,
   costCenterId: string,
   categoryId: string,
-  statuses: readonly string[],
-): Promise<bigint> {
-  // период PR определяется по created_at (упрощение до Phase C, где появится due_date платежа)
-  const [y, m] = period.split('-').map(Number) as [number, number];
-  const from = new Date(Date.UTC(y, m - 1, 1));
-  const to = new Date(Date.UTC(y, m, 1));
-  const agg = await tx.purchaseRequest.aggregate({
+): Promise<{ committed: bigint; actual: bigint }> {
+  const { from, to } = periodRange(period);
+  const prs = await tx.purchaseRequest.findMany({
     where: {
       tenantId,
       costCenterId,
       categoryId,
-      status: { in: statuses as never },
+      status: { in: COMMITTED_PR_STATUSES as never },
       createdAt: { gte: from, lt: to },
     },
-    _sum: { totalMinor: true },
+    select: { id: true, totalMinor: true },
   });
-  return agg._sum.totalMinor ?? 0n;
+  // PR, по которым уже есть живой платёж, считаются через платежи (без двойного счёта)
+  const covered = new Set(
+    (
+      await tx.paymentRequest.findMany({
+        where: {
+          tenantId,
+          sourceType: 'PR',
+          sourceId: { in: prs.map((p) => p.id) },
+          status: { notIn: ['CANCELLED', 'REJECTED', 'FAILED'] },
+        },
+        select: { sourceId: true },
+      })
+    ).map((p) => p.sourceId),
+  );
+  const prCommitted = prs.filter((p) => !covered.has(p.id)).reduce((sum, p) => sum + p.totalMinor, 0n);
+  const [pendingAgg, paidAgg] = await Promise.all([
+    tx.paymentRequest.aggregate({
+      where: {
+        tenantId,
+        costCenterId,
+        categoryId,
+        status: { in: [...PENDING_PAY_STATUSES] },
+        createdAt: { gte: from, lt: to },
+      },
+      _sum: { requestedMinor: true },
+    }),
+    tx.paymentRequest.aggregate({
+      where: {
+        tenantId,
+        costCenterId,
+        categoryId,
+        status: { in: [...PAID_PAY_STATUSES] },
+        paidAt: { gte: from, lt: to },
+      },
+      _sum: { requestedMinor: true },
+    }),
+  ]);
+  return {
+    committed: prCommitted + (pendingAgg._sum.requestedMinor ?? 0n),
+    actual: paidAgg._sum.requestedMinor ?? 0n,
+  };
 }
 
 /** v_budget_status(period, cc, category) → planned/committed/actual/remaining. */
@@ -123,8 +166,7 @@ export async function getBudgetStatus(
       },
     });
     if (!budget) return null;
-    const committed = await sumPr(tx, ctx.tenantId, period, costCenterId, categoryId, COMMITTED_PR_STATUSES);
-    const actual = await sumPr(tx, ctx.tenantId, period, costCenterId, categoryId, ACTUAL_PR_STATUSES);
+    const { committed, actual } = await sumCommittedAndActual(tx, ctx.tenantId, period, costCenterId, categoryId);
     return {
       period,
       costCenterId,
