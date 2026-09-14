@@ -15,6 +15,7 @@
 - B-07: createPo (PR APPROVED → ORDERED, номер PO-…), setPoStatus, createReceipt (FULL → PR RECEIVED, PARTIAL не переводит, BR-042 SOD для Tier 2+), блок PO/приёмки на карточке PR; 5 тестов.
 - B-08: invoice-сервис (BR-002 duplicate→SUSPECT+Task+resolve, BR-025 backdated, match c vendor-guard → PR INVOICED, dispute, BR-024 edo CORRECTED/CANCELLED, suggestions ±5%, интерфейс v_invoice_balance), MockEdoAdapter (XLSX parse/build), importEdoRegistry (auto-vendor PENDING, buyer-mismatch errors, идемпотентность), экран /invoices c импортом и разбором дубликатов; 7 тестов.
 - B-09: StorageAdapter (S3/MinIO + LocalFs ADR-005), documents-сервис (upload c sha256+версиями+25МБ лимит, mark_received/reject, checkRequiredDocs BR-023 c alsoObjects, seedDefaultRequirements), блок документов на карточке PR; 4 теста.
+- B-11: seed Phase B — 30 vendors по распределению docs/10 (RELATED_PARTY, NEW, BLOCKED, PENDING, BANK_CHANGED, 2 USD, RETIRED-счета), 12 договоров (E-ijara, EXPIRING +20д, PREPAY 50%, USD CAPEX 30/70, ordo FM), бюджеты 2026-08/09, 14 PR (все статусы, urgent, Tier 3 unbudgeted), 7 СФ + DUPLICATE_SUSPECT c Task; идемпотентен. Phase B завершена.
 - B-10: task-сервис (переходы OPEN/IN_PROGRESS/DONE/CANCELLED/OVERDUE, отмена только с причиной, createManualTask, escalateOverdueTasks для D-05), экран /tasks c next_action и действиями; 4 теста.
 
 ## [Phase A] 2026-09-14 — завершена: monorepo, инфраструктура, схема master data, audit, auth/RBAC/tenant isolation, sequences, money, i18n, UI shell, seed, admin

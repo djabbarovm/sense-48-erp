@@ -27,7 +27,7 @@
 - [x] B-08 Invoice: create, XLSX-реестр импорт (EdoAdapter mock), дубликаты BR-002, match+suggestions, Invoice Inbox, BR-024/025/037
 - [x] B-09 Document + DocumentRequirement + S3 upload (sha256, версии, signed URL; LocalFs-fallback ADR-005), mark_received, BR-023 checkRequiredDocs
 - [x] B-10 Task: модель, переходы (cancel c причиной), «Мои задачи» c next_action, escalateOverdueTasks-заглушка
-- [~] B-11 Seed Phase B
+- [x] B-11 Seed Phase B: 30 vendors (флаги, RETIRED-счета, USD), 12 contracts, budgets 08-09 (перерасход RH-BAR), 14 PR всех статусов, 7 invoices + дубликат
 
 ## Phase C — Payments, batch, bank
 - [ ] C-01 PaymentRequest + `run_controls()` + state machine (BR-001/003/010/011/013/020/021/050)
