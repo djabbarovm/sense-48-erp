@@ -1,0 +1,52 @@
+# G-01: CI — lint, typecheck, unit/integration тесты, secret scan.
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: finance
+          POSTGRES_PASSWORD: finance
+          POSTGRES_DB: finance_os
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U finance"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://finance:finance@localhost:5432/finance_os
+      AUTH_JWT_SECRET: ci-only-secret
+      BANK_DATA_KEY: DHqPbmDW3nUOytHplLmVMkP2mSVJlRlXWLh2GYYx4hg=
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @finance-os/db exec prisma migrate deploy
+      - run: pnpm lint
+      - run: pnpm -r typecheck
+      - run: pnpm test
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks (утечки ключей/токенов в истории)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Доменные секреты (docs/11 §9 — OTP/ЭЦП/полные карты в коде)
+        run: bash scripts/secret-scan.sh

@@ -20,13 +20,14 @@
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
-    "typescript": "^5.9.2",
     "prisma": "^6.16.0",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.2",
+    "xlsx": "^0.18.5"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.0",
+    "@finance-os/adapters": "workspace:*",
     "@finance-os/core": "workspace:*",
-    "@finance-os/adapters": "workspace:*"
+    "@prisma/client": "^6.16.0"
   }
 }

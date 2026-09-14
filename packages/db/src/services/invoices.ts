@@ -55,6 +55,10 @@ export async function createInvoice(ctx: TenantContext, input: InvoiceInput) {
   if (!input.number.trim()) throw new ValidationError('NUMBER_REQUIRED');
   if (input.amountGrossMinor <= 0n) throw new ValidationError('AMOUNT_INVALID');
   assertBackdated(input.date, input.backdatedReason);
+  // BR-013: валютный счёт фиксирует курс на дату документа
+  if ((input.currency ?? 'UZS') !== 'UZS' && !input.fxRate) {
+    throw new ValidationError('FX_RATE_REQUIRED', `Счёт в ${input.currency} требует fx_rate на дату документа (BR-013) — введите курс вручную`);
+  }
   const vendor = await prisma.vendor.findFirst({ where: { id: input.vendorId, tenantId: ctx.tenantId } });
   if (!vendor) throw new NotFoundError();
 

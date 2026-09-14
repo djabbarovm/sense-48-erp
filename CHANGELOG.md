@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+## [Phase G] 2026-09-14 — завершена: hardening. ВСЕ ФАЗЫ A–G ЗАКРЫТЫ
+- G-01: GitHub Actions CI (postgres-сервис, migrate deploy, lint, typecheck, 280 тестов; отдельный job: gitleaks + scripts/secret-scan.sh — приватные ключи/номера карт/.env); rate limiting в core (fixed window) на логин (10/5 мин на IP+email) и банковский импорт (30/час); CSP + X-Frame-Options DENY + nosniff + Referrer-Policy + Permissions-Policy в next.config.
+- G-02: cross-tenant-fuzz.test — 15 object-адресуемых сервисов под чужим tenant + 25 случайных UUID → строго NotFound, агрегаты (aging, document health) пустые; санити victim-контекста.
+- G-03: acceptance.test — AC-01 (PR полный контекст, negative), AC-03 (contract balance c payment-семантикой), AC-14 (junior green flow: платёж→batch→freeze→авто-матч без senior), AC-22 (month-end pack: 8 листов, чеклист 9); карта всех 22 AC на профильные сьюты — docs/14.
+- G-04: scripts/perf.ts — идемпотентный perf-tenant (10k PaymentRequest, 50k BankTransaction, 2k invoices, 500 vendors) и замеры: listPayments p95 26ms, listBankTransactions 59ms, getApAging 131ms, forecast 262ms, KPI 126ms — все < 500ms.
+- G-05: Dockerfile (единый образ web/workers), docker-compose.prod.yml (postgres без публикации порта, redis AOF, minio, web c auto-migrate, workers, backup-сервис c ежедневным pg_dump и ротацией 30 дней), scripts/backup.sh|restore.sh, runbook «Продакшн-развёртывание» в README.
+- G-06: scripts/demo-full.md — 3 акта × 25 минут (операционный день → деньги и обязательства → комплаенс и закрытие + 1С) и текст видео-скрипта на 90 секунд.
+- G-07: финальная сверка — docs/14-traceability.md (генерируемая матрица): 49/49 BR имеют именованные тесты, 22/22 AC замаплены, 33 экрана; дореализован BR-013 (валютный документ без fx_rate → отказ c подсказкой, курс фиксируется на документе) и добавлены явные тесты BR-004/005/011/012/021/050/071 (br-gaps.test).
+
 ## [Phase F] 2026-09-14 — завершена: налоги, payroll, закрытие месяца, дашборды, KPI, аудит
 - F-01: TaxCalendarRule (MONTHLY/QUARTERLY/YEARLY, dueDay, ожидаемый коридор) → generateTaxObligations (идемпотентный джоб) → calculate [ACCOUNTANT] (вне коридора → Task) → approve [LEAD/OWNER] → платёж source=TAX_OBLIGATION (resolveSource дополнен) → PAID из банковской сверки → FILED [ACCOUNTANT]; просрочка → OVERDUE + эскалация Owner; экран /tax (дедлайны, действия по ролям, правила); 2 теста.
 - F-02: PayrollRun (только агрегаты, персональные данные не хранятся) + checkPayrollRun BR-047 (ФИО реестра × активный список, «мёртвые души»/уволенные вне периода → Task и блок CHECKED) → approve → платёж source=PAYROLL_RUN (net) → PAID из сверки → POSTED; экран /payroll c загрузкой реестра; тест BR-047.

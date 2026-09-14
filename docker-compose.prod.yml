@@ -1,0 +1,96 @@
+# G-05: продакшн-развёртывание Finance OS на одном сервере.
+# Запуск: docker compose -f docker-compose.prod.yml up -d --build
+# Все секреты — через .env.prod (см. .env.example); файл НЕ коммитится.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: finance_os
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # порт наружу не публикуется — доступ только из compose-сети
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?}
+    volumes:
+      - miniodata:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/finance_os
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?}
+      BANK_DATA_KEY: ${BANK_DATA_KEY:?}
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: finance-os
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    ports:
+      - '127.0.0.1:3000:3000' # наружу — только через reverse proxy c TLS (nginx/caddy)
+    command: ['sh', '-c', 'pnpm --filter @finance-os/db exec prisma migrate deploy && pnpm --filter web start']
+
+  workers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - web
+      - redis
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/finance_os
+      BANK_DATA_KEY: ${BANK_DATA_KEY:?}
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    command: ['pnpm', '--filter', '@finance-os/workers', 'start']
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - ./backups:/backups
+    # ежедневный дамп в 01:30, ротация 30 дней (см. scripts/backup.sh)
+    entrypoint: >
+      sh -c 'while true; do
+        sleep $$(( ( $$(date -d "01:30 tomorrow" +%s 2>/dev/null || date +%s) - $$(date +%s) + 86400 ) % 86400 ));
+        pg_dump -h postgres -U ${POSTGRES_USER} -Fc finance_os > /backups/finance_os_$$(date +%F).dump &&
+        find /backups -name "*.dump" -mtime +30 -delete;
+      done'
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:

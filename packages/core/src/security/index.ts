@@ -21,3 +21,5 @@ export function assertNoSecrets(text: string | null | undefined, field = 'text')
     );
   }
 }
+
+export * from './rateLimit.js';

@@ -61,7 +61,7 @@ export default function LoginPage() {
             </div>
             {state.error ? (
               <p role="alert" className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-300">
-                {t('invalidCredentials')}
+                {state.error === 'rate_limited' ? t('rateLimited') : t('invalidCredentials')}
               </p>
             ) : null}
             <Button type="submit" disabled={pending} className="w-full">

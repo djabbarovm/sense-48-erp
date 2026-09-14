@@ -38,3 +38,13 @@ docs/              Спецификация (source of truth)
 templates/         Excel-шаблоны миграции
 TASKS.md DECISIONS.md CHANGELOG.md   рабочие журналы
 ```
+
+## Продакшн-развёртывание (G-05, runbook)
+
+1. Сервер: Linux, Docker + docker compose, 2+ CPU / 4+ GB RAM. Домен + reverse proxy c TLS (nginx/caddy) на `127.0.0.1:3000`.
+2. Секреты: скопируйте `.env.example` → `.env.prod`, заполните `POSTGRES_PASSWORD`, `AUTH_JWT_SECRET` (openssl rand -base64 48), `BANK_DATA_KEY` (openssl rand -base64 32), `MINIO_*`, при необходимости `TELEGRAM_BOT_TOKEN`. Файл не коммитится (secret-scan в CI это проверяет).
+3. Запуск: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build`. Миграции применяются автоматически при старте web (`prisma migrate deploy`).
+4. Первичные данные: `docker compose -f docker-compose.prod.yml exec web pnpm --filter @finance-os/db seed` (синтетика для теста) — либо сразу «Миграция данных» в UI (шаблоны Excel).
+5. Бэкапы: сервис `backup` делает ежедневный `pg_dump -Fc` в `./backups` c ротацией 30 дней; вручную — `./scripts/backup.sh`. Восстановление — `./scripts/restore.sh <dump>` (останавливайте web/workers). MinIO-том (`miniodata`) бэкапится средствами сервера.
+6. Обновление версии: `git pull && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build` — миграции применятся сами; откат — restore вчерашнего дампа + checkout предыдущего тега.
+7. Мониторинг здоровья: экран «KPI и контроли» + джоб `audit-verify` (падение = SECURITY_ALERT владельцу); логи — `docker compose logs -f web workers`.

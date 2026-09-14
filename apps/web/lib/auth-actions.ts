@@ -2,7 +2,8 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { signSessionJwt, verifyPassword } from '@finance-os/core';
+import { headers } from 'next/headers';
+import { checkRateLimit, signSessionJwt, verifyPassword } from '@finance-os/core';
 import { listUserTenants, prisma } from '@finance-os/db';
 import { SESSION_COOKIE, TENANT_COOKIE } from './session';
 
@@ -16,6 +17,11 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     .toLowerCase();
   const password = String(formData.get('password') ?? '');
   if (!email || !password) return { error: 'invalid_credentials' };
+
+  // G-01: rate limiting логина — 10 попыток / 5 минут на IP+email
+  const ip = (await headers()).get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'local';
+  const limit = checkRateLimit(`login:${ip}:${email}`, 10, 300);
+  if (!limit.allowed) return { error: 'rate_limited' };
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || user.status !== 'ACTIVE' || !user.passwordHash) return { error: 'invalid_credentials' };

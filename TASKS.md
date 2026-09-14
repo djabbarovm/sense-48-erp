@@ -69,13 +69,13 @@
 - [x] F-07 Audit viewer: фильтры + построчный diff before/after + hash chain. **Phase F завершена.**
 
 ## Phase G — Hardening
-- [ ] G-01 Security review, secret scan CI, rate limiting, CSP
-- [ ] G-02 Permission test suite + cross-tenant fuzz
-- [ ] G-03 Acceptance tests AC-01…AC-22
-- [ ] G-04 Performance 10k/50k seed, p95 < 500ms
-- [ ] G-05 Backup/restore, docker-compose.prod, runbook
-- [ ] G-06 Полный demo script
-- [ ] G-07 Финальная сверка BR/экраны/controls/DECISIONS
+- [x] G-01 CI (lint+typecheck+tests+gitleaks+доменный secret-scan), rate limiting (логин 10/5мин, импорты 30/час), CSP+security headers
+- [x] G-02 Permission suite (A-06, 100% матрицы) + cross-tenant fuzz (18 атак → 404, агрегаты пустые)
+- [x] G-03 Acceptance: AC-01/03/14/22 сквозные + карта AC→тест (docs/14)
+- [x] G-04 Performance: scripts/perf.ts, 10k платежей/50k транзакций — p95 26–262ms (цель 500)
+- [x] G-05 Dockerfile + docker-compose.prod (web/workers/backup c ротацией 30д), backup/restore-скрипты, runbook в README
+- [x] G-06 scripts/demo-full.md (3 акта, 25 мин) + видео-скрипт 90 сек
+- [x] G-07 docs/14-traceability.md: 49/49 BR c тестами (закрыты пробелы BR-004/005/011/012/013/021/050/071, BR-013 FX дореализован), 22 AC, 33 экрана. **Phase G завершена. Все фазы A–G закрыты.**
 
 ## Блокеры
 (пусто)

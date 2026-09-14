@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { checkRateLimit } from '@finance-os/core';
 import { TrustbankXlsxParser, UnifiedCsvParser } from '@finance-os/adapters';
 import type { BankImportReport } from '@finance-os/db';
 import { ignoreTransaction, importBankStatement, manualMatch, markPaymentFailed, matchArReceipt } from '@finance-os/db';
@@ -14,6 +15,9 @@ export interface ImportState {
 /** Формат по расширению: .csv → Unified (docs/07 §1), .xlsx → Trustbank Клиент-Банк. */
 export async function importStatementAction(_prev: ImportState, formData: FormData): Promise<ImportState> {
   const ctx = await requireTenantContext();
+  // G-01: не больше 30 импортов в час на пользователя
+  const rate = checkRateLimit(`bank-import:${ctx.userId}`, 30, 3600);
+  if (!rate.allowed) return { error: `Слишком часто. Повторите через ${rate.retryAfterSec} c.` };
   const file = formData.get('file');
   const bankAccountId = String(formData.get('bankAccountId') ?? '');
   if (!(file instanceof File) || file.size === 0) return { error: 'NO_FILE' };

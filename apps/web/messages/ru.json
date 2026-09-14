@@ -22,7 +22,8 @@
     "password": "Пароль",
     "signIn": "Войти",
     "signOut": "Выйти",
-    "invalidCredentials": "Неверный email или пароль"
+    "invalidCredentials": "Неверный email или пароль",
+    "rateLimited": "Слишком много попыток входа. Подождите 5 минут."
   },
   "nav": {
     "dashboard": "Дашборд",

@@ -418,6 +418,8 @@ export interface PaymentInput {
   sourceId: string;
   requestedMinor: bigint;
   currency?: string;
+  /** BR-013: обязателен при currency ≠ UZS (ручной ввод = source MANUAL) */
+  fxRate?: string | null;
   purposeNote: string;
   vendorBankAccountId?: string | null;
   dueDate?: Date | null;
@@ -430,6 +432,10 @@ export async function createPaymentRequest(ctx: TenantContext, input: PaymentInp
   requirePermission(ctx, 'payment.create');
   assertNoSecrets(input.purposeNote, 'Назначение платежа'); // BR-072
   if (input.requestedMinor <= 0n) throw new ValidationError('AMOUNT_INVALID');
+  // BR-013: валютный платёж фиксирует курс на дату документа
+  if ((input.currency ?? 'UZS') !== 'UZS' && !input.fxRate) {
+    throw new ValidationError('FX_RATE_REQUIRED', `Платёж в ${input.currency} требует fx_rate на дату документа (BR-013) — введите курс ЦБ вручную`);
+  }
   if (!input.sourceId) throw new ValidationError('NO_SOURCE', 'Платёж без source object запрещён (BR-001)');
   if (input.isUrgent && !input.urgencyReason) {
     throw new ValidationError('URGENCY_REASON_REQUIRED', 'Urgent требует urgency_reason (BR-043)');
@@ -455,6 +461,7 @@ export async function createPaymentRequest(ctx: TenantContext, input: PaymentInp
         vendorBankAccountId: accountId,
         requestedMinor: input.requestedMinor,
         currency: input.currency ?? 'UZS',
+        fxRate: input.fxRate ?? null,
         purposeNote: input.purposeNote,
         costCenterId: source.costCenterId,
         categoryId: source.categoryId,
