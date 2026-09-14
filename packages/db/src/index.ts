@@ -4,3 +4,4 @@ export * from './audit.js';
 export * from './context.js';
 export * from './repository.js';
 export * from './permissions.js';
+export * from './sequence.js';

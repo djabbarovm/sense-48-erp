@@ -9,8 +9,8 @@
 - [x] A-04 AuditLog: append-only (DB-триггер), `withAudit()`, hash chain, `verifyAuditChain()` (BR-070/071)
 - [x] A-05 Auth (dev JWT, ADR-002) + TenantContext (брендированный тип, фабрика из UserTenantRole), login/logout/switch tenant, findScopedOr404 (BR-073)
 - [x] A-06 RBAC: PERMISSION_MATRIX (77 кодов из docs/05), `requirePermission()`, syncPermissions в БД, параметризованные тесты 100% кодов × 7 ролей
-- [~] A-07 Sequences `PR-YYYY-NNNNNN` (D-24), конкурентный тест
-- [ ] A-08 Money utils: `Money {minor, currency}`, UZS formatting, FX (D-08/09)
+- [x] A-07 Sequences `PR-YYYY-NNNNNN` без gaps (row lock, инкремент в транзакции объекта), конкурентный тест 25 параллельных
+- [~] A-08 Money utils: `Money {minor, currency}`, UZS formatting, FX (D-08/09)
 - [ ] A-09 i18n: next-intl, `ru.json` полный для Phase A экранов
 - [ ] A-10 Базовый UI shell: layout, навигация по роли, tenant switcher, таблица/форма компоненты
 - [ ] A-11 Seed Phase A (tenants, users, roles, cost centers, categories, holidays 2026)
