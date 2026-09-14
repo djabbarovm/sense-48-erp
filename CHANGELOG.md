@@ -6,6 +6,8 @@
 
 ## [Phase C] 2026-09-14
 - C-01: payment-схема (PaymentRequest/PaymentBatch/BatchApproval/BankTransaction/ReconciliationMatch/Advance) + DB-триггер BR-054 (PAID только с bank_transaction_id); core paymentMachine + controlsSatisfied (BR-050); resolveSource c outstanding по BR-010/011 (paid+pending); run_controls: NO_SOURCE, INVOICE_DUPLICATE_SUSPECT, UNVERIFIED_BANK (BR-031), BANK_CHANGED_RECENTLY (BR-033), DUP_PAYMENT_SUSPECT (BR-003), OVER_OUTSTANDING, CONTRACT_LIMIT (BR-012), CONTRACT_EXPIRED (BR-026), 4-way match NO_PR/NO_CONTRACT/NO_RECEIPT/INVOICE_UNMATCHED (BR-020/021), MISSING_DOC:* (BR-023), UNBUDGETED, RELATED_PARTY/NEW_VENDOR (WARN), BACKDATED; submit → DOCS_CHECK → READY/ON_HOLD + Task c next_action; v_contract_balance и v_invoice_balance досчитаны из платежей; 10 тестов.
+- C-04: batch-сервис — createBatch (BR-051 один STANDARD в день, URGENT c U-суффиксом), add/remove (BR-052 freeze-блок), freeze c summary (total/count/by_category/by_urgency/by_control/cash_after BR-053/exceptions/related party), unfreeze [Lead], review c 4-eyes (не freeze-автор), approveBatch [Owner] c BR-040 SOD per item и частичным утверждением (AC-07), export CSV c полным счётом и sha256 как Document (BR-057), mark_sent → SENT_TO_BANK, settleBatchIfDone; 5 сценарных тестов.
+- C-08: urgent-контур внутри batch-сервиса (BR-043).
 - C-02: approvePaymentException (Owner/Lead, reason ≥5, re-run контролей, Task закрывается), resolvePaymentHold после загрузки документов.
 
 ## [Phase B] 2026-09-14

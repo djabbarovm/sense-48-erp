@@ -33,11 +33,11 @@
 - [x] C-01 PaymentRequest + run_controls() (17 control codes) + state machine до READY/ON_HOLD + балансы contract/invoice достроены
 - [x] C-02 Exceptions: approve exception Owner/Lead c reason → re-run controls → READY; audit
 - [~] C-03 Payment Desk экран
-- [ ] C-04 PaymentBatch полный цикл + summary + cron freeze (BR-040/051/052/053/057)
+- [x] C-04 PaymentBatch полный цикл + summary (cash_after, by_*, exceptions, related party) + BR-040/051/052/053/057; cron freeze — в D-05
 - [ ] C-05 My Approvals экран (mobile)
 - [ ] C-06 Bank import, auto-match, ReconciliationMatch, PAID только через match (BR-054/055/056)
 - [ ] C-07 Advance: prepayment→closing task (BR-022/046), employee advance, corp card
-- [ ] C-08 Urgent batch flow (BR-043)
+- [x] C-08 Urgent batch flow (BR-043: только urgent, approve Owner/Lead, ITEM-approval, пост-review Task, U-нумерация)
 - [ ] C-09 Seed Phase C
 - [ ] C-10 Demo script `scripts/demo-p2p.md`
 
