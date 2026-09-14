@@ -521,5 +521,57 @@
       "DISPUTED": "Спор",
       "CANCELLED": "Отменён"
     }
+  },
+  "events": {
+    "title": "Мероприятия",
+    "newEvent": "Новое мероприятие",
+    "name": "Название",
+    "date": "Дата",
+    "customer": "Клиент",
+    "revenue": "Выручка (план), UZS",
+    "depositPct": "Депозит, %",
+    "create": "Создать",
+    "numberCol": "Номер",
+    "guests": "Гостей",
+    "statusLabel": "Статус",
+    "empty": "Мероприятий пока нет",
+    "pl": {
+      "revenue": "Выручка",
+      "revenueHint": "план {budget}",
+      "deposits": "Депозиты получены",
+      "arOut": "дебиторка {ar}",
+      "cost": "Затраты (факт+обяз.)",
+      "costHint": "бюджет {budget}",
+      "margin": "Маржа (текущая)",
+      "marginPlan": "план {plan}"
+    },
+    "costLines": "Бюджет затрат (fast lane)",
+    "planSoum": "План, UZS",
+    "addLine": "Добавить строку",
+    "deposits": "Депозиты и статус",
+    "due": "до",
+    "amountSoum": "Сумма, UZS",
+    "recordDeposit": "Получен",
+    "quote": "Квота готова",
+    "confirm": "Подтвердить (BR-062)",
+    "ownerOverride": "Owner: подтвердить без депозита",
+    "guestsActual": "Гостей факт",
+    "markHeld": "Проведено",
+    "close": "Закрыть событие (BR-061)",
+    "closeReason": "Owner: причина закрытия с блокерами",
+    "cancel": "Отменить",
+    "linkedPayments": "Платежи по событию",
+    "linkedInvoices": "Счета клиенту",
+    "openTasks": "Открытые задачи",
+    "status": {
+      "DRAFT": "Черновик",
+      "QUOTED": "Квота",
+      "CONFIRMED": "Подтверждено",
+      "IN_PROGRESS": "Идёт",
+      "HELD": "Проведено",
+      "SETTLING": "Расчёты",
+      "CLOSED": "Закрыто",
+      "CANCELLED": "Отменено"
+    }
   }
 }

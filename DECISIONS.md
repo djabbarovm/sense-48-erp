@@ -31,3 +31,9 @@
 **Контекст:** D-04 требует S3-совместимое хранилище (MinIO в compose). В песочнице/CI MinIO может быть недоступен.
 **Решение:** `StorageAdapter` interface в packages/adapters: `S3Storage` (aws-sdk v3, forcePathStyle для MinIO, signed URL 15 мин) — прод/dev c compose; `LocalFsStorage` — фолбэк для песочниц и юнит-тестов (`createStorageFromEnv` выбирает по env S3_*). Метаданные, sha256 и версии — всегда в таблице Document.
 **Последствия:** Тесты не требуют MinIO; смена бэкенда хранения не трогает домен.
+
+## ADR-006: Кто закрывает событие при BR-061 override
+**Дата:** 2026-09-14 · **Фаза/задача:** D-03
+**Контекст:** docs/05 даёт `event.close` только FINANCE_OPS_LEAD, а BR-061 разрешает закрытие с блокерами «Owner с reason». Owner формально не имеет `event.close`.
+**Решение:** Обычное закрытие (без блокеров) — только Lead. Owner допускается к триггеру close исключительно как носитель override: guard BR-061 пропускает блокеры только при `isOwner && reason`. Матрица прав не расширяется.
+**Последствия:** Lead не может закрыть событие с блокерами даже с reason (эскалация Owner'у); аудит фиксирует reason в `event.close`.
