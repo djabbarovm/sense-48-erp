@@ -3,3 +3,4 @@ export * from './audit/index.js';
 export * from './auth/index.js';
 export * from './context/index.js';
 export * from './errors/index.js';
+export * from './rbac/index.js';

@@ -1,0 +1,98 @@
+import type { RoleCode } from '../context/index.js';
+
+/**
+ * Матрица прав из docs/05-rbac.md. Это source of truth для requirePermission()
+ * и для заполнения таблиц Permission/RolePermission (syncPermissions в db).
+ *
+ * Нюансы область-видимости («свои», «T1», «если cost_center_owner», «только имя»)
+ * матрица не выражает — их проверяет доменная логика соответствующей фичи;
+ * здесь — базовый грант роли.
+ */
+export const PERMISSION_MATRIX = {
+  // ── Master data ──
+  'vendor.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN'],
+  'vendor.create': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'REQUESTER'],
+  'vendor.edit': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
+  'vendor.block': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'vendor.bank.reveal': ['OWNER', 'FINANCE_OPS_LEAD', 'ACCOUNTANT'],
+  'vendor.bank.change': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
+  'vendor.bank.verify_step1': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'vendor.bank.verify_step2': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'vendor.merge': ['ADMIN'],
+  'contract.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN'],
+  'contract.create': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
+  'contract.edit': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
+  'contract.approve': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'contract.terminate': ['OWNER'],
+  'customer.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN'],
+  'customer.create': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'REQUESTER', 'ADMIN'],
+  'customer.edit': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ADMIN'],
+  'costcenter.manage': ['ADMIN'],
+  'category.manage': ['ADMIN'],
+  'employee.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'ADMIN'],
+  'employee.manage': ['FINANCE_OPS_LEAD', 'ACCOUNTANT', 'ADMIN'],
+  // ── P2P ──
+  'pr.create': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'REQUESTER'],
+  'pr.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN'],
+  'pr.approve.business': ['OWNER', 'FINANCE_OPS_LEAD', 'REQUESTER'],
+  'pr.approve.finance': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'pr.approve.owner': ['OWNER'],
+  'pr.cancel': ['OWNER', 'FINANCE_OPS_LEAD', 'REQUESTER'],
+  'po.manage': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'receipt.create': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'REQUESTER'],
+  'invoice.create': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT'],
+  'invoice.import': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT'],
+  'invoice.match': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
+  'invoice.resolve_duplicate': ['FINANCE_OPS_LEAD'],
+  'document.upload': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER'],
+  'document.mark_received': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
+  // ── Payments ──
+  'payment.create': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'payment.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN'],
+  'payment.exception.approve': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'payment.urgent.approve': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'payment.cancel': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'batch.create': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'batch.edit': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'batch.freeze': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'batch.unfreeze': ['FINANCE_OPS_LEAD'],
+  'batch.review': ['FINANCE_OPS_LEAD'],
+  'batch.approve': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'batch.export': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'batch.mark_sent': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  'bank.import': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT'],
+  'bank.reconcile.manual': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT'],
+  'bank.account.manage': ['ADMIN'],
+  'advance.close': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT'],
+  'advance.write_off': ['OWNER'],
+  // ── AR / Events ──
+  'event.create': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'REQUESTER'],
+  'event.edit': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'REQUESTER'],
+  'event.confirm': ['OWNER', 'FINANCE_OPS_LEAD', 'REQUESTER'],
+  'event.close': ['FINANCE_OPS_LEAD'],
+  'ar.invoice.manage': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER'],
+  'ar.dispute': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'REQUESTER'],
+  // ── Compliance / close ──
+  'tax.calculate': ['FINANCE_OPS_LEAD', 'ACCOUNTANT'],
+  'tax.approve': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'tax.file': ['ACCOUNTANT'],
+  'payroll.prepare': ['FINANCE_OPS_LEAD', 'ACCOUNTANT'],
+  'payroll.approve': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'close.run': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT'],
+  'accounting.export_1c': ['FINANCE_OPS_LEAD', 'ACCOUNTANT'],
+  'accounting.mark_posted': ['ACCOUNTANT'],
+  // ── Reporting ──
+  'dashboard.owner': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'dashboard.ops': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'ADMIN'],
+  'report.export': ['OWNER', 'FINANCE_OPS_LEAD', 'ACCOUNTANT'],
+  'budget.manage': ['OWNER', 'FINANCE_OPS_LEAD'],
+  // ── Admin ──
+  'tenant.settings': ['ADMIN'],
+  'policy.manage': ['OWNER', 'ADMIN'],
+  'user.manage': ['ADMIN'],
+  'audit.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ACCOUNTANT', 'ADMIN'],
+} as const satisfies Record<string, readonly RoleCode[]>;
+
+export type PermissionCode = keyof typeof PERMISSION_MATRIX;
+
+export const PERMISSION_CODES = Object.keys(PERMISSION_MATRIX) as PermissionCode[];
