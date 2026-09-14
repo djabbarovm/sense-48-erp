@@ -11,3 +11,4 @@ export * from './services/contracts.js';
 export * from './services/customers.js';
 export * from './services/budgets.js';
 export * from './services/policies.js';
+export * from './services/purchaseRequests.js';

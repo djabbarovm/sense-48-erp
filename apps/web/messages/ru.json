@@ -170,5 +170,59 @@
     "remaining": "Остаток",
     "planAmount": "План (сум)",
     "save": "Сохранить строку"
+  },
+  "pr": {
+    "title": "Заявки на закупку",
+    "new": "Новая заявка",
+    "what": "Что покупаем",
+    "purpose": "Назначение",
+    "amount": "Сумма (сум)",
+    "costCenter": "Центр затрат",
+    "category": "Категория",
+    "vendorLabel": "Поставщик",
+    "noVendor": "— новый / без поставщика —",
+    "neededBy": "Нужно к",
+    "urgent": "Срочно",
+    "urgencyReason": "Причина срочности",
+    "varianceReason": "Обоснование (Tier 3 / вне бюджета)",
+    "create": "Создать заявку",
+    "submit": "Отправить на согласование",
+    "numberCol": "Номер",
+    "statusLabel": "Статус",
+    "requester": "Инициатор",
+    "budget": "Бюджет",
+    "tier": "Tier",
+    "approvals": "Согласования",
+    "approve": "Согласовать",
+    "reject": "Отклонить",
+    "rejectComment": "Комментарий (обязателен, ≥10 символов)",
+    "timeline": "История",
+    "cancel": "Отменить",
+    "cancelComment": "Причина отмены",
+    "fastLane": "Fast lane",
+    "status": {
+      "DRAFT": "Черновик",
+      "SUBMITTED": "На согласовании",
+      "APPROVED": "Утверждена",
+      "REJECTED": "Отклонена",
+      "ORDERED": "Заказано",
+      "RECEIVED": "Получено",
+      "INVOICED": "Есть счёт",
+      "PAID": "Оплачена",
+      "CLOSED": "Закрыта",
+      "CANCELLED": "Отменена"
+    },
+    "budgetBadge": {
+      "WITHIN": "В бюджете",
+      "OVER": "Сверх бюджета",
+      "UNBUDGETED": "Вне бюджета"
+    }
+  },
+  "approvals": {
+    "title": "Мои согласования",
+    "empty": "Нет ожидающих согласований",
+    "role": "Роль",
+    "approve": "Согласовать",
+    "reject": "Отклонить"
   }
 }

@@ -22,8 +22,8 @@
 - [x] B-03 Customer CRUD (минимум)
 - [x] B-04 Budget + budget status + экран (BR-014; Excel-импорт бюджета — в E-05 вместе с остальными импортёрами)
 - [x] B-05 ApprovalPolicy (версионируется) + policy engine computeRequiredApprovals (D-12 tiers, BR-033/035/036/041), table-driven тесты всех веток
-- [~] B-06 PurchaseRequest: форма, state machine, approvals, budget check, urgency (BR-042/043/044/045)
-- [ ] B-07 PurchaseOrder + Receipt (BR-042)
+- [x] B-06 PurchaseRequest: форма, state machine, approvals по слотам, budget check, urgency, fast lane (BR-042-045); экраны /pr, /approvals; e2e
+- [~] B-07 PurchaseOrder + Receipt (BR-042)
 - [ ] B-08 Invoice: create, Excel import, duplicate detection, match, Invoice Inbox (BR-002/004/024/025/037)
 - [ ] B-09 Document + DocumentRequirement + S3 upload (BR-023)
 - [ ] B-10 Task: модель, «Мои задачи», next_action, escalation
