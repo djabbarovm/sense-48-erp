@@ -14,3 +14,4 @@
 - A-07: nextNumber/nextSequenceValue (INSERT..ON CONFLICT row-lock, gapless в транзакции объекта), batchNumber по дате; тесты: 25 конкурентных без дублей/пропусков, rollback без gap.
 - A-08: core Money (bigint minor units), addMoney/subtractMoney/compareMoney, divRoundHalfUp, convertToBase (курс 18,6), splitGrossVat (D-10), parseDecimalToMinor (CSV), formatMoney `12 500 000 сум`; float отклоняется.
 - A-09: next-intl (locale из cookie, ru default, deep-merge fallback), словарь ru.json (common/auth/nav/home/admin), login и home переведены, lint-правило JSXText/JSXAttribute против кириллицы в коде.
+- A-10: Tailwind 4 + components/ui (shadcn-стиль), authenticated layout (app) с sidebar по PERMISSION_MATRIX, header c tenant switcher и logout, home-страница, Playwright smoke (redirect на /login).

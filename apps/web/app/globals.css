@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #0f4c81;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
