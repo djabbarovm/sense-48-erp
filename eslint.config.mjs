@@ -19,5 +19,22 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // A-09: запрет hardcoded русских строк в JSX — все строки через next-intl
+    files: ['apps/web/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'JSXText[value=/[А-Яа-яЁё]/]',
+          message: 'Hardcoded UI string: используйте next-intl словарь (A-09).',
+        },
+        {
+          selector: 'JSXAttribute > Literal[value=/[А-Яа-яЁё]/]',
+          message: 'Hardcoded UI string: используйте next-intl словарь (A-09).',
+        },
+      ],
+    },
+  },
   prettier,
 );

@@ -11,8 +11,8 @@
 - [x] A-06 RBAC: PERMISSION_MATRIX (77 кодов из docs/05), `requirePermission()`, syncPermissions в БД, параметризованные тесты 100% кодов × 7 ролей
 - [x] A-07 Sequences `PR-YYYY-NNNNNN` без gaps (row lock, инкремент в транзакции объекта), конкурентный тест 25 параллельных
 - [x] A-08 Money utils: bigint minor, formatMoney UZS, FX convert, splitGrossVat, parseDecimalToMinor; запрет float
-- [~] A-09 i18n: next-intl, `ru.json` полный для Phase A экранов
-- [ ] A-10 Базовый UI shell: layout, навигация по роли, tenant switcher, таблица/форма компоненты
+- [x] A-09 i18n: next-intl, ru.json полный, uz/en fallback на ru, ESLint-правило против hardcoded строк в JSX
+- [~] A-10 Базовый UI shell: layout, навигация по роли, tenant switcher, таблица/форма компоненты
 - [ ] A-11 Seed Phase A (tenants, users, roles, cost centers, categories, holidays 2026)
 - [ ] A-12 Admin экран для tenant settings, users, roles, cc/categories
 

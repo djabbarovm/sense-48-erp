@@ -1,20 +1,22 @@
 'use client';
 
 import { useActionState } from 'react';
+import { useTranslations } from 'next-intl';
 import { loginAction, type LoginState } from '@/lib/auth-actions';
 
 export default function LoginPage() {
+  const t = useTranslations('auth');
   const [state, formAction, pending] = useActionState<LoginState, FormData>(loginAction, {});
   return (
     <main style={{ maxWidth: 360, margin: '10vh auto', padding: 16 }}>
-      <h1>Finance OS</h1>
+      <h1>{t('title')}</h1>
       <form action={formAction}>
         <label>
-          Email
+          {t('email')}
           <input name="email" type="email" autoComplete="username" required style={{ width: '100%' }} />
         </label>
         <label>
-          Пароль
+          {t('password')}
           <input
             name="password"
             type="password"
@@ -23,9 +25,9 @@ export default function LoginPage() {
             style={{ width: '100%' }}
           />
         </label>
-        {state.error ? <p role="alert">Неверный email или пароль</p> : null}
+        {state.error ? <p role="alert">{t('invalidCredentials')}</p> : null}
         <button type="submit" disabled={pending}>
-          Войти
+          {t('signIn')}
         </button>
       </form>
     </main>
