@@ -37,3 +37,9 @@
 **Контекст:** docs/05 даёт `event.close` только FINANCE_OPS_LEAD, а BR-061 разрешает закрытие с блокерами «Owner с reason». Owner формально не имеет `event.close`.
 **Решение:** Обычное закрытие (без блокеров) — только Lead. Owner допускается к триггеру close исключительно как носитель override: guard BR-061 пропускает блокеры только при `isOwner && reason`. Матрица прав не расширяется.
 **Последствия:** Lead не может закрыть событие с блокерами даже с reason (эскалация Owner'у); аудит фиксирует reason в `event.close`.
+
+## ADR-007: Telegram-уведомления — HTTP-адаптер + mock вместо grammY-бота в dev
+**Дата:** 2026-09-14 · **Фаза/задача:** D-06
+**Контекст:** docs/07 §5 описывает grammY-бот c линковкой chat_id через `/start <code>`. CLAUDE.md фиксирует: реальных API в разработке нет, все внешние системы — adapter interfaces + mock.
+**Решение:** В packages/adapters: `NotificationAdapter` interface + тексты шаблонов (без сумм и контрагентов), `MockNotificationAdapter` (тесты), `ConsoleNotificationAdapter` (dev), `TelegramNotificationAdapter` (HTTP Bot API, токен из env, chat_id через резолвер → User.telegramChatId), `EmailNotificationAdapter` (инжектируемый SMTP-транспорт → MailHog/nodemailer) и `FallbackNotificationAdapter` (Telegram → email). Долгоживущий bot-процесс c `/start`-линковкой и командами `/help`/`/mute` подключается при внедрении на сервере клиента.
+**Последствия:** Джобы и сервисы не знают о канале доставки; включение реального бота — конфигурация, не код. BR-072 соблюдён на уровне шаблонов (в параметрах нет сумм).

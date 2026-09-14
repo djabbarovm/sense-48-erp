@@ -46,8 +46,8 @@
 - [x] D-02 CustomerInvoice + AR aging + reminders job (BR-060)
 - [x] D-03 Event + fast lane + `v_event_pl` + Event P&L экран (BR-061/062)
 - [x] D-04 13-week cash forecast
-- [ ] D-05 Workers: все repeatable jobs
-- [ ] D-06 Telegram bot + NotificationAdapter + email fallback (BR-072)
+- [x] D-05 Workers: реестр из 9 идемпотентных джобов + BullMQ Job Scheduler (runTenantJobs для dev без Redis)
+- [x] D-06 NotificationAdapter (Telegram HTTP + email fallback + mock/console, ADR-007), BR-072 secret-фильтр в core и сервисах
 - [x] D-07 Budget vs actual отчёт (committed = PR без платежей + pending-платежи; actual = PAID по paid_at)
 - [ ] D-08 Seed Phase D
 

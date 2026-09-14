@@ -6,6 +6,7 @@ import type { ControlResult, PaymentStatus, TenantContext } from '@finance-os/co
 import {
   NotFoundError,
   ValidationError,
+  assertNoSecrets,
   controlsSatisfied,
   hasRole,
   paymentMachine,
@@ -394,6 +395,7 @@ export interface PaymentInput {
 
 export async function createPaymentRequest(ctx: TenantContext, input: PaymentInput) {
   requirePermission(ctx, 'payment.create');
+  assertNoSecrets(input.purposeNote, 'Назначение платежа'); // BR-072
   if (input.requestedMinor <= 0n) throw new ValidationError('AMOUNT_INVALID');
   if (!input.sourceId) throw new ValidationError('NO_SOURCE', 'Платёж без source object запрещён (BR-001)');
   if (input.isUrgent && !input.urgencyReason) {
@@ -502,6 +504,7 @@ export async function approvePaymentException(
 ) {
   requirePermission(ctx, 'payment.exception.approve');
   if (!reason || reason.trim().length < 5) throw new ValidationError('REASON_REQUIRED');
+  assertNoSecrets(reason, 'Причина exception'); // BR-072
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const pr = await findScopedOr404(tx.paymentRequest, ctx, id);
     if (!['ON_HOLD', 'DOCS_CHECK', 'SUBMITTED', 'DRAFT'].includes(pr.status)) {

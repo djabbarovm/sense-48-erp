@@ -10,10 +10,19 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/main.ts",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "bullmq": "^6.3.6",
+    "@finance-os/adapters": "workspace:*",
+    "@finance-os/core": "workspace:*",
+    "@finance-os/db": "workspace:*"
   }
 }

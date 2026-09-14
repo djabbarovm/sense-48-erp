@@ -294,6 +294,40 @@ export async function freezeBatch(ctx: TenantContext, batchId: string) {
   });
 }
 
+/** D-05 cron: OPEN STANDARD batch c непустым составом после cutoff замораживается системой. */
+export async function autoFreezeBatches(tenantId: string, now = new Date()): Promise<number> {
+  const batches = await prisma.paymentBatch.findMany({
+    where: { tenantId, status: 'OPEN', type: 'STANDARD', batchDate: { lte: now } },
+  });
+  let frozen = 0;
+  for (const batch of batches) {
+    const cutoff = await getCutoff(prisma as unknown as Tx, tenantId, batch.batchDate);
+    if (now < cutoff) continue;
+    const itemCount = await prisma.paymentRequest.count({ where: { batchId: batch.id, status: 'IN_BATCH' } });
+    if (itemCount === 0) continue; // пустой batch не морозим — ждёт следующего дня/отмены
+    await withAudit({ tenantId }, async (tx) => {
+      batchMachine.assert(null, batch.status as BatchStatusCore, 'freeze', { itemCount });
+      const summary = await buildSummary(tx, tenantId, batch.id);
+      const after = await tx.paymentBatch.update({
+        where: { id: batch.id },
+        data: { status: 'FROZEN', cutoffAt: now, summary: summary as unknown as Prisma.InputJsonValue },
+      });
+      return {
+        result: after,
+        audit: {
+          action: 'batch.auto_freeze',
+          objectType: 'payment_batch',
+          objectId: batch.id,
+          before: { status: 'OPEN' },
+          after: { status: 'FROZEN', total: summary.totalMinor, count: summary.count },
+        },
+      };
+    });
+    frozen++;
+  }
+  return frozen;
+}
+
 export async function unfreezeBatch(ctx: TenantContext, batchId: string) {
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const batch = await findScopedOr404(tx.paymentBatch, ctx, batchId);

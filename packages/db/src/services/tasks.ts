@@ -1,6 +1,6 @@
 /** B-10: Task (docs/02 §7, docs/04 Task state machine). Эскалация — job в D-05. */
 import type { TenantContext } from '@finance-os/core';
-import { ValidationError, requirePermission } from '@finance-os/core';
+import { ValidationError, assertNoSecrets, requirePermission } from '@finance-os/core';
 import type { TaskStatus, TaskType } from '@prisma/client';
 import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
@@ -99,6 +99,7 @@ export async function createManualTask(
 ) {
   requirePermission(ctx, 'pr.view'); // задачи может создавать любая операционная роль
   if (!input.nextAction.trim()) throw new ValidationError('NEXT_ACTION_REQUIRED');
+  assertNoSecrets(input.nextAction, 'next_action'); // BR-072
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const created = await tx.task.create({
       data: {
