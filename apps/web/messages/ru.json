@@ -299,5 +299,23 @@
       "CANCELLED": "Отменена",
       "OVERDUE": "Просрочена"
     }
+  },
+  "mission": {
+    "title": "Миссия дня",
+    "cutoffLabel": "До cutoff батча",
+    "cutoffPassed": "Cutoff прошёл",
+    "streak": "Стрик чистых дней",
+    "streakHint": "без дублей и просрочек",
+    "greenFlow": "Зелёный поток",
+    "greenFlowHint": "платежи без нарушений за 30 дней",
+    "progress": "Прогресс дня",
+    "quest": {
+      "collectBatch": "Собрать батч дня",
+      "freezeBatch": "Заморозить до cutoff",
+      "approveBatch": "Утвердить батч",
+      "clearApprovals": "Разобрать согласования",
+      "clearUnmatched": "Сопоставить банковские операции",
+      "clearTasks": "Закрыть задачи"
+    }
   }
 }
