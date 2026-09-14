@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ## [Phase E] 2026-09-14
+- E-05: миграция из Excel — 6 шаблонов в /templates и на скачивание c экрана (vendors/contracts/open_ap/open_ar/employees/budgets; листы «Данные»+«Пример»+«Инструкция», генератор `pnpm --filter @finance-os/adapters build:templates`); parseMigrationSheet в adapters; импортёры в db c валидацией all-or-nothing (отчёт строка+поле), идемпотентностью по бизнес-ключам и аудитом; исторические оплаты open_ap — служебные CLOSED-платежи через архивный счёт is_active=false (BR-054 не ослаблен, ADR-008); клиенты open_ar создаются на лету, просрочка сразу OVERDUE; employees без персональных данных; экран /migration (Owner/Lead/Admin) c шаблонами, порядком загрузки и отчётом ошибок; 4 теста.
 - E-01: getDocumentHealth — 9 красных зон blueprint §10.3 (оплачено без СФ / без акта дольше SLA категории, истёкшие договоры, несопоставленные СФ, приёмка без доверенности, неподписанные ДС, просроченные подотчёты, незакрытые расторжения, смена реквизитов vendor), каждая запись c owner и открытой задачей; экран /documents/health (счётчики, document score, drill-down ссылки на объекты); 2 теста (+tenant isolation).
 
 ## [Phase D] 2026-09-14 — завершена: AP/AR, события c P&L, cash-прогноз, воркеры, уведомления

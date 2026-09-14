@@ -10,7 +10,8 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:templates": "tsx scripts/build-templates.ts"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",

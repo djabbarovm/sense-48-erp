@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   Store,
   TrendingUp,
+  Upload,
   Wallet,
 } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
@@ -54,6 +55,7 @@ const NAV: NavItem[] = [
   { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, permission: 'budget.manage' },
   { key: 'documents', href: '/documents/health', icon: <FileWarning className={ICON} />, permission: 'payment.view' },
   { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} /> },
+  { key: 'migration', href: '/migration', icon: <Upload className={ICON} />, permission: 'budget.manage' },
   { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, permission: 'tenant.settings' },
 ];
 

@@ -56,7 +56,7 @@
 - [ ] E-02 EdoAdapter mock полностью (BR-024 e2e)
 - [ ] E-03 PosAdapter: три импортёра
 - [ ] E-04 AccountingAdapter: export/import 1С
-- [ ] E-05 Excel migration templates + импортёры
+- [x] E-05 Excel migration templates (6 xlsx c примерами и инструкцией) + импортёры all-or-nothing + экран /migration
 - [ ] E-06 Backdated/BR-025, POA, contract registration UI
 
 ## Phase F — Compliance, close, dashboards

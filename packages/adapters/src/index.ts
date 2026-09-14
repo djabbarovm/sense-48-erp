@@ -4,3 +4,4 @@ export * from './edo/mockEdoAdapter.js';
 export * from './storage/index.js';
 export * from './bank/index.js';
 export * from './telegram/index.js';
+export * from './migration/index.js';
