@@ -34,12 +34,12 @@
 - [x] C-02 Exceptions: approve exception Owner/Lead c reason → re-run controls → READY; audit
 - [x] C-03 Payment Desk экран (3 колонки, «Собрать batch», визард c preview контролей до submit) + экраны /batches и /batches/[id]
 - [x] C-04 PaymentBatch полный цикл + summary (cash_after, by_*, exceptions, related party) + BR-040/051/052/053/057; cron freeze — в D-05
-- [ ] C-05 My Approvals экран (mobile)
-- [x] C-06 Bank import (Unified CSV + Trustbank XLSX по реальной выписке), idempotency BR-056, auto-match BR-055, PAID только через match BR-054 (+DB-триггер), FAILED path, cash position
+- [x] C-05 My Approvals экран (mobile): item-режим PR + batch-режим (summary, «Approve all green», toggle на красных)
+- [x] C-06 Bank import (Unified CSV + Trustbank XLSX по реальной выписке), idempotency BR-056, auto-match BR-055, PAID только через match BR-054 (+DB-триггер), FAILED path, cash position + экран /bank (импорт, сверка, manual match/ignore, отказ банка)
 - [x] C-07 Advance: BR-022 prepayment→Advance+CLOSING_DOCS (SLA раб. дни), BR-046 блок при OVERDUE (Owner override), закрытие частями, write-off Owner, overdue-job
 - [x] C-08 Urgent batch flow (BR-043: только urgent, approve Owner/Lead, ITEM-approval, пост-review Task, U-нумерация)
 - [x] C-09 Seed Phase C (счета, 20 платежей во всех статусах, 4 batch, транзакции matched/suggested/unmatched, advances, файл выписки)
-- [ ] C-10 Demo script `scripts/demo-p2p.md`
+- [x] C-10 Demo script `scripts/demo-p2p.md` — сквозной прогон PR → RECONCILED на seed. **Phase C завершена.**
 
 ## Phase D — AP/AR, events, forecast, jobs
 - [ ] D-01 `v_ap_aging`, AP экран, vendor statement reconciliation

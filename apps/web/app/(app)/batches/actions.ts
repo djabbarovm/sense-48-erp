@@ -49,6 +49,7 @@ export async function approveBatchAction(formData: FormData): Promise<void> {
   }
   await approveBatch(ctx, id, rejections);
   revalidatePath(`/batches/${id}`);
+  revalidatePath('/approvals');
 }
 
 export async function removeFromBatchAction(formData: FormData): Promise<void> {

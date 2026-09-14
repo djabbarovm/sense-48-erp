@@ -247,7 +247,11 @@
     "empty": "Нет ожидающих согласований",
     "role": "Роль",
     "approve": "Согласовать",
-    "reject": "Отклонить"
+    "reject": "Отклонить",
+    "batchSummary": "Платёжный реестр: {count} платежей на",
+    "greenItems": "Зелёные ({count}) — утверждаются кнопкой ниже",
+    "rejectToggle": "Отклонить (комментарий обязателен)",
+    "approveAllGreen": "Approve all green"
   },
   "invoices": {
     "title": "Счета и СФ",
@@ -418,6 +422,34 @@
       "SENT": "Отправлен",
       "SETTLED": "Исполнен",
       "CANCELLED": "Отменён"
+    }
+  },
+  "bank": {
+    "title": "Банк и сверка",
+    "importTitle": "Импорт выписки",
+    "importBtn": "Импортировать",
+    "importing": "Импортирую…",
+    "importHint": "CSV — Unified-формат (docs/07), XLSX — выгрузка Трастбанк «Клиент-Банк». Повторные строки пропускаются (BR-056).",
+    "importReport": "Импортировано: {imported} · пропущено: {skipped} · авто-матч: {autoMatched} · предложено: {suggested} · без пары: {unmatched}",
+    "date": "Дата",
+    "counterparty": "Контрагент",
+    "purpose": "Назначение",
+    "amount": "Сумма",
+    "statusLabel": "Сверка",
+    "actions": "Действия",
+    "match": "Сопоставить",
+    "ignore": "Ignore",
+    "ignoreReason": "Причина ignore",
+    "emptyTx": "Транзакций нет — импортируйте выписку",
+    "sentTitle": "Отправлены в банк (ожидают подтверждения)",
+    "failReason": "Причина отказа банка",
+    "markFailed": "Отклонён банком",
+    "status": {
+      "UNMATCHED": "Без пары",
+      "SUGGESTED": "Предложение",
+      "AUTO_MATCHED": "Авто-матч",
+      "MANUAL_MATCHED": "Ручной матч",
+      "IGNORED": "Игнор"
     }
   }
 }

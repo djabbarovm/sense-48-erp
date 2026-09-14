@@ -4,7 +4,10 @@
 
 ## [Unreleased]
 
-## [Phase C] 2026-09-14
+## [Phase C] 2026-09-14 — завершена: P2P-платежи от контролей до банковской сверки, UI всего цикла
+- C-05: /approvals — batch-режим для Owner (summary-шапка REVIEWED-реестра, зелёные items списком, красные c exception/контролями и toggle «Отклонить»+комментарий, «Approve all green» → approveBatch c BR-040 SOD), item-режим PR сохранён; e2e.
+- C-06 (UI): /bank — cash position по счетам, импорт выписки (CSV Unified / XLSX Трастбанк по расширению, отчёт imported/skipped/auto/suggested/unmatched), таблица сверки c manual match (кандидаты по сумме из SENT_TO_BANK) и Ignore c причиной, секция «Отправлены в банк» c FAILED-path; e2e c реальным импортом seed-выписки.
+- C-10: scripts/demo-p2p.md — сквозной демо-сценарий PR → согласование → приёмка → счёт → платёж → batch (freeze/review 4-eyes/approve SOD/export) → импорт выписки → PAID/RECONCILED/SETTLED, c ролями и BR-ссылками.
 - C-03: экран «Платёжный стол» /payments — три колонки (Ready c суммой и «Собрать batch» в сегодняшний OPEN-реестр, Blocked c FAIL-кодами/деталями/эскалацией + формы «перепроверить» и exception [Owner/Lead], Pending docs c submit/cancel черновиков), блок «В работе» по статусам; визард /payments/new: источник INVOICE/PR/CONTRACT → previewPaymentControls показывает остаток и все контроли ДО submit (ничего не сохраняя) → «Создать и отправить»; тест preview + 2 e2e.
 - C-04 (UI): /batches (список + создание STANDARD/URGENT) и /batches/[id]: summary-дашборд (сумма, cash после оплаты c BR-053-warning, обязательства 7 дней, по категориям, exceptions, related party BR-036), items c reject-чекбоксами и обязательным комментарием, кнопки по роли и статусу (Freeze/Unfreeze/Review 4-eyes/Approve/Export CSV через POST-роут c sha256/Mark sent), история approvals; e2e.
 - C-09: seed Phase C — 4 счёта компании (Трастбанк UZS+USD, Ипак Йули, Капиталбанк), 19+1 PaymentRequest во всех статусах (exceptions OVER_OUTSTANDING/UNBUDGETED, 2 prepayment, urgent, FAILED), 4 batch (SETTLED/SENT/REVIEWED/OPEN) c summary и approvals, 10 банковских транзакций (3 auto-matched по BR-054-цепочке, 1 suggested, 6 unmatched), advances (vendor prepayment + 3 employee, 1 OVERDUE) c CLOSING_DOCS-задачей, выписка seed/bank/2026-09-12.csv для демо импорта; идемпотентен, sequence PAY сдвинут за сид.
