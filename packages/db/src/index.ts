@@ -8,3 +8,4 @@ export * from './sequence.js';
 export * from './services/admin.js';
 export * from './services/vendors.js';
 export * from './services/contracts.js';
+export * from './services/customers.js';
