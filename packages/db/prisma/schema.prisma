@@ -31,15 +31,15 @@ model Tenant {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  userRoles        UserTenantRole[]
-  vendors          Vendor[]
-  customers        Customer[]
-  contracts        Contract[]
-  costCenters      CostCenter[]
-  categories       Category[]
-  employees        Employee[]
-  bankAccounts     BankAccount[]
-  sequences        Sequence[]
+  userRoles    UserTenantRole[]
+  vendors      Vendor[]
+  customers    Customer[]
+  contracts    Contract[]
+  costCenters  CostCenter[]
+  categories   Category[]
+  employees    Employee[]
+  bankAccounts BankAccount[]
+  sequences    Sequence[]
 
   @@map("tenant")
 }
@@ -323,6 +323,7 @@ model CostCenter {
   tenant   Tenant       @relation(fields: [tenantId], references: [id])
   parent   CostCenter?  @relation("CostCenterParent", fields: [parentId], references: [id])
   children CostCenter[] @relation("CostCenterParent")
+  budgets  Budget[]
 
   @@unique([tenantId, code])
   @@map("cost_center")
@@ -359,6 +360,7 @@ model Category {
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id])
   vendors Vendor[]
+  budgets Budget[]
 
   @@unique([tenantId, code])
   @@map("category")
@@ -405,20 +407,20 @@ model Employee {
 
 // Свои счета
 model BankAccount {
-  id                 String    @id @default(uuid(7)) @db.Uuid
-  tenantId           String    @map("tenant_id") @db.Uuid
-  bankName           String    @map("bank_name")
-  mfo                String
-  accountMasked      String    @map("account_masked")
-  accountEncrypted   String    @map("account_encrypted")
-  currency           String    @default("UZS") @db.Char(3)
-  isActive           Boolean   @default(true) @map("is_active")
-  openingBalanceMinor BigInt   @default(0) @map("opening_balance_minor")
-  openingBalanceDate DateTime? @map("opening_balance_date") @db.Date
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  createdBy          String?   @map("created_by") @db.Uuid
-  updatedBy          String?   @map("updated_by") @db.Uuid
+  id                  String    @id @default(uuid(7)) @db.Uuid
+  tenantId            String    @map("tenant_id") @db.Uuid
+  bankName            String    @map("bank_name")
+  mfo                 String
+  accountMasked       String    @map("account_masked")
+  accountEncrypted    String    @map("account_encrypted")
+  currency            String    @default("UZS") @db.Char(3)
+  isActive            Boolean   @default(true) @map("is_active")
+  openingBalanceMinor BigInt    @default(0) @map("opening_balance_minor")
+  openingBalanceDate  DateTime? @map("opening_balance_date") @db.Date
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  createdBy           String?   @map("created_by") @db.Uuid
+  updatedBy           String?   @map("updated_by") @db.Uuid
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
@@ -539,4 +541,386 @@ model Task {
   @@index([tenantId, ownerId, status])
   @@index([tenantId, objectType, objectId])
   @@map("task")
+}
+
+// ───────────────────────────── §3 Планирование ─────────────────────────────
+
+model Budget {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  period       String // YYYY-MM
+  costCenterId String   @map("cost_center_id") @db.Uuid
+  categoryId   String   @map("category_id") @db.Uuid
+  plannedMinor BigInt   @map("planned_minor")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdBy    String?  @map("created_by") @db.Uuid
+  updatedBy    String?  @map("updated_by") @db.Uuid
+
+  costCenter CostCenter @relation(fields: [costCenterId], references: [id])
+  category   Category   @relation(fields: [categoryId], references: [id])
+
+  @@unique([tenantId, period, costCenterId, categoryId])
+  @@map("budget")
+}
+
+model ApprovalPolicy {
+  id                           String   @id @default(uuid(7)) @db.Uuid
+  tenantId                     String   @map("tenant_id") @db.Uuid
+  tier1MaxMinor                BigInt   @map("tier1_max_minor") // D-12: 5 000 000 UZS
+  tier2MaxMinor                BigInt   @map("tier2_max_minor") // 25 000 000 UZS
+  unbudgetedRequiresOwner      Boolean  @default(true) @map("unbudgeted_requires_owner")
+  urgentApproverRoles          String[] @default(["OWNER", "FINANCE_OPS_LEAD"]) @map("urgent_approver_roles")
+  newVendorOwnerThresholdMinor BigInt   @default(0) @map("new_vendor_owner_threshold_minor")
+  sodMinTier                   Int      @default(2) @map("sod_min_tier") // D-16
+  effectiveFrom                DateTime @default(now()) @map("effective_from")
+  createdAt                    DateTime @default(now()) @map("created_at")
+  createdBy                    String?  @map("created_by") @db.Uuid
+
+  @@index([tenantId, effectiveFrom])
+  @@map("approval_policy")
+}
+
+enum EventFormat {
+  BANQUET
+  CONFERENCE
+  PRIVATE
+  PUBLIC
+}
+
+enum EventStatus {
+  DRAFT
+  QUOTED
+  CONFIRMED
+  IN_PROGRESS
+  HELD
+  SETTLING
+  CLOSED
+  CANCELLED
+}
+
+model Event {
+  id                 String      @id @default(uuid(7)) @db.Uuid
+  tenantId           String      @map("tenant_id") @db.Uuid
+  number             String // EVT-2026-0012
+  customerId         String?     @map("customer_id") @db.Uuid
+  name               String
+  eventDate          DateTime    @map("event_date") @db.Date
+  startTime          String?     @map("start_time")
+  endTime            String?     @map("end_time")
+  format             EventFormat @default(PRIVATE)
+  guestsPlanned      Int?        @map("guests_planned")
+  guestsActual       Int?        @map("guests_actual")
+  revenueBudgetMinor BigInt      @default(0) @map("revenue_budget_minor")
+  costBudgetMinor    BigInt      @default(0) @map("cost_budget_minor")
+  revenueLines       Json        @default("{}") @map("revenue_lines")
+  depositSchedule    Json        @default("[]") @map("deposit_schedule")
+  costCenterId       String?     @map("cost_center_id") @db.Uuid
+  ownerId            String?     @map("owner_id") @db.Uuid
+  status             EventStatus @default(DRAFT)
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  createdBy          String?     @map("created_by") @db.Uuid
+  updatedBy          String?     @map("updated_by") @db.Uuid
+
+  budgetLines EventBudgetLine[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@map("event")
+}
+
+model EventBudgetLine {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  eventId           String   @map("event_id") @db.Uuid
+  categoryId        String   @map("category_id") @db.Uuid
+  plannedMinor      BigInt   @map("planned_minor")
+  approvedVendorIds String[] @default([]) @map("approved_vendor_ids") @db.Uuid
+
+  event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([eventId, categoryId])
+  @@map("event_budget_line")
+}
+
+// ───────────────────────────── §4 Purchase-to-Pay ─────────────────────────────
+
+enum PurchaseRequestStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  ORDERED
+  RECEIVED
+  INVOICED
+  PAID
+  CLOSED
+  CANCELLED
+}
+
+enum BudgetCheckStatus {
+  WITHIN
+  OVER
+  UNBUDGETED
+}
+
+enum UrgencyReason {
+  EVENT_72H
+  TAX_DEADLINE
+  SUPPLIER_STOP
+  SAFETY
+  OTHER
+}
+
+model PurchaseRequest {
+  id            String                @id @default(uuid(7)) @db.Uuid
+  tenantId      String                @map("tenant_id") @db.Uuid
+  number        String // PR-2026-000123
+  requesterId   String                @map("requester_id") @db.Uuid
+  what          String // что покупаем, не «оплатить поставщику»
+  quantity      Decimal?              @db.Decimal(18, 3)
+  unit          String?
+  priceMinor    BigInt?               @map("price_minor")
+  vatMinor      BigInt                @default(0) @map("vat_minor")
+  totalMinor    BigInt                @map("total_minor")
+  currency      String                @default("UZS") @db.Char(3)
+  purpose       String
+  costCenterId  String                @map("cost_center_id") @db.Uuid
+  categoryId    String                @map("category_id") @db.Uuid
+  eventId       String?               @map("event_id") @db.Uuid
+  neededBy      DateTime?             @map("needed_by")
+  vendorId      String?               @map("vendor_id") @db.Uuid
+  contractId    String?               @map("contract_id") @db.Uuid
+  budgetStatus  BudgetCheckStatus?    @map("budget_status")
+  isUrgent      Boolean               @default(false) @map("is_urgent")
+  urgencyReason UrgencyReason?        @map("urgency_reason")
+  urgencyNote   String?               @map("urgency_note")
+  isFastLane    Boolean               @default(false) @map("is_fast_lane")
+  status        PurchaseRequestStatus @default(DRAFT)
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+  createdBy     String?               @map("created_by") @db.Uuid
+  updatedBy     String?               @map("updated_by") @db.Uuid
+
+  approvals PurchaseApproval[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([tenantId, requesterId])
+  @@index([tenantId, eventId])
+  @@map("purchase_request")
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+model PurchaseApproval {
+  id         String            @id @default(uuid(7)) @db.Uuid
+  tenantId   String            @map("tenant_id") @db.Uuid
+  prId       String            @map("pr_id") @db.Uuid
+  approverId String?           @map("approver_id") @db.Uuid // policy engine создаёт слоты с decision null
+  role       String // BUSINESS_OWNER / FINANCE / OWNER
+  decision   ApprovalDecision?
+  comment    String?
+  decidedAt  DateTime?         @map("decided_at")
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  pr PurchaseRequest @relation(fields: [prId], references: [id])
+
+  @@index([tenantId, prId])
+  @@map("purchase_approval")
+}
+
+enum PoStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  number     String
+  prId       String   @map("pr_id") @db.Uuid
+  vendorId   String   @map("vendor_id") @db.Uuid
+  contractId String?  @map("contract_id") @db.Uuid
+  lines      Json     @default("[]")
+  totalMinor BigInt   @map("total_minor")
+  status     PoStatus @default(DRAFT)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  createdBy  String?  @map("created_by") @db.Uuid
+  updatedBy  String?  @map("updated_by") @db.Uuid
+
+  @@unique([tenantId, number])
+  @@map("purchase_order")
+}
+
+enum ReceiptStatus {
+  PARTIAL
+  FULL
+  REJECTED
+}
+
+model Receipt {
+  id                  String        @id @default(uuid(7)) @db.Uuid
+  tenantId            String        @map("tenant_id") @db.Uuid
+  poId                String?       @map("po_id") @db.Uuid
+  prId                String?       @map("pr_id") @db.Uuid
+  receiverId          String        @map("receiver_id") @db.Uuid
+  receivedAt          DateTime      @default(now()) @map("received_at")
+  lines               Json          @default("[]") // [{desc, qty, value_minor}]
+  evidenceDocumentIds String[]      @default([]) @map("evidence_document_ids") @db.Uuid
+  status              ReceiptStatus @default(FULL)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  createdBy           String?       @map("created_by") @db.Uuid
+
+  @@index([tenantId, prId])
+  @@map("receipt")
+}
+
+enum InvoiceType {
+  SF
+  INVOICE
+  ACT
+  WAYBILL
+}
+
+enum EdoStatus {
+  NONE
+  DRAFT
+  SENT
+  SIGNED
+  REJECTED
+  CANCELLED
+  CORRECTED
+}
+
+enum InvoiceMatchStatus {
+  UNMATCHED
+  SUGGESTED
+  MATCHED
+  DISPUTED
+}
+
+enum InvoiceStatus {
+  RECEIVED
+  DUPLICATE_SUSPECT
+  MATCHED
+  DISPUTED
+  PARTIALLY_PAID
+  PAID
+  CORRECTED
+  CANCELLED
+}
+
+model Invoice {
+  id               String             @id @default(uuid(7)) @db.Uuid
+  tenantId         String             @map("tenant_id") @db.Uuid
+  vendorId         String             @map("vendor_id") @db.Uuid
+  number           String
+  date             DateTime           @db.Date
+  type             InvoiceType        @default(INVOICE)
+  amountNetMinor   BigInt             @map("amount_net_minor")
+  vatMinor         BigInt             @default(0) @map("vat_minor")
+  amountGrossMinor BigInt             @map("amount_gross_minor")
+  currency         String             @default("UZS") @db.Char(3)
+  fxRate           Decimal?           @map("fx_rate") @db.Decimal(18, 6)
+  edoDocumentId    String?            @map("edo_document_id")
+  edoStatus        EdoStatus          @default(NONE) @map("edo_status")
+  isCorrectiveOfId String?            @map("is_corrective_of") @db.Uuid
+  contractId       String?            @map("contract_id") @db.Uuid
+  prId             String?            @map("pr_id") @db.Uuid
+  poId             String?            @map("po_id") @db.Uuid
+  receiptId        String?            @map("receipt_id") @db.Uuid
+  matchStatus      InvoiceMatchStatus @default(UNMATCHED) @map("match_status")
+  duplicateOfId    String?            @map("duplicate_of") @db.Uuid
+  backdatedReason  String?            @map("backdated_reason")
+  status           InvoiceStatus      @default(RECEIVED)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  createdBy        String?            @map("created_by") @db.Uuid
+  updatedBy        String?            @map("updated_by") @db.Uuid
+
+  // Partial unique (tenant, vendor, number, date) WHERE status <> CANCELLED — в migration SQL
+  @@index([tenantId, status])
+  @@index([tenantId, vendorId])
+  @@map("invoice")
+}
+
+// ───────────────────────────── §7 Документы ─────────────────────────────
+
+enum DocType {
+  CONTRACT
+  AMENDMENT
+  SF
+  INVOICE
+  ACT
+  WAYBILL
+  POA
+  RECEIPT
+  KP
+  SPEC
+  MENU
+  BANK_CONFIRMATION
+  PAYROLL_REGISTER
+  OTHER
+}
+
+enum DocumentStatus {
+  PENDING
+  RECEIVED
+  REJECTED
+  EXPIRED
+}
+
+model Document {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  tenantId   String         @map("tenant_id") @db.Uuid
+  objectType String         @map("object_type")
+  objectId   String         @map("object_id") @db.Uuid
+  docType    DocType        @map("doc_type")
+  fileKey    String         @map("file_key") // S3 key
+  fileName   String         @map("file_name")
+  mime       String
+  size       Int
+  sha256     String
+  version    Int            @default(1)
+  edoRef     String?        @map("edo_ref")
+  edoStatus  EdoStatus?     @map("edo_status")
+  uploadedBy String?        @map("uploaded_by") @db.Uuid
+  isRequired Boolean        @default(false) @map("is_required")
+  status     DocumentStatus @default(PENDING)
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  @@index([tenantId, objectType, objectId])
+  @@map("document")
+}
+
+enum PaymentKind {
+  PREPAY
+  POSTPAY
+}
+
+enum DocPhase {
+  BEFORE_PAYMENT
+  AFTER_PAYMENT
+}
+
+model DocumentRequirement {
+  id            String        @id @default(uuid(7)) @db.Uuid
+  tenantId      String        @map("tenant_id") @db.Uuid
+  categoryGroup CategoryGroup @map("category_group")
+  paymentType   PaymentKind   @map("payment_type")
+  phase         DocPhase
+  docTypes      DocType[]     @map("doc_types")
+
+  @@unique([tenantId, categoryGroup, paymentType, phase])
+  @@map("document_requirement")
 }

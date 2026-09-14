@@ -158,5 +158,17 @@
       "TERMINATING": "Расторгается",
       "CLOSED": "Закрыт"
     }
+  },
+  "budget": {
+    "title": "Бюджет",
+    "period": "Период",
+    "costCenter": "Центр затрат",
+    "category": "Категория",
+    "planned": "План",
+    "committed": "Committed",
+    "actual": "Факт",
+    "remaining": "Остаток",
+    "planAmount": "План (сум)",
+    "save": "Сохранить строку"
   }
 }

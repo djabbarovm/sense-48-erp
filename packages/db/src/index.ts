@@ -9,3 +9,4 @@ export * from './services/admin.js';
 export * from './services/vendors.js';
 export * from './services/contracts.js';
 export * from './services/customers.js';
+export * from './services/budgets.js';

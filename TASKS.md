@@ -20,8 +20,8 @@
 - [x] B-01 Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034), reveal c audit (BR-074) Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034)
 - [x] B-02 Contract CRUD + state machine + Contract 360 + баланс (интерфейс v_contract_balance; paid/pending достраивается в C-01) + BR-026 Task-заглушка
 - [x] B-03 Customer CRUD (минимум)
-- [~] B-04 Budget + `v_budget_status` + Budget экран (BR-014)
-- [ ] B-05 ApprovalPolicy + policy engine (BR-041, D-12, BR-035/036/033)
+- [x] B-04 Budget + budget status + экран (BR-014; Excel-импорт бюджета — в E-05 вместе с остальными импортёрами)
+- [~] B-05 ApprovalPolicy + policy engine (BR-041, D-12, BR-035/036/033)
 - [ ] B-06 PurchaseRequest: форма, state machine, approvals, budget check, urgency (BR-042/043/044/045)
 - [ ] B-07 PurchaseOrder + Receipt (BR-042)
 - [ ] B-08 Invoice: create, Excel import, duplicate detection, match, Invoice Inbox (BR-002/004/024/025/037)
