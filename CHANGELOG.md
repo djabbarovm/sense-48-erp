@@ -9,6 +9,7 @@
 - B-02: core StateMachine каркас + contractMachine (11 статусов, guards: E-ijara регистрация, renew только Owner, close при outstanding=0); contract-сервис (CRUD, transitions c audit, amendments c применением changes, getContractBalance, BR-026 expiry-task stub); экраны /contracts и Contract 360 c кнопками доступных переходов; 7 тестов.
 - B-03: customer-сервис (create/update/list c правами и audit), тесты.
 - B-04: budget-сервис (upsert plan c audit, getBudgetStatus planned/committed/actual/remaining, checkBudget BR-014 все ветки), экран /budget (матрица + правка плана); 5 тестов. Excel-импорт перенесён в E-05.
+- B-05: core policy engine (tier 1/2/3, Owner при OVER/UNBUDGETED/NEW_VENDOR/RELATED_PARTY/BANK_CHANGED_RECENTLY<7д, fast lane, variance_reason для Tier 3) + db getActivePolicy/createPolicyVersion (версии, дефолты D-12); 15 unit + 3 интеграционных теста.
 
 ## [Phase A] 2026-09-14 — завершена: monorepo, инфраструктура, схема master data, audit, auth/RBAC/tenant isolation, sequences, money, i18n, UI shell, seed, admin
 - A-01: pnpm monorepo — apps/web (Next.js 15 + TS strict), packages/{core,db,adapters,workers}; eslint 9 (flat) + prettier + vitest 3 + Playwright + husky pre-commit (lint+typecheck). `pnpm install && pnpm build && pnpm test` зелёные.
