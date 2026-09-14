@@ -55,3 +55,22 @@ export async function cancelPrAction(formData: FormData): Promise<void> {
   await transitionPr(ctx, id, 'cancel', { comment: String(formData.get('comment') ?? '') });
   revalidatePath(`/pr/${id}`);
 }
+
+export async function createPoAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const { createPo } = await import('@finance-os/db');
+  const id = String(formData.get('id'));
+  await createPo(ctx, id);
+  revalidatePath(`/pr/${id}`);
+}
+
+export async function createReceiptAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const { createReceipt } = await import('@finance-os/db');
+  const id = String(formData.get('id'));
+  await createReceipt(ctx, {
+    prId: id,
+    status: formData.get('partial') === '1' ? 'PARTIAL' : 'FULL',
+  });
+  revalidatePath(`/pr/${id}`);
+}

@@ -1,10 +1,10 @@
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { NotFoundError, formatMoney, money } from '@finance-os/core';
-import { getPr } from '@finance-os/db';
+import { NotFoundError, can, formatMoney, money } from '@finance-os/core';
+import { getPoForPr, getPr, listReceiptsForPr } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Table, Td, Th } from '@/components/ui';
-import { cancelPrAction, decideApprovalAction, submitPrAction } from '../actions';
+import { cancelPrAction, createPoAction, createReceiptAction, decideApprovalAction, submitPrAction } from '../actions';
 
 export default async function PrPage({ params }: { params: Promise<{ id: string }> }) {
   const ctx = await requireTenantContext();
@@ -19,6 +19,7 @@ export default async function PrPage({ params }: { params: Promise<{ id: string 
     throw e;
   }
   const { pr, approvals, audit, vendor, category, costCenter } = dto;
+  const [po, receipts] = await Promise.all([getPoForPr(ctx, pr.id), listReceiptsForPr(ctx, pr.id)]);
 
   return (
     <div className="space-y-4">
@@ -79,6 +80,51 @@ export default async function PrPage({ params }: { params: Promise<{ id: string 
           ) : null}
         </div>
       </Card>
+
+      {po || receipts.length > 0 || ['APPROVED', 'ORDERED'].includes(pr.status) ? (
+        <Card title={t('receipts')}>
+          {po ? (
+            <p className="mb-2 text-sm">
+              {t('po')}: <b>{po.number}</b> <Badge tone="blue">{po.status}</Badge>
+            </p>
+          ) : null}
+          {receipts.length > 0 ? (
+            <ul className="mb-2 space-y-1 text-sm">
+              {receipts.map((r) => (
+                <li key={r.id}>
+                  <Badge tone={r.status === 'FULL' ? 'green' : 'yellow'}>{r.status}</Badge>{' '}
+                  <span className="text-gray-500">{r.receivedAt.toISOString().slice(0, 10)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {pr.status === 'APPROVED' && !po && can(ctx, 'po.manage') ? (
+              <form action={createPoAction}>
+                <input type="hidden" name="id" value={pr.id} />
+                <Button type="submit" variant="outline">
+                  {t('createPo')}
+                </Button>
+              </form>
+            ) : null}
+            {['APPROVED', 'ORDERED'].includes(pr.status) && can(ctx, 'receipt.create') ? (
+              <>
+                <form action={createReceiptAction}>
+                  <input type="hidden" name="id" value={pr.id} />
+                  <Button type="submit">{t('receiveFull')}</Button>
+                </form>
+                <form action={createReceiptAction}>
+                  <input type="hidden" name="id" value={pr.id} />
+                  <input type="hidden" name="partial" value="1" />
+                  <Button type="submit" variant="outline">
+                    {t('receivePartial')}
+                  </Button>
+                </form>
+              </>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
 
       <Card>
         <h2 className="mb-2 font-medium">{t('approvals')}</h2>

@@ -224,7 +224,13 @@
       "WITHIN": "В бюджете",
       "OVER": "Сверх бюджета",
       "UNBUDGETED": "Вне бюджета"
-    }
+    },
+    "po": "Заказ (PO)",
+    "createPo": "Создать PO",
+    "receipts": "Приёмка",
+    "receiveFull": "Принять полностью",
+    "receivePartial": "Принять частично",
+    "receiver": "Принял"
   },
   "approvals": {
     "title": "Мои согласования",

@@ -12,3 +12,4 @@ export * from './services/customers.js';
 export * from './services/budgets.js';
 export * from './services/policies.js';
 export * from './services/purchaseRequests.js';
+export * from './services/receiving.js';

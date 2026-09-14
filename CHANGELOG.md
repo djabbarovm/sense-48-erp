@@ -12,6 +12,7 @@
 - B-05: core policy engine (tier 1/2/3, Owner при OVER/UNBUDGETED/NEW_VENDOR/RELATED_PARTY/BANK_CHANGED_RECENTLY<7д, fast lane, variance_reason для Tier 3) + db getActivePolicy/createPolicyVersion (версии, дефолты D-12); 15 unit + 3 интеграционных теста.
 - B-06: PR-сервис (create/submit c BR-014 budget check + policy snapshot BR-041 + fast lane, слоты согласований c ролевыми guard (junior только Tier1, cc-owner за BUSINESS_OWNER), BR-043/044/045, cancel/return_for_edit), экраны /pr, /pr/new (mobile), карточка PR c timeline, /approvals; 12 интеграционных тестов + e2e полного цикла.
 - UI: дизайн-система «power» — Inter Variable, индиго-палитра, тёмный ink-sidebar с иконками lucide, стеклянный топбар, StatCard-дашборд на главной с живыми метриками, тёмный логин с glassmorphism, единые кнопки/поля/бейджи/таблицы (tabular-nums для сумм), PageHeader/EmptyState.
+- B-07: createPo (PR APPROVED → ORDERED, номер PO-…), setPoStatus, createReceipt (FULL → PR RECEIVED, PARTIAL не переводит, BR-042 SOD для Tier 2+), блок PO/приёмки на карточке PR; 5 тестов.
 
 ## [Phase A] 2026-09-14 — завершена: monorepo, инфраструктура, схема master data, audit, auth/RBAC/tenant isolation, sequences, money, i18n, UI shell, seed, admin
 - A-01: pnpm monorepo — apps/web (Next.js 15 + TS strict), packages/{core,db,adapters,workers}; eslint 9 (flat) + prettier + vitest 3 + Playwright + husky pre-commit (lint+typecheck). `pnpm install && pnpm build && pnpm test` зелёные.
