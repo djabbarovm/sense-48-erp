@@ -31,3 +31,7 @@ export * from './services/pos.js';
 export * from './services/accounting.js';
 export * from './services/tax.js';
 export * from './services/payroll.js';
+export * from './services/kpi.js';
+export * from './services/close.js';
+export * from './services/portfolio.js';
+export * from './services/auditView.js';

@@ -26,6 +26,9 @@ describe('D-05 workers: реестр джобов', () => {
       'event-progress',
       'batch-cutoff-freeze',
       'forecast-snapshot',
+      'tax-generate',
+      'tax-overdue',
+      'kpi-snapshot',
       'audit-verify',
     ]);
     const notifier = new MockNotificationAdapter();

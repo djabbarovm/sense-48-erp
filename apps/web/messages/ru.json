@@ -48,7 +48,10 @@
     "forecast": "Cash-прогноз",
     "migration": "Миграция данных",
     "onec": "1С (обмен)",
-    "payroll": "Зарплата"
+    "payroll": "Зарплата",
+    "ownerDash": "Дашборд владельца",
+    "controls": "KPI и контроли",
+    "portfolio": "Портфель компаний"
   },
   "home": {
     "title": "Finance OS",
@@ -743,5 +746,99 @@
       "PAID": "Выплачена",
       "POSTED": "Проведена"
     }
+  },
+  "ownerDash": {
+    "title": "Дашборд владельца",
+    "cashNow": "Деньги сейчас (UZS)",
+    "committed7d": "Обязательства 7 дней",
+    "minWeek13": "Минимум за 13 недель",
+    "runway": "Runway",
+    "weeks": "{count} нед.",
+    "sparkline": "Остаток по неделям (13-week forecast) — нажмите для деталей",
+    "todayBatch": "Сегодняшний реестр",
+    "batchInfo": "платежей: {count}",
+    "openApprovals": "Открыть согласования",
+    "noBatch": "Реестра на сегодня нет",
+    "ap": "Кредиторка",
+    "apDueWeek": "К оплате (срок не наступил)",
+    "apOverdue": "Просрочено",
+    "advancesNoDocs": "Подотчёты без документов",
+    "ar": "Дебиторка",
+    "arOverdue": "Просрочено",
+    "arExpected7": "Ожидается 7 дней",
+    "arExpected30": "Ожидается 30 дней",
+    "topDebtors": "Топ должников",
+    "taxes": "Налоги: ближайшие дедлайны",
+    "events": "Ближайшие мероприятия",
+    "rev": "выручка",
+    "committed": "затраты",
+    "margin": "маржа",
+    "docIssues": "Проблемы c документами",
+    "docHint": "Нажмите для разбора по 9 зонам",
+    "controls": "Контроли (30 дней)",
+    "urgentPct": "Срочных платежей (цель <10%)",
+    "dupPrevented": "Дубликатов поймано",
+    "openHolds": "Платежей на блоке",
+    "exceptions": "Exceptions одобрено",
+    "budget": "Бюджет месяца по подразделениям"
+  },
+  "close": {
+    "title": "Закрытие месяца · {period}",
+    "progress": "Готовность",
+    "done": "Пунктов закрыто",
+    "pack": "Month-end pack (XLSX)",
+    "open": "Открыть",
+    "hint": "Пакет содержит: Summary, Budget vs actual, AP/AR aging, налоги, события, exceptions, cash 13 недель.",
+    "item": {
+      "bank": "Банковская сверка: нет несопоставленных транзакций",
+      "payments": "Все платежи дошли до PAID/RECONCILED (нет зависших в банке)",
+      "holds": "Нет платежей на блоке (ON_HOLD)",
+      "invoices": "Все СФ сопоставлены",
+      "ar": "Нет просроченной дебиторки",
+      "taxes": "Налоги периода сданы (FILED)",
+      "payroll": "Зарплатная ведомость проведена (POSTED)",
+      "events": "События месяца закрыты",
+      "documents": "Документное здоровье: красных зон нет"
+    }
+  },
+  "controls": {
+    "title": "KPI и контроли",
+    "trendTitle": "Тренд green-flow (дневные срезы)",
+    "trendHint": "Зелёный столбик — день c green-flow ≥ 90%",
+    "noTrend": "Тренд появится после первых дневных срезов (job kpi-snapshot).",
+    "kpi": {
+      "urgentPct30d": "Срочные платежи, % (цель <10)",
+      "greenFlowPct30d": "Green-flow, %",
+      "duplicatesPrevented30d": "Дубликатов поймано (30д)",
+      "openHolds": "Платежей на блоке",
+      "exceptionsApproved30d": "Exceptions одобрено (30д)",
+      "apOverduePct": "Просроченная AP, %",
+      "arOverduePct": "Просроченная AR, %",
+      "docIssues": "Проблем c документами",
+      "overdueTasks": "Просроченных задач",
+      "autoFrozenBatches30d": "Авто-freeze батчей (30д)"
+    }
+  },
+  "portfolio": {
+    "title": "Портфель компаний",
+    "intro": "Сводка по всем компаниям, где у вас есть роль. Переключение — селектором сверху.",
+    "company": "Компания",
+    "roles": "Роли",
+    "batchesToday": "Реестры сегодня",
+    "ready": "Готовы к оплате",
+    "blocked": "На блоке",
+    "overdueTasks": "Просрочено задач",
+    "unmatched": "Несопоставлено",
+    "empty": "Нет компаний",
+    "switchHint": "Показатели обновляются при каждом открытии страницы."
+  },
+  "audit": {
+    "title": "Журнал аудита",
+    "allTypes": "Все объекты",
+    "actionFilter": "Действие (payment_request.…)",
+    "objectIdFilter": "ID объекта",
+    "filter": "Фильтр",
+    "system": "система",
+    "empty": "Записей не найдено"
   }
 }

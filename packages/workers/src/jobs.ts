@@ -9,12 +9,15 @@ import {
   autoFreezeBatches,
   createExpiryTasksForTenant,
   escalateOverdueTasks,
+  generateTaxObligations,
   markOverdueAdvances,
   markOverdueCustomerInvoices,
+  markOverdueTaxObligations,
   prisma,
   progressEvents,
   runArReminders,
   snapshotForecast,
+  snapshotKpis,
   verifyAuditChain,
 } from '@finance-os/db';
 
@@ -81,6 +84,24 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       cron: '0 3 * * 1',
       run: async (tenantId, now) => {
         await snapshotForecast(tenantId, now);
+        return 1;
+      },
+    },
+    {
+      name: 'tax-generate',
+      cron: '0 5 1 * *',
+      run: (tenantId, now) => generateTaxObligations(tenantId, now),
+    },
+    {
+      name: 'tax-overdue',
+      cron: '0 6 * * *',
+      run: (tenantId, now) => markOverdueTaxObligations(tenantId, now),
+    },
+    {
+      name: 'kpi-snapshot',
+      cron: '30 2 * * *',
+      run: async (tenantId, now) => {
+        await snapshotKpis(tenantId, now);
         return 1;
       },
     },

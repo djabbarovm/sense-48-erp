@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+## [Phase F] 2026-09-14 — завершена: налоги, payroll, закрытие месяца, дашборды, KPI, аудит
+- F-01: TaxCalendarRule (MONTHLY/QUARTERLY/YEARLY, dueDay, ожидаемый коридор) → generateTaxObligations (идемпотентный джоб) → calculate [ACCOUNTANT] (вне коридора → Task) → approve [LEAD/OWNER] → платёж source=TAX_OBLIGATION (resolveSource дополнен) → PAID из банковской сверки → FILED [ACCOUNTANT]; просрочка → OVERDUE + эскалация Owner; экран /tax (дедлайны, действия по ролям, правила); 2 теста.
+- F-02: PayrollRun (только агрегаты, персональные данные не хранятся) + checkPayrollRun BR-047 (ФИО реестра × активный список, «мёртвые души»/уволенные вне периода → Task и блок CHECKED) → approve → платёж source=PAYROLL_RUN (net) → PAID из сверки → POSTED; экран /payroll c загрузкой реестра; тест BR-047.
+- F-03: getCloseChecklist (9 пунктов: сверка, зависшие платежи, ON_HOLD, СФ, AR, налоги FILED, payroll POSTED, события, документное здоровье) + month-end pack XLSX (Summary/Budget/AP/AR/Taxes/Events/Exceptions/Cash13w — buildMonthEndPackXlsx в adapters); экран /close c прогрессом и drill-down.
+- F-04: Owner Dashboard /dashboard — 9 виджетов docs/06 §1: cash (сейчас/обязательства 7д/минимум 13 недель/runway + спарклайн), сегодняшний реестр, AP (срок/просрочка/подотчёты), AR (просрочка/ожидания/топ-3 должника), налоги (3 дедлайна), события (5 c P&L и маржой), документы, контроли, бюджет по подразделениям (бары); всё кликабельно.
+- F-05: getPortfolio по membership пользователя (batches today / blocked / overdue tasks / unmatched / ready) + экран /portfolio для сервисной команды.
+- F-06: computeKpis — 10 KPI (ADR-010: urgent% цель <10 (D-13), green-flow%, дубликаты, ON_HOLD, exceptions, AP/AR overdue %, doc issues, overdue tasks, авто-freeze) + snapshotKpis-джоб (дневной срез) + экран /controls c трендом green-flow; джобы tax-generate/tax-overdue/kpi-snapshot добавлены в реестр воркеров (12 джобов).
+- F-07: listAuditLog c фильтрами (тип/объект/действие) + экран /audit: раскрывающиеся записи c построчным diff before/after (подсветка изменений) и фрагментом hash chain.
+
 ## [Phase E] 2026-09-14 — завершена: документы, POS, ЭДО-панель, обмен c 1С, миграция
 - E-02: статусы Didox-документов в таблице edo_mock_document (sync при импорте реестра), dev-панель setEdoMockStatus → BR-024 applyEdoStatus по связанной СФ (CORRECTED/CANCELLED + Task); тест.
 - E-03: PosCsvAdapter (daily_sales / inventory_snapshot / banquet_mapping по docs/07 §3) + идемпотентные импортёры в таблицы PosDailySales/PosInventorySnapshot/PosBanquetCost; затраты банкета из iiko видны в Event P&L (posFood/posBeverage); тест.

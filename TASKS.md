@@ -60,13 +60,13 @@
 - [x] E-06 Backdated/BR-025 бейдж, POA в upload, бейдж регистрации договора. **Phase E завершена.**
 
 ## Phase F — Compliance, close, dashboards
-- [ ] F-01 TaxCalendarRule + TaxObligation + Tax Calendar
-- [ ] F-02 PayrollRun + BR-047
-- [ ] F-03 Close Center + month-end pack
-- [ ] F-04 Owner Dashboard (9 виджетов)
-- [ ] F-05 Ops dashboard / Portfolio
-- [ ] F-06 KPI + Controls экран
-- [ ] F-07 Audit viewer с diff
+- [x] F-01 TaxCalendarRule + TaxObligation + Tax Calendar (+джобы generate/overdue, PAID из сверки)
+- [x] F-02 PayrollRun + BR-047 (реестр-сверка, платёж net, POSTED)
+- [x] F-03 Close Center (9-пунктовый чеклист) + month-end pack XLSX (8 листов)
+- [x] F-04 Owner Dashboard (9 виджетов c drill-down, спарклайн 13 недель, runway)
+- [x] F-05 Portfolio: сводка по компаниям пользователя (батчи/блоки/задачи/сверка)
+- [x] F-06 KPI (10 метрик, ADR-010) + KpiSnapshot-джоб + экран Controls c трендом
+- [x] F-07 Audit viewer: фильтры + построчный diff before/after + hash chain. **Phase F завершена.**
 
 ## Phase G — Hardening
 - [ ] G-01 Security review, secret scan CI, rate limiting, CSP

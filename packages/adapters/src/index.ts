@@ -7,3 +7,4 @@ export * from './telegram/index.js';
 export * from './migration/index.js';
 export * from './pos/index.js';
 export * from './onec/clientBankExchange.js';
+export * from './reports/monthEndPack.js';
