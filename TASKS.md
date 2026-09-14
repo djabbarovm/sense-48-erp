@@ -49,7 +49,7 @@
 - [x] D-05 Workers: реестр из 9 идемпотентных джобов + BullMQ Job Scheduler (runTenantJobs для dev без Redis)
 - [x] D-06 NotificationAdapter (Telegram HTTP + email fallback + mock/console, ADR-007), BR-072 secret-фильтр в core и сервисах
 - [x] D-07 Budget vs actual отчёт (committed = PR без платежей + pending-платежи; actual = PAID по paid_at)
-- [ ] D-08 Seed Phase D
+- [x] D-08 Seed Phase D (5 клиентов, 4 события c депозитами и budget lines, 5 CINV во всех статусах, cash plan). **Phase D завершена.**
 
 ## Phase E — Documents & adapters
 - [ ] E-01 Document Health экран

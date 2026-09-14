@@ -2,6 +2,7 @@ import { prisma } from '../src/client.js';
 import { seedPhaseA } from './phaseA.js';
 import { seedPhaseB } from './phaseB.js';
 import { seedPhaseC } from './phaseC.js';
+import { seedPhaseD } from './phaseD.js';
 
 async function main() {
   console.log('Seeding Finance OS…');
@@ -11,6 +12,8 @@ async function main() {
   await seedPhaseB(prisma);
   console.log('Phase C:');
   await seedPhaseC(prisma);
+  console.log('Phase D:');
+  await seedPhaseD(prisma);
   console.log('Done.');
 }
 

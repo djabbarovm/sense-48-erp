@@ -4,7 +4,8 @@
 
 ## [Unreleased]
 
-## [Phase D] 2026-09-14
+## [Phase D] 2026-09-14 — завершена: AP/AR, события c P&L, cash-прогноз, воркеры, уведомления
+- D-08: seed Phase D — 5 клиентов (лимиты, payment terms, AR-owner sales), 4 события Rooftop (CLOSED/SETTLING/CONFIRMED/QUOTED c депозитами и budget lines для fast lane), 5 счетов клиентам (PAID/PARTIALLY_PAID/ISSUED/OVERDUE c promise/DISPUTED), cash plan (кредит 15 млн ежемесячно, capex 40 млн октябрь по docs/10); идемпотентен, sequences сдвинуты.
 - D-05: packages/workers — реестр из 9 идемпотентных джобов (эскалация задач, advance/AR overdue, AR-reminders c уведомлением, contract expiry, event progress, авто-freeze batch в cutoff, forecast snapshot, ежедневная проверка audit hash chain c SECURITY_ALERT Owner'ам при разрыве), runTenantJobs для dev/тестов без Redis, BullMQ v6 Job Scheduler (upsert per tenant, `pnpm --filter @finance-os/workers start`); autoFreezeBatches в batch-сервисе; 2 теста.
 - D-06: NotificationAdapter (docs/07 §5–6) — тексты шаблонов без сумм и контрагентов, Mock/Console (dev), Telegram HTTP Bot API (токен из env, chat_id из User.telegramChatId), Email c инжектируемым SMTP-транспортом, Fallback Telegram→email; ADR-007 (grammY-бот c /start-линковкой — при внедрении); BR-072: assertNoSecrets в core (otp/код/пароль + 4–8 цифр → отказ) подключён к назначению платежа, exception-reason и задачам; 2 unit-теста.
 - D-07: v_budget_status доведён до payment-семантики — committed = PR (approved+, по created_at) БЕЗ живых платежей + pending-платежи периода; actual = PAID/RECONCILED/CLOSED платежи по paid_at; двойной счёт PR+платёж исключён; экран /budget и BR-014 checkBudget получают это автоматически; тест на actual и исключение двойного счёта.
