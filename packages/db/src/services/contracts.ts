@@ -237,17 +237,37 @@ export interface ContractBalance {
   requestedPendingMinor: bigint;
 }
 
+const PAY_PAID = ['PAID', 'RECONCILED', 'CLOSED'] as const;
+const PAY_PENDING = ['SUBMITTED', 'DOCS_CHECK', 'ON_HOLD', 'READY_FOR_BATCH', 'IN_BATCH', 'APPROVED', 'SENT_TO_BANK'] as const;
+
+/** v_contract_balance (docs/02 §9): платежи по договору напрямую и по его счетам. */
 async function getContractBalanceInternal(
   tx: Prisma.TransactionClient,
-  _tenantId: string,
+  tenantId: string,
   contractId: string,
 ): Promise<ContractBalance> {
   const contract = await tx.contract.findUniqueOrThrow({ where: { id: contractId } });
-  // Phase C-01 добавит: paid из PaymentRequest PAID, requested_pending из
-  // SUBMITTED…SENT_TO_BANK (BR-011), committed из approved PR + pending PAY.
-  const committed = 0n;
-  const paid = 0n;
-  const requestedPending = 0n;
+  const invoiceIds = (
+    await tx.invoice.findMany({ where: { contractId, status: { not: 'CANCELLED' } }, select: { id: true } })
+  ).map((i) => i.id);
+  const scope = {
+    tenantId,
+    OR: [
+      { sourceType: 'CONTRACT' as const, sourceId: contractId },
+      ...(invoiceIds.length ? [{ sourceType: 'INVOICE' as const, sourceId: { in: invoiceIds } }] : []),
+    ],
+  };
+  const [paidAgg, pendingAgg, committedPr] = await Promise.all([
+    tx.paymentRequest.aggregate({ where: { ...scope, status: { in: [...PAY_PAID] } }, _sum: { requestedMinor: true } }),
+    tx.paymentRequest.aggregate({ where: { ...scope, status: { in: [...PAY_PENDING] } }, _sum: { requestedMinor: true } }),
+    tx.purchaseRequest.aggregate({
+      where: { tenantId, contractId, status: { in: ['APPROVED', 'ORDERED', 'RECEIVED', 'INVOICED'] } },
+      _sum: { totalMinor: true },
+    }),
+  ]);
+  const paid = paidAgg._sum.requestedMinor ?? 0n;
+  const requestedPending = pendingAgg._sum.requestedMinor ?? 0n;
+  const committed = (committedPr._sum.totalMinor ?? 0n) + requestedPending;
   const limit = contract.limitMinor ?? 0n;
   return {
     committedMinor: committed,

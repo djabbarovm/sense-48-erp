@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [Phase C] 2026-09-14
+- C-01: payment-схема (PaymentRequest/PaymentBatch/BatchApproval/BankTransaction/ReconciliationMatch/Advance) + DB-триггер BR-054 (PAID только с bank_transaction_id); core paymentMachine + controlsSatisfied (BR-050); resolveSource c outstanding по BR-010/011 (paid+pending); run_controls: NO_SOURCE, INVOICE_DUPLICATE_SUSPECT, UNVERIFIED_BANK (BR-031), BANK_CHANGED_RECENTLY (BR-033), DUP_PAYMENT_SUSPECT (BR-003), OVER_OUTSTANDING, CONTRACT_LIMIT (BR-012), CONTRACT_EXPIRED (BR-026), 4-way match NO_PR/NO_CONTRACT/NO_RECEIPT/INVOICE_UNMATCHED (BR-020/021), MISSING_DOC:* (BR-023), UNBUDGETED, RELATED_PARTY/NEW_VENDOR (WARN), BACKDATED; submit → DOCS_CHECK → READY/ON_HOLD + Task c next_action; v_contract_balance и v_invoice_balance досчитаны из платежей; 10 тестов.
+- C-02: approvePaymentException (Owner/Lead, reason ≥5, re-run контролей, Task закрывается), resolvePaymentHold после загрузки документов.
+
 ## [Phase B] 2026-09-14
 - B-01: vendor-сервис (create PENDING+NEW, update, verify c SOD, block/unblock OWNER, BR-034 dup tax_id), bank accounts: change → новая UNVERIFIED + RETIRED старой + флаг BANK_CHANGED_RECENTLY + Task VERIFY_BANK (BR-030), dual verify c SOD (BR-032), AES-256-GCM шифрование счёта, reveal только по праву c audit (BR-074); экраны /vendors и Vendor 360; 10 интеграционных тестов + e2e полного цикла.
 - B-02: core StateMachine каркас + contractMachine (11 статусов, guards: E-ijara регистрация, renew только Owner, close при outstanding=0); contract-сервис (CRUD, transitions c audit, amendments c применением changes, getContractBalance, BR-026 expiry-task stub); экраны /contracts и Contract 360 c кнопками доступных переходов; 7 тестов.

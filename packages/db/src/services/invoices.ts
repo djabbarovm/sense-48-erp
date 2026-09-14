@@ -339,11 +339,26 @@ export interface InvoiceBalance {
   outstandingMinor: bigint;
 }
 
-/** v_invoice_balance: paid/pending достраиваются в Phase C из PaymentRequest. */
+/** v_invoice_balance (docs/02 §9): gross / paid / requested_pending / outstanding. */
 export async function getInvoiceBalance(ctx: TenantContext, invoiceId: string): Promise<InvoiceBalance> {
   const invoice = await findScopedOr404(prisma.invoice, ctx, invoiceId);
-  const paid = 0n;
-  const pending = 0n;
+  const [paidAgg, pendingAgg] = await Promise.all([
+    prisma.paymentRequest.aggregate({
+      where: { tenantId: ctx.tenantId, sourceType: 'INVOICE', sourceId: invoiceId, status: { in: ['PAID', 'RECONCILED', 'CLOSED'] } },
+      _sum: { requestedMinor: true },
+    }),
+    prisma.paymentRequest.aggregate({
+      where: {
+        tenantId: ctx.tenantId,
+        sourceType: 'INVOICE',
+        sourceId: invoiceId,
+        status: { in: ['SUBMITTED', 'DOCS_CHECK', 'ON_HOLD', 'READY_FOR_BATCH', 'IN_BATCH', 'APPROVED', 'SENT_TO_BANK'] },
+      },
+      _sum: { requestedMinor: true },
+    }),
+  ]);
+  const paid = paidAgg._sum.requestedMinor ?? 0n;
+  const pending = pendingAgg._sum.requestedMinor ?? 0n;
   return {
     grossMinor: invoice.amountGrossMinor,
     paidMinor: paid,

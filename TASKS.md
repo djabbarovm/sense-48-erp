@@ -30,9 +30,9 @@
 - [x] B-11 Seed Phase B: 30 vendors (флаги, RETIRED-счета, USD), 12 contracts, budgets 08-09 (перерасход RH-BAR), 14 PR всех статусов, 7 invoices + дубликат
 
 ## Phase C — Payments, batch, bank
-- [ ] C-01 PaymentRequest + `run_controls()` + state machine (BR-001/003/010/011/013/020/021/050)
-- [ ] C-02 Exceptions approve workflow
-- [ ] C-03 Payment Desk экран
+- [x] C-01 PaymentRequest + run_controls() (17 control codes) + state machine до READY/ON_HOLD + балансы contract/invoice достроены
+- [x] C-02 Exceptions: approve exception Owner/Lead c reason → re-run controls → READY; audit
+- [~] C-03 Payment Desk экран
 - [ ] C-04 PaymentBatch полный цикл + summary + cron freeze (BR-040/051/052/053/057)
 - [ ] C-05 My Approvals экран (mobile)
 - [ ] C-06 Bank import, auto-match, ReconciliationMatch, PAID только через match (BR-054/055/056)
