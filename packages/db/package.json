@@ -9,11 +9,22 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "build": "prisma generate && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "migrate:reset": "prisma migrate reset --force",
+    "seed": "tsx seed/index.ts",
+    "studio": "prisma studio"
   },
   "devDependencies": {
     "@types/node": "^22.18.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "prisma": "^6.16.0",
+    "tsx": "^4.20.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.0"
   }
 }

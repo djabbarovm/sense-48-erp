@@ -1,0 +1,470 @@
+// Finance OS — Prisma schema. Source of truth требований: docs/02-data-model.md.
+// Конвенции: id UUID v7; tenant-scoped таблицы несут tenant_id; деньги — BIGINT *_minor
+// (тийины/центы, D-09); физического DELETE финансовых объектов нет (только status).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── §1 Tenant & доступ ─────────────────────────────
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model Tenant {
+  id           String       @id @default(uuid(7)) @db.Uuid
+  slug         String       @unique
+  legalName    String       @map("legal_name")
+  taxId        String       @map("tax_id")
+  baseCurrency String       @default("UZS") @map("base_currency") @db.Char(3)
+  vatRateBp    Int          @default(1200) @map("vat_rate_bp")
+  timezone     String       @default("Asia/Tashkent")
+  status       TenantStatus @default(ACTIVE)
+  settings     Json         @default("{}")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  userRoles        UserTenantRole[]
+  vendors          Vendor[]
+  customers        Customer[]
+  contracts        Contract[]
+  costCenters      CostCenter[]
+  categories       Category[]
+  employees        Employee[]
+  bankAccounts     BankAccount[]
+  sequences        Sequence[]
+
+  @@map("tenant")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+// Глобальная таблица (без tenant_id)
+model User {
+  id             String     @id @default(uuid(7)) @db.Uuid
+  email          String     @unique
+  fullName       String     @map("full_name")
+  authProviderId String?    @map("auth_provider_id")
+  // bcrypt-хэш только для dev-логина (ADR-002); в prod — Supabase
+  passwordHash   String?    @map("password_hash")
+  mfaEnabled     Boolean    @default(false) @map("mfa_enabled")
+  status         UserStatus @default(ACTIVE)
+  telegramChatId String?    @map("telegram_chat_id")
+  lastLoginAt    DateTime?  @map("last_login_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  tenantRoles UserTenantRole[]
+
+  @@map("app_user")
+}
+
+enum RoleCode {
+  OWNER
+  FINANCE_OPS_LEAD
+  JUNIOR_FINANCE
+  DOCUMENT_CONTROLLER
+  ACCOUNTANT
+  REQUESTER
+  ADMIN
+}
+
+model UserTenantRole {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  role      RoleCode
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId, role])
+  @@index([tenantId])
+  @@map("user_tenant_role")
+}
+
+// Справочник прав (глобальный)
+model Permission {
+  id          String @id @default(uuid(7)) @db.Uuid
+  code        String @unique // pr.create, payment.approve.tier2 …
+  description String @default("")
+
+  rolePermissions RolePermission[]
+
+  @@map("permission")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  role         RoleCode
+  permissionId String   @map("permission_id") @db.Uuid
+
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([role, permissionId])
+  @@map("role_permission")
+}
+
+// ───────────────────────────── §2 Master Data ─────────────────────────────
+
+enum VendorStatus {
+  ACTIVE
+  BLOCKED
+  PENDING_VERIFICATION
+}
+
+model Vendor {
+  id                      String       @id @default(uuid(7)) @db.Uuid
+  tenantId                String       @map("tenant_id") @db.Uuid
+  taxId                   String       @map("tax_id")
+  legalName               String       @map("legal_name")
+  displayName             String       @map("display_name")
+  categoryDefaultId       String?      @map("category_default_id") @db.Uuid
+  vatPayer                Boolean      @default(false) @map("vat_payer")
+  status                  VendorStatus @default(PENDING_VERIFICATION)
+  riskFlags               String[]     @default([]) @map("risk_flags") // RELATED_PARTY, NEW, BANK_CHANGED_RECENTLY, CROSS_BORDER
+  businessOwnerId         String?      @map("business_owner_id") @db.Uuid
+  contactName             String?      @map("contact_name")
+  contactPhone            String?      @map("contact_phone")
+  contactEmail            String?      @map("contact_email")
+  verifiedCallbackChannel String?      @map("verified_callback_channel")
+  requiresContract        Boolean      @default(false) @map("requires_contract")
+  notes                   String?
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @updatedAt @map("updated_at")
+  createdBy               String?      @map("created_by") @db.Uuid
+  updatedBy               String?      @map("updated_by") @db.Uuid
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id])
+  categoryDefault Category?           @relation(fields: [categoryDefaultId], references: [id])
+  bankAccounts    VendorBankAccount[]
+  contracts       Contract[]
+
+  // Partial unique (только активные) — в migration SQL: vendor_tax_id_active_unique
+  @@index([tenantId, taxId])
+  @@index([tenantId, status])
+  @@map("vendor")
+}
+
+enum VendorBankAccountStatus {
+  UNVERIFIED
+  VERIFIED
+  RETIRED
+}
+
+enum VerificationMethod {
+  CALLBACK
+  DOCUMENT
+  DUAL_APPROVAL
+}
+
+model VendorBankAccount {
+  id                 String                  @id @default(uuid(7)) @db.Uuid
+  tenantId           String                  @map("tenant_id") @db.Uuid
+  vendorId           String                  @map("vendor_id") @db.Uuid
+  bankName           String                  @map("bank_name")
+  mfo                String
+  accountMasked      String                  @map("account_masked") // последние 4
+  accountEncrypted   String                  @map("account_encrypted") // AES-256-GCM, ключ BANK_DATA_KEY
+  currency           String                  @default("UZS") @db.Char(3)
+  status             VendorBankAccountStatus @default(UNVERIFIED)
+  verifiedAt         DateTime?               @map("verified_at")
+  verifiedBy         String?                 @map("verified_by") @db.Uuid
+  verifyStep1By      String?                 @map("verify_step1_by") @db.Uuid
+  verifyStep1At      DateTime?               @map("verify_step1_at")
+  verificationMethod VerificationMethod?     @map("verification_method")
+  isDefault          Boolean                 @default(false) @map("is_default")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  createdBy          String?                 @map("created_by") @db.Uuid
+  updatedBy          String?                 @map("updated_by") @db.Uuid
+
+  vendor Vendor @relation(fields: [vendorId], references: [id])
+
+  // Partial unique: одна VERIFIED+is_default на (vendor, currency) — в migration SQL
+  @@index([tenantId])
+  @@index([vendorId, status])
+  @@map("vendor_bank_account")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  BLOCKED
+}
+
+model Customer {
+  id               String         @id @default(uuid(7)) @db.Uuid
+  tenantId         String         @map("tenant_id") @db.Uuid
+  taxId            String?        @map("tax_id")
+  legalName        String         @map("legal_name")
+  creditLimitMinor BigInt?        @map("credit_limit_minor")
+  paymentTermsDays Int            @default(0) @map("payment_terms_days")
+  arOwnerId        String?        @map("ar_owner_id") @db.Uuid
+  status           CustomerStatus @default(ACTIVE)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  createdBy        String?        @map("created_by") @db.Uuid
+  updatedBy        String?        @map("updated_by") @db.Uuid
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  contracts Contract[]
+
+  @@index([tenantId])
+  @@map("customer")
+}
+
+enum CounterpartyType {
+  VENDOR
+  CUSTOMER
+}
+
+enum ContractStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SIGNED
+  REGISTERED
+  ACTIVE
+  AMENDING
+  EXPIRING
+  EXPIRED
+  TERMINATING
+  CLOSED
+}
+
+model Contract {
+  id                   String           @id @default(uuid(7)) @db.Uuid
+  tenantId             String           @map("tenant_id") @db.Uuid
+  number               String
+  counterpartyType     CounterpartyType @map("counterparty_type")
+  vendorId             String?          @map("vendor_id") @db.Uuid
+  customerId           String?          @map("customer_id") @db.Uuid
+  subject              String
+  currency             String           @default("UZS") @db.Char(3)
+  fxRate               Decimal?         @map("fx_rate") @db.Decimal(18, 6)
+  limitMinor           BigInt?          @map("limit_minor")
+  startDate            DateTime         @map("start_date") @db.Date
+  endDate              DateTime?        @map("end_date") @db.Date
+  autoRenew            Boolean          @default(false) @map("auto_renew")
+  paymentTerms         Json             @default("{}") @map("payment_terms") // {type: PREPAY_PCT|POSTPAY_DAYS|SCHEDULE, value}
+  requiredDocs         String[]         @default([]) @map("required_docs")
+  registrationRequired Boolean          @default(false) @map("registration_required")
+  registeredAt         DateTime?        @map("registered_at") @db.Date
+  ownerId              String?          @map("owner_id") @db.Uuid
+  status               ContractStatus   @default(DRAFT)
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  createdBy            String?          @map("created_by") @db.Uuid
+  updatedBy            String?          @map("updated_by") @db.Uuid
+
+  tenant     Tenant              @relation(fields: [tenantId], references: [id])
+  vendor     Vendor?             @relation(fields: [vendorId], references: [id])
+  customer   Customer?           @relation(fields: [customerId], references: [id])
+  amendments ContractAmendment[]
+
+  // CHECK: ровно одно из vendor_id/customer_id — в migration SQL
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@index([vendorId])
+  @@map("contract")
+}
+
+enum AmendmentStatus {
+  DRAFT
+  SIGNED
+}
+
+model ContractAmendment {
+  id         String          @id @default(uuid(7)) @db.Uuid
+  tenantId   String          @map("tenant_id") @db.Uuid
+  contractId String          @map("contract_id") @db.Uuid
+  number     String
+  date       DateTime        @db.Date
+  changes    Json            @default("{}")
+  documentId String?         @map("document_id") @db.Uuid
+  status     AmendmentStatus @default(DRAFT)
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+  createdBy  String?         @map("created_by") @db.Uuid
+  updatedBy  String?         @map("updated_by") @db.Uuid
+
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@index([tenantId])
+  @@map("contract_amendment")
+}
+
+model CostCenter {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String
+  name      String
+  parentId  String?  @map("parent_id") @db.Uuid
+  isActive  Boolean  @default(true) @map("is_active")
+  // владелец cost center — может утверждать PR как business owner (docs/05)
+  ownerId   String?  @map("owner_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdBy String?  @map("created_by") @db.Uuid
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  tenant   Tenant       @relation(fields: [tenantId], references: [id])
+  parent   CostCenter?  @relation("CostCenterParent", fields: [parentId], references: [id])
+  children CostCenter[] @relation("CostCenterParent")
+
+  @@unique([tenantId, code])
+  @@map("cost_center")
+}
+
+enum CategoryGroup {
+  FNB
+  SPA
+  CLEANING
+  MARKETING
+  PAYROLL
+  UTILITIES
+  RENT
+  CAPEX
+  TAX
+  ADMIN
+  OTHER
+}
+
+model Category {
+  id                String        @id @default(uuid(7)) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  code              String
+  name              String
+  group             CategoryGroup
+  budgetRequired    Boolean       @default(false) @map("budget_required")
+  closingDocSlaDays Int           @default(10) @map("closing_doc_sla_days")
+  accountCode       String?       @map("account_code") // для 1С экспорта
+  isActive          Boolean       @default(true) @map("is_active")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  createdBy         String?       @map("created_by") @db.Uuid
+  updatedBy         String?       @map("updated_by") @db.Uuid
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id])
+  vendors Vendor[]
+
+  @@unique([tenantId, code])
+  @@map("category")
+}
+
+enum EmploymentType {
+  STAFF
+  GPH
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  TERMINATED
+}
+
+enum DocFlagStatus {
+  OK
+  MISSING
+  EXPIRED
+}
+
+// Персональные данные (паспорт, карта, адрес) — только в 1С/HR, здесь их нет.
+model Employee {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  fullName       String         @map("full_name")
+  roleTitle      String         @map("role_title")
+  costCenterId   String?        @map("cost_center_id") @db.Uuid
+  employmentType EmploymentType @default(STAFF) @map("employment_type")
+  status         EmployeeStatus @default(ACTIVE)
+  terminatedAt   DateTime?      @map("terminated_at") @db.Date
+  bankCardStatus DocFlagStatus  @default(OK) @map("bank_card_status")
+  passportStatus DocFlagStatus  @default(OK) @map("passport_status")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  createdBy      String?        @map("created_by") @db.Uuid
+  updatedBy      String?        @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+  @@map("employee")
+}
+
+// Свои счета
+model BankAccount {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  bankName           String    @map("bank_name")
+  mfo                String
+  accountMasked      String    @map("account_masked")
+  accountEncrypted   String    @map("account_encrypted")
+  currency           String    @default("UZS") @db.Char(3)
+  isActive           Boolean   @default(true) @map("is_active")
+  openingBalanceMinor BigInt   @default(0) @map("opening_balance_minor")
+  openingBalanceDate DateTime? @map("opening_balance_date") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  createdBy          String?   @map("created_by") @db.Uuid
+  updatedBy          String?   @map("updated_by") @db.Uuid
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("bank_account")
+}
+
+enum FxSource {
+  CBU
+  MANUAL
+}
+
+// Глобальная
+model FxRate {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  date      DateTime @db.Date
+  currency  String   @db.Char(3)
+  rateToUzs Decimal  @map("rate_to_uzs") @db.Decimal(18, 6)
+  source    FxSource @default(MANUAL)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date, currency])
+  @@map("fx_rate")
+}
+
+// Глобальная
+model Holiday {
+  id      String   @id @default(uuid(7)) @db.Uuid
+  date    DateTime @db.Date
+  name    String
+  country String   @default("UZ") @db.Char(2)
+
+  @@unique([date, country])
+  @@map("holiday")
+}
+
+// Человекочитаемые номера per tenant (D-24): PR-2026-000123 …
+model Sequence {
+  id        String @id @default(uuid(7)) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  key       String // PR / PAY / INV / EVT / BATCH …
+  year      Int
+  nextValue Int    @default(1) @map("next_value")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key, year])
+  @@map("sequence")
+}
