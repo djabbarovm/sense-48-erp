@@ -42,7 +42,7 @@
 - [x] C-10 Demo script `scripts/demo-p2p.md` — сквозной прогон PR → RECONCILED на seed. **Phase C завершена.**
 
 ## Phase D — AP/AR, events, forecast, jobs
-- [ ] D-01 `v_ap_aging`, AP экран, vendor statement reconciliation
+- [x] D-01 `v_ap_aging`, AP экран, vendor statement reconciliation
 - [ ] D-02 CustomerInvoice + AR aging + reminders job (BR-060)
 - [ ] D-03 Event + fast lane + `v_event_pl` + Event P&L экран (BR-061/062)
 - [ ] D-04 13-week cash forecast
