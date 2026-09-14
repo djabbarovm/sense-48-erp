@@ -13,8 +13,8 @@
 - [x] A-08 Money utils: bigint minor, formatMoney UZS, FX convert, splitGrossVat, parseDecimalToMinor; запрет float
 - [x] A-09 i18n: next-intl, ru.json полный, uz/en fallback на ru, ESLint-правило против hardcoded строк в JSX
 - [x] A-10 UI shell: Tailwind 4, базовые компоненты (Button/Input/Select/Table/Card/Badge), sidebar-навигация по правам, tenant switcher, Playwright smoke
-- [~] A-11 Seed Phase A (tenants, users, roles, cost centers, categories, holidays 2026)
-- [ ] A-12 Admin экран для tenant settings, users, roles, cc/categories
+- [x] A-11 Seed Phase A: 3 tenant, 11 users+roles, cost centers, 18 категорий, праздники 2026, permissions; идемпотентен
+- [~] A-12 Admin экран для tenant settings, users, roles, cc/categories
 
 ## Phase B — Master data & P2P core
 - [ ] B-01 Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034)

@@ -18,5 +18,11 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      DATABASE_URL:
+        process.env.DATABASE_URL ?? 'postgresql://finance:finance@localhost:5432/finance_os',
+      AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET ?? 'dev-only-secret',
+    },
   },
 });
