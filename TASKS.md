@@ -45,7 +45,7 @@
 - [x] D-01 `v_ap_aging`, AP экран, vendor statement reconciliation
 - [x] D-02 CustomerInvoice + AR aging + reminders job (BR-060)
 - [x] D-03 Event + fast lane + `v_event_pl` + Event P&L экран (BR-061/062)
-- [ ] D-04 13-week cash forecast
+- [x] D-04 13-week cash forecast
 - [ ] D-05 Workers: все repeatable jobs
 - [ ] D-06 Telegram bot + NotificationAdapter + email fallback (BR-072)
 - [ ] D-07 Budget vs actual отчёт

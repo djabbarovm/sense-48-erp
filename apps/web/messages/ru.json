@@ -44,7 +44,8 @@
     "audit": "Аудит",
     "tenantSwitcher": "Компания",
     "ap": "Кредиторка (AP)",
-    "ar": "Дебиторка (AR)"
+    "ar": "Дебиторка (AR)",
+    "forecast": "Cash-прогноз"
   },
   "home": {
     "title": "Finance OS",
@@ -572,6 +573,37 @@
       "SETTLING": "Расчёты",
       "CLOSED": "Закрыто",
       "CANCELLED": "Отменено"
+    }
+  },
+  "forecast": {
+    "title": "13-недельный cash-прогноз",
+    "opening": "Остаток сейчас",
+    "minClosing": "Минимум за 13 недель",
+    "cashGapHint": "Кассовый разрыв: спланируйте поступления или сдвиньте платежи",
+    "horizonClosing": "Остаток через 13 недель",
+    "week": "Неделя",
+    "weekN": "W{n}",
+    "inAr": "Поступления AR",
+    "inPlan": "Приход (план)",
+    "outPayments": "Платежи",
+    "outPr": "Заявки без счёта",
+    "outPlan": "Кредит/capex",
+    "net": "Нетто",
+    "closing": "Остаток",
+    "planTitle": "Плановые строки (кредит, capex, налоги)",
+    "lineName": "Название",
+    "outflow": "Отток",
+    "inflow": "Приход",
+    "amountSoum": "Сумма, UZS",
+    "monthly": "Ежемесячно",
+    "from": "c",
+    "addLine": "Добавить",
+    "type": {
+      "LOAN_REPAYMENT": "Кредит",
+      "CAPEX": "Capex",
+      "TAX": "Налог",
+      "PAYROLL": "ФОТ",
+      "OTHER": "Прочее"
     }
   }
 }

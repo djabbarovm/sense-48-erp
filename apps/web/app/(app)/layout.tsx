@@ -18,6 +18,7 @@ import {
   Settings,
   ShoppingCart,
   Store,
+  TrendingUp,
   Wallet,
 } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
@@ -48,6 +49,7 @@ const NAV: NavItem[] = [
   { key: 'ap', href: '/ap', icon: <Hourglass className={ICON} />, permission: 'payment.view' },
   { key: 'ar', href: '/ar', icon: <HandCoins className={ICON} />, permission: 'payment.view' },
   { key: 'events', href: '/events', icon: <PartyPopper className={ICON} />, permission: 'payment.view' },
+  { key: 'forecast', href: '/forecast', icon: <TrendingUp className={ICON} />, permission: 'payment.view' },
   { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, permission: 'budget.manage' },
   { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} /> },
   { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, permission: 'tenant.settings' },
