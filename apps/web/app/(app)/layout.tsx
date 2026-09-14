@@ -7,6 +7,7 @@ import {
   CheckSquare,
   FileCheck,
   FileText,
+  FileWarning,
   HandCoins,
   Hourglass,
   Landmark,
@@ -51,6 +52,7 @@ const NAV: NavItem[] = [
   { key: 'events', href: '/events', icon: <PartyPopper className={ICON} />, permission: 'payment.view' },
   { key: 'forecast', href: '/forecast', icon: <TrendingUp className={ICON} />, permission: 'payment.view' },
   { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, permission: 'budget.manage' },
+  { key: 'documents', href: '/documents/health', icon: <FileWarning className={ICON} />, permission: 'payment.view' },
   { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} /> },
   { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, permission: 'tenant.settings' },
 ];

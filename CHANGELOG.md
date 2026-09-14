@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+## [Phase E] 2026-09-14
+- E-01: getDocumentHealth — 9 красных зон blueprint §10.3 (оплачено без СФ / без акта дольше SLA категории, истёкшие договоры, несопоставленные СФ, приёмка без доверенности, неподписанные ДС, просроченные подотчёты, незакрытые расторжения, смена реквизитов vendor), каждая запись c owner и открытой задачей; экран /documents/health (счётчики, document score, drill-down ссылки на объекты); 2 теста (+tenant isolation).
+
 ## [Phase D] 2026-09-14 — завершена: AP/AR, события c P&L, cash-прогноз, воркеры, уведомления
 - D-08: seed Phase D — 5 клиентов (лимиты, payment terms, AR-owner sales), 4 события Rooftop (CLOSED/SETTLING/CONFIRMED/QUOTED c депозитами и budget lines для fast lane), 5 счетов клиентам (PAID/PARTIALLY_PAID/ISSUED/OVERDUE c promise/DISPUTED), cash plan (кредит 15 млн ежемесячно, capex 40 млн октябрь по docs/10); идемпотентен, sequences сдвинуты.
 - D-05: packages/workers — реестр из 9 идемпотентных джобов (эскалация задач, advance/AR overdue, AR-reminders c уведомлением, contract expiry, event progress, авто-freeze batch в cutoff, forecast snapshot, ежедневная проверка audit hash chain c SECURITY_ALERT Owner'ам при разрыве), runTenantJobs для dev/тестов без Redis, BullMQ v6 Job Scheduler (upsert per tenant, `pnpm --filter @finance-os/workers start`); autoFreezeBatches в batch-сервисе; 2 теста.

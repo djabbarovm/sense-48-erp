@@ -605,5 +605,27 @@
       "PAYROLL": "ФОТ",
       "OTHER": "Прочее"
     }
+  },
+  "health": {
+    "title": "Здоровье документов",
+    "total": "Всего проблем",
+    "critical": "Критичных",
+    "score": "Document score",
+    "scoreHint": "100% = все закрывающие документы на месте",
+    "hasTask": "Есть задача",
+    "clean": "Чисто",
+    "allClean": "Все документы в порядке — красных зон нет",
+    "more": "…и ещё {count}",
+    "zone": {
+      "PAID_WITHOUT_SF": "Оплачено без СФ",
+      "PAID_WITHOUT_ACT_SLA": "Оплачено, акта нет дольше SLA",
+      "EXPIRED_CONTRACTS": "Истёкшие договоры",
+      "UNMATCHED_INVOICES": "Несопоставленные счета",
+      "MISSING_POA": "Приёмка без доверенности",
+      "UNSIGNED_AMENDMENTS": "Неподписанные допсоглашения",
+      "ADVANCES_OVERDUE": "Просроченные подотчёты/предоплаты",
+      "TERMINATION_NOT_CLOSED": "Незакрытые расторжения",
+      "VENDOR_BANK_CHANGED": "Смена реквизитов поставщика"
+    }
   }
 }

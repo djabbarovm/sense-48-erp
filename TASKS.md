@@ -52,7 +52,7 @@
 - [x] D-08 Seed Phase D (5 клиентов, 4 события c депозитами и budget lines, 5 CINV во всех статусах, cash plan). **Phase D завершена.**
 
 ## Phase E — Documents & adapters
-- [ ] E-01 Document Health экран
+- [x] E-01 Document Health экран (9 красных зон, owner+task, document score)
 - [ ] E-02 EdoAdapter mock полностью (BR-024 e2e)
 - [ ] E-03 PosAdapter: три импортёра
 - [ ] E-04 AccountingAdapter: export/import 1С

@@ -24,3 +24,4 @@ export * from './services/aging.js';
 export * from './services/arInvoices.js';
 export * from './services/events.js';
 export * from './services/forecast.js';
+export * from './services/documentHealth.js';
