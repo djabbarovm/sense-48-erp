@@ -18,8 +18,8 @@
 
 ## Phase B — Master data & P2P core
 - [x] B-01 Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034), reveal c audit (BR-074) Vendor CRUD + Vendor 360, bank accounts state machine, dual verify (BR-030–034)
-- [~] B-02 Contract CRUD + state machine + Contract 360 + `v_contract_balance` (BR-012, BR-026)
-- [ ] B-03 Customer CRUD (минимум)
+- [x] B-02 Contract CRUD + state machine + Contract 360 + баланс (интерфейс v_contract_balance; paid/pending достраивается в C-01) + BR-026 Task-заглушка
+- [~] B-03 Customer CRUD (минимум)
 - [ ] B-04 Budget + `v_budget_status` + Budget экран (BR-014)
 - [ ] B-05 ApprovalPolicy + policy engine (BR-041, D-12, BR-035/036/033)
 - [ ] B-06 PurchaseRequest: форма, state machine, approvals, budget check, urgency (BR-042/043/044/045)

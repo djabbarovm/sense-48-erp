@@ -109,5 +109,54 @@
       "VERIFIED": "Проверен",
       "RETIRED": "Выведен"
     }
+  },
+  "contracts": {
+    "title": "Договоры",
+    "new": "Новый договор",
+    "number": "Номер",
+    "counterparty": "Контрагент",
+    "subject": "Предмет",
+    "limit": "Лимит",
+    "committed": "Committed",
+    "paid": "Оплачено",
+    "outstanding": "Остаток",
+    "requestedPending": "В заявках",
+    "period": "Срок",
+    "statusLabel": "Статус",
+    "registrationRequired": "Требует регистрации (E-ijara)",
+    "amendments": "Доп. соглашения",
+    "amendmentNumber": "Номер ДС",
+    "newAmendment": "Новое ДС",
+    "sign": "Подписать",
+    "create": "Создать",
+    "vendorLabel": "Поставщик",
+    "startDate": "Начало",
+    "endDate": "Окончание",
+    "terms": "Условия оплаты",
+    "trigger": {
+      "submit_review": "На проверку",
+      "approve": "Утвердить",
+      "sign": "Подписан",
+      "register": "Зарегистрирован",
+      "activate": "Активировать",
+      "start_amend": "Изменить (ДС)",
+      "amendment_signed": "ДС подписано",
+      "renew": "Продлить",
+      "terminate": "Расторгнуть",
+      "close": "Закрыть"
+    },
+    "status": {
+      "DRAFT": "Черновик",
+      "IN_REVIEW": "На проверке",
+      "APPROVED": "Утверждён",
+      "SIGNED": "Подписан",
+      "REGISTERED": "Зарегистрирован",
+      "ACTIVE": "Действует",
+      "AMENDING": "Изменяется",
+      "EXPIRING": "Истекает",
+      "EXPIRED": "Истёк",
+      "TERMINATING": "Расторгается",
+      "CLOSED": "Закрыт"
+    }
   }
 }
