@@ -1,0 +1,21 @@
+# H-10: read-only проверка подключения к Altegio API (запуск вручную).
+# Только GET-запросы; в логах — счётчики и статусы, без персональных данных.
+name: Altegio Smoke
+on:
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Смоук-тест (только чтение)
+        env:
+          ALTEGIO_PARTNER_TOKEN: ${{ secrets.ALTEGIO_PARTNER_TOKEN }}
+          ALTEGIO_USER_TOKEN: ${{ secrets.ALTEGIO_USER_TOKEN }}
+          ALTEGIO_COMPANY_ID: '1359437'
+        run: node scripts/altegio-smoke.mjs
