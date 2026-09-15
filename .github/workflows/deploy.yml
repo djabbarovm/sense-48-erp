@@ -1,0 +1,113 @@
+# H-06: деплой на VPS по кнопке (Actions → Deploy → Run workflow).
+# Секреты репозитория: DEPLOY_HOST (IP), DEPLOY_PASSWORD (root-пароль SSH),
+# DEPLOY_DATA_KEY (пароль расшифровки книги KSP), опц. TELEGRAM_BOT_TOKEN.
+name: Deploy
+on:
+  workflow_dispatch: {}
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Расшифровать книгу KSP (если есть)
+        env:
+          DATA_KEY: ${{ secrets.DEPLOY_DATA_KEY }}
+        run: |
+          if [ -n "$DATA_KEY" ] && [ -f data/ksp-book.xlsx.enc ]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 -in data/ksp-book.xlsx.enc -out data/ksp.xlsx -pass env:DATA_KEY
+            echo "книга расшифрована: $(stat -c%s data/ksp.xlsx) байт"
+          else
+            echo "книга или ключ отсутствуют — деплой без импорта данных"
+          fi
+
+      - name: Установить sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass rsync
+
+      - name: Подготовить сервер (docker)
+        env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" '
+            set -e
+            command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
+            docker compose version >/dev/null
+            mkdir -p /opt/finance-os/backups /opt/finance-os/data
+          '
+
+      - name: Залить код
+        env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          sshpass -e rsync -az --delete \
+            --exclude .git --exclude node_modules --exclude backups \
+            --exclude .env.prod --exclude data/ksp-book.xlsx.enc \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ root@"$HOST":/opt/finance-os/
+
+      - name: Секреты сервера (.env.prod — создаётся один раз)
+        env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" "
+            set -e
+            cd /opt/finance-os
+            if [ ! -f .env.prod ]; then
+              {
+                echo POSTGRES_USER=finance
+                echo POSTGRES_PASSWORD=\$(openssl rand -hex 24)
+                echo AUTH_JWT_SECRET=\$(openssl rand -hex 32)
+                echo BANK_DATA_KEY=\$(openssl rand -base64 32)
+                echo MINIO_ROOT_USER=finance
+                echo MINIO_ROOT_PASSWORD=\$(openssl rand -hex 24)
+                echo TELEGRAM_BOT_TOKEN=${TG}
+              } > .env.prod
+              chmod 600 .env.prod
+              echo '.env.prod создан'
+            else
+              echo '.env.prod уже существует — не трогаю'
+            fi
+          "
+
+      - name: Собрать и запустить
+        env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" '
+            set -e
+            cd /opt/finance-os
+            docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --build
+            for i in $(seq 1 60); do
+              curl -fsS -o /dev/null http://127.0.0.1:80/login && break
+              sleep 5
+            done
+            curl -fsS -o /dev/null http://127.0.0.1:80/login && echo "web поднялся" || (docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml logs --tail 50 web; exit 1)
+          '
+
+      - name: Bootstrap (права, тенант, команда, книга KSP)
+        env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" '
+            set -e
+            cd /opt/finance-os
+            docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml \
+              run --rm --no-deps -v /opt/finance-os/data:/app/data web \
+              pnpm exec tsx scripts/bootstrap-prod.ts
+            rm -f data/ksp.xlsx
+          '
+
+      - name: Готово
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: echo "Finance OS доступна на http://$HOST/"

@@ -85,5 +85,7 @@
 
 - [~] H-05 Реальные учётки по ADR-012 созданы в `rooftop-real` c placeholder-email (@palym.test, врем. пароль): Мурад OWNER+ADMIN, Лайло OWNER, Арай OWNER, Дильфуза LEAD+ACCT, Зухра JUNIOR+ACCT, Нарина REQUESTER. Осталось: настоящие email, решение по KSP (VIEWER-роль или не заводить), владельческий P&L в разрезах книги KSP
 
+- [~] H-06 Деплой на VPS: workflow `.github/workflows/deploy.yml` (workflow_dispatch, sshpass), `scripts/bootstrap-prod.ts` (права+тенант+команда+книга KSP, без демо), оверлей `docker-compose.deploy.yml` (:80 без домена), книга KSP в репо шифрованной (`data/ksp-book.xlsx.enc`, AES-256, ключ у владельца). Осталось: владелец арендует VPS и добавляет секреты DEPLOY_HOST/DEPLOY_PASSWORD/DEPLOY_DATA_KEY → запуск workflow
+
 ## Блокеры
 (пусто)
