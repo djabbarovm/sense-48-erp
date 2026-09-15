@@ -26,7 +26,8 @@ services:
       - redisdata:/data
 
   minio:
-    image: minio/minio:latest
+    # Docker Hub-образ minio недоступен для pull — официальный реестр quay.io
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ':9001'
     environment:
