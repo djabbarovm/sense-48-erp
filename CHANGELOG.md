@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+## [Phase H] 2026-09-15 — реальные данные PALYM
+- H-01: импорт управленческой книги KSP (ADR-011): парсер `adapters/ksp` + сервис `importKspBook` (идемпотентный, audit) + CLI `scripts/import-ksp.ts` + модель `CounterpartyMatchRule` (миграция `ksp_match_rules`). Загружен тенант `rooftop-real` («Rooftop Hall (PALYM)», доступы скопированы с демо): 93 поставщика (ИНН-заглушки KSP-nnnn, PENDING_VERIFICATION до данных 1С), 31 клиент, 78 статей расходов (KSP-коды, группы эвристикой), открытая AP — 59 сальдо на 408 681 302 сум (срез 31.08.2026), открытая AR — 15 сальдо на 2 701 065 023 сум, 173 правила маппинга выписки, касса «КАССА» — 1673 операции (остаток 127 573 685 сум; до 01.09 IGNORED). Переплаты поставщикам (10) и авансы клиентов (16) — в отчёте импорта на ручной разбор (H-04). Тесты: ksp-import.test.ts (парсер/знаки/идемпотентность/403/BR-070).
+
 ## [Phase G] 2026-09-14 — завершена: hardening. ВСЕ ФАЗЫ A–G ЗАКРЫТЫ
 - G-01: GitHub Actions CI (postgres-сервис, migrate deploy, lint, typecheck, 280 тестов; отдельный job: gitleaks + scripts/secret-scan.sh — приватные ключи/номера карт/.env); rate limiting в core (fixed window) на логин (10/5 мин на IP+email) и банковский импорт (30/час); CSP + X-Frame-Options DENY + nosniff + Referrer-Policy + Permissions-Policy в next.config.
 - G-02: cross-tenant-fuzz.test — 15 object-адресуемых сервисов под чужим tenant + 25 случайных UUID → строго NotFound, агрегаты (aging, document health) пустые; санити victim-контекста.

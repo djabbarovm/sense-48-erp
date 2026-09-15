@@ -1455,3 +1455,22 @@ model KpiSnapshot {
   @@unique([tenantId, date])
   @@map("kpi_snapshot")
 }
+
+// H-01 (ADR-011): правило распознавания контрагента по строке банковской выписки/кассы.
+// Импортируется из книги KSP («Маппинг») и пополняется при ручном разборе.
+model CounterpartyMatchRule {
+  id               String   @id @default(uuid(7)) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  pattern          String // «Наименование из выписки»
+  purposePattern   String?  @map("purpose_pattern")
+  counterpartyName String   @map("counterparty_name")
+  operationType    String?  @map("operation_type")
+  expenseArticle   String?  @map("expense_article")
+  vendorId         String?  @map("vendor_id") @db.Uuid
+  source           String   @default("ksp")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, pattern])
+  @@index([tenantId])
+  @@map("counterparty_match_rule")
+}
