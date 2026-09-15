@@ -93,10 +93,10 @@ jobs:
             cd /opt/finance-os
             docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --build
             for i in $(seq 1 60); do
-              curl -fsS -o /dev/null http://127.0.0.1:80/login && break
+              curl -fsS -o /dev/null http://127.0.0.1:3000/login && break
               sleep 5
             done
-            curl -fsS -o /dev/null http://127.0.0.1:80/login && echo "web поднялся" || (docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml logs --tail 50 web; exit 1)
+            curl -fsS -o /dev/null http://127.0.0.1:3000/login && echo "web поднялся" || (docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml logs --tail 50 web; exit 1)
           '
 
       - name: Bootstrap (права, тенант, команда, книга KSP)
@@ -112,6 +112,24 @@ jobs:
               pnpm --filter @finance-os/db exec tsx /app/scripts/bootstrap-prod.ts
             rm -f data/ksp.xlsx
           '
+
+      - name: Ротация паролей приложения (если задан секрет)
+        env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          APP_TEMP_PASSWORD: ${{ secrets.APP_TEMP_PASSWORD }}
+        run: |
+          if [ -z "$APP_TEMP_PASSWORD" ]; then echo "APP_TEMP_PASSWORD не задан — шаг пропущен"; exit 0; fi
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" "
+            set -e
+            cd /opt/finance-os
+            # смена JWT-секрета: все выданные ранее cookie-сессии мгновенно недействительны
+            sed -i \"s/^AUTH_JWT_SECRET=.*/AUTH_JWT_SECRET=\$(openssl rand -hex 32)/\" .env.prod
+            docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d web
+            docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml \
+              run --rm --no-deps -e APP_TEMP_PASSWORD='${APP_TEMP_PASSWORD}' web \
+              pnpm --filter @finance-os/db exec tsx /app/scripts/rotate-passwords.ts
+          "
 
       - name: Готово
         env:
