@@ -87,5 +87,7 @@
 
 - [~] H-06 Деплой на VPS: workflow `.github/workflows/deploy.yml` (workflow_dispatch, sshpass), `scripts/bootstrap-prod.ts` (права+тенант+команда+книга KSP, без демо), оверлей `docker-compose.deploy.yml` (:80 без домена), книга KSP в репо шифрованной (`data/ksp-book.xlsx.enc`, AES-256, ключ у владельца). Осталось: владелец арендует VPS и добавляет секреты DEPLOY_HOST/DEPLOY_PASSWORD/DEPLOY_DATA_KEY → запуск workflow
 
+- [ ] H-07 CEO-контур по docs/15-ceo-path.md (ADR-013): BusinessUnit, справочники (fixed costs, нормативы, календарь дат), Event→мини-CRM, экран «Утро» v1, «Сегодня», алерты. Ждём от владельца: юрструктура (2 юрлица или направления), чем Sense ведёт записи, кто ведёт события
+
 ## Блокеры
 (пусто)
