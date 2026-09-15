@@ -35,7 +35,9 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    // AUTH_COOKIE_SECURE=false — временный режим для доступа по IP без TLS
+    // (H-06); c доменом и HTTPS переменная убирается и cookie снова secure.
+    secure: process.env.AUTH_COOKIE_SECURE ? process.env.AUTH_COOKIE_SECURE === 'true' : process.env.NODE_ENV === 'production',
     maxAge: 8 * 3600,
     path: '/',
   });
