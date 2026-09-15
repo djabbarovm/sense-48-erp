@@ -38,6 +38,12 @@ jobs:
             command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
             docker compose version >/dev/null
             mkdir -p /opt/finance-os/backups /opt/finance-os/data
+            # swap 3G — страховка при сборке Next.js на малой памяти
+            if [ ! -f /swapfile ]; then
+              fallocate -l 3G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+              echo "/swapfile none swap sw 0 0" >> /etc/fstab
+              echo "swap 3G создан"
+            fi
           '
 
       - name: Залить код
