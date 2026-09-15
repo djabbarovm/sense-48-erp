@@ -109,7 +109,7 @@ jobs:
             cd /opt/finance-os
             docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml \
               run --rm --no-deps -v /opt/finance-os/data:/app/data web \
-              pnpm exec tsx scripts/bootstrap-prod.ts
+              pnpm --filter @finance-os/db exec tsx /app/scripts/bootstrap-prod.ts
             rm -f data/ksp.xlsx
           '
 

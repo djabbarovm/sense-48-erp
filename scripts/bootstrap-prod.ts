@@ -5,10 +5,13 @@
  *
  *   docker compose ... run --rm web pnpm exec tsx scripts/bootstrap-prod.ts
  */
+// Относительные импорты: скрипт запускается tsx-ом из пакета db
+// (pnpm --filter @finance-os/db exec tsx /app/scripts/bootstrap-prod.ts),
+// и workspace-алиасы из корня в прод-образе не резолвятся.
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { parseKspWorkbook } from '@finance-os/adapters';
-import { hashPassword, unsafeCreateTenantContext } from '@finance-os/core';
-import { prisma, syncPermissions, importKspBook } from '@finance-os/db';
+import { parseKspWorkbook } from '../packages/adapters/src/index.js';
+import { hashPassword, unsafeCreateTenantContext } from '../packages/core/src/index.js';
+import { prisma, syncPermissions, importKspBook } from '../packages/db/src/index.js';
 
 const TENANT_SLUG = 'rooftop-real';
 const TEMP_PASSWORD = process.env['BOOTSTRAP_TEMP_PASSWORD'] || 'Palym2026!';
