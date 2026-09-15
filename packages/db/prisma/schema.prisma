@@ -617,6 +617,7 @@ model Event {
   depositSchedule    Json        @default("[]") @map("deposit_schedule")
   costCenterId       String?     @map("cost_center_id") @db.Uuid
   ownerId            String?     @map("owner_id") @db.Uuid
+  riskNote           String?     @map("risk_note") // H-07: единственный главный риск события
   status             EventStatus @default(DRAFT)
   createdAt          DateTime    @default(now()) @map("created_at")
   updatedAt          DateTime    @updatedAt @map("updated_at")
@@ -1473,4 +1474,59 @@ model CounterpartyMatchRule {
   @@unique([tenantId, pattern])
   @@index([tenantId])
   @@map("counterparty_match_rule")
+}
+
+// ── H-07 (ADR-013): CEO-контур по docs/15-ceo-path.md ──
+
+enum BusinessUnit {
+  ROOFTOP
+  SENSE48
+}
+
+// Постоянные расходы месяца по бизнесам — знаменатель точки безубыточности.
+model FixedCost {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  tenantId    String       @map("tenant_id") @db.Uuid
+  unit        BusinessUnit
+  period      String // YYYY-MM
+  name        String
+  amountMinor BigInt       @map("amount_minor")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  updatedBy   String?      @map("updated_by") @db.Uuid
+
+  @@unique([tenantId, unit, period, name])
+  @@map("fixed_cost")
+}
+
+// Типовой норматив себестоимости по формату события, % от выручки.
+model CostNorm {
+  id        String      @id @default(uuid(7)) @db.Uuid
+  tenantId  String      @map("tenant_id") @db.Uuid
+  format    EventFormat
+  costPct   Int         @map("cost_pct") // 0..100
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  @@unique([tenantId, format])
+  @@map("cost_norm")
+}
+
+// Дневная сводка Sense 48: v1 — ручной ввод, v2 — импорт из Altegio.
+model SenseDailyStat {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  date            DateTime @db.Date
+  visitsPlanned   Int?     @map("visits_planned")
+  visitsActual    Int?     @map("visits_actual")
+  revenueMinor    BigInt   @default(0) @map("revenue_minor")
+  loadPct         Int?     @map("load_pct")
+  cancellations   Int      @default(0)
+  membershipsSold Int      @default(0) @map("memberships_sold")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  updatedBy       String?  @map("updated_by") @db.Uuid
+
+  @@unique([tenantId, date])
+  @@map("sense_daily_stat")
 }

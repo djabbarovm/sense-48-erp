@@ -87,7 +87,7 @@
 
 - [~] H-06 Деплой на VPS: workflow `.github/workflows/deploy.yml` (workflow_dispatch, sshpass), `scripts/bootstrap-prod.ts` (права+тенант+команда+книга KSP, без демо), оверлей `docker-compose.deploy.yml` (:80 без домена), книга KSP в репо шифрованной (`data/ksp-book.xlsx.enc`, AES-256, ключ у владельца). Осталось: владелец арендует VPS и добавляет секреты DEPLOY_HOST/DEPLOY_PASSWORD/DEPLOY_DATA_KEY → запуск workflow
 
-- [ ] H-07 CEO-контур по docs/15-ceo-path.md (ADR-013): BusinessUnit, справочники (fixed costs, нормативы, календарь дат), Event→мини-CRM, экран «Утро» v1, «Сегодня», алерты. Ждём от владельца: юрструктура (2 юрлица или направления), чем Sense ведёт записи, кто ведёт события
+- [~] H-07 CEO-контур (ADR-013): «Утро» v1 готово — модели FixedCost/CostNorm/SenseDailyStat + Event.riskNote (миграция ceo_path), сервис ceo.ts (break-even факт/прогноз c датой прохождения, загрузка 30/60/90, решения, итог одной строкой — детерминированные правила), экраны /ceo и /ceo/settings, тесты ceo.test.ts. Ответы владельца: одно юрлицо (направления ROOFTOP/SENSE48), Sense — Altegio (адаптер — этап 2), события ведёт продажник. Дальше: окно «Сегодня», Altegio-адаптер, Telegram-алерты
 
 ## Блокеры
 (пусто)
