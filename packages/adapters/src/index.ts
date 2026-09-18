@@ -9,3 +9,4 @@ export * from './pos/index.js';
 export * from './onec/clientBankExchange.js';
 export * from './reports/monthEndPack.js';
 export * from './ksp/index.js';
+export * from './property/floorplan.js';

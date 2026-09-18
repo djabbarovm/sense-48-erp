@@ -21,4 +21,11 @@
 ## budgets.xlsx
 `period* (YYYY-MM) | cost_center_code* | category_code* | planned*`
 
+## inventory.xlsx (MDS Property, P-07)
+`building_code* | building_name | building_kind | floor_no* | unit_no* | unit_type* | area_m2* | owner_name | owner_kind | owner_phone | owner_email | management_consent (Y/N) | managed_by_platform (Y/N) | readiness | occupancy | rental_mode | lease_status | commercial_status | occupant_name | lease_ends_at | asking_rate | currency | monthly_rent`
+Unit ID неизменяем: существующие юниты пропускаются (BR-P15). Здание создаётся по коду (name/kind обязательны при первом появлении), этаж — по номеру, собственник — по имени. Жёсткие правила BR-P04/P10 — ошибка строки; остальные противоречия → alert на карточке.
+
+## План этажа (P-08, не xlsx)
+JSON `{ "building_code", "floor_no", "view_box", "units": { "1201": [[x,y],…] } }` или SVG c `<polygon|rect|path id="1201">` (или `data-unit`). Неизвестный unit_no → ошибка, all-or-nothing; `Floor.geometryVersion` увеличивается.
+
 Общие правила: первая строка — заголовки, `*` — обязательное; all-or-nothing на файл; отчёт ошибок с номером строки и полем; файл сохраняется как Document.

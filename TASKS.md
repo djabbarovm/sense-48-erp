@@ -98,8 +98,8 @@
 - [x] P-04 Сервисы property.ts: status-map/floor/unit-card/list c единым фильтром, changeUnitStatus (право на поле, override c причиной, BR-P09/P14), pricing, publish, activities, master data; PII-маскирование — 10 интеграционных тестов (403/404/audit)
 - [x] P-05 Экраны: /property (KPI strip, фильтры, легенда, 2.5D фасад), /property/floors/[id] (SVG-план + список), /property/units/[id] (карточка, формы по правам, аудит); i18n `property`; пункт меню
 - [x] P-06 Seed Phase P: тенант `piramit` — 3 здания, 30 этажей, 230 юнитов + ядра, 60 собственников, 5 ролевых пользователей, 3 намеренных противоречия; идемпотентен
-- [ ] P-07 Импорт инвентаря XLSX (immutable Unit ID mapping, all-or-nothing, отчёт) + шаблон в templates/
-- [ ] P-08 Импорт геометрии этажей (SVG/JSON polygons → Unit.geometry, версионирование) + Playwright e2e трёх экранов
+- [x] P-07 Импорт инвентаря `inventory.xlsx` (all-or-nothing, здание/этаж/собственник по ключам, существующие Unit ID пропускаются, BR-P04/P10 — ошибки строк) + шаблон templates/inventory.xlsx + карточка на /migration; 3 теста
+- [x] P-08 Импорт плана этажа JSON/SVG (`adapters/property/floorplan`: polygon/rect/path; неизвестный юнит → отказ; geometryVersion++; audit) + карточка на /migration; Playwright e2e трёх экранов (property.spec: навигация ≤ 2 действия, PII брокера, стадии, cross-tenant 404); фикс входа — сброс чужой tenant-cookie
 - [ ] P-09 Владелец: переименовать репозиторий и workspace-scope в нейтральное имя (git-история сохраняется)
 - [ ] P-10 Wave 2: LeaseContract и Deal как сущности, CRM-воронка, public-safe inventory API, HTTP API + событие unit.status.changed
 

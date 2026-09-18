@@ -43,7 +43,7 @@ export function UnitCell({ u, title, href, size = 'md' }: { u: UnitRow; title: s
       title={title}
       aria-label={title}
       className={cn(
-        'relative flex items-center justify-center rounded-[3px] font-mono font-semibold tracking-tight shadow-sm transition-transform hover:z-10 hover:scale-110 hover:shadow-md',
+        'relative flex items-center justify-center rounded-[3px] font-mono font-semibold tracking-tight shadow-sm transition-[filter,box-shadow] hover:z-10 hover:brightness-110 hover:shadow-md hover:ring-2 hover:ring-white',
         size === 'sm' ? 'h-5 min-w-8 px-1 text-[9px]' : 'h-7 min-w-11 px-1.5 text-[11px]',
         COLOR_BG[u.view.color],
         u.view.overlay ? 'ring-2 ring-orange-500 ring-offset-1' : '',

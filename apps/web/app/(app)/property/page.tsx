@@ -120,7 +120,7 @@ export default async function BuildingViewPage({ searchParams }: { searchParams:
               <Badge tone={kpi.occupancyPct >= 85 ? 'green' : kpi.occupancyPct >= 70 ? 'yellow' : 'red'} dot>{t('kpi.occupancy')} {kpi.occupancyPct}%</Badge>
             </div>
             <div className="pixel-grid rounded-lg bg-ink-900 p-3 pb-5">
-              <div className="space-y-1" style={{ transform: 'perspective(1400px) rotateX(6deg)', transformOrigin: 'top center' }}>
+              <div className="space-y-1">
                 {floors.map(({ floor, units, byColor }, idx) => {
                   const commercial = units.filter((u) => u.view.isCommercial);
                   return (

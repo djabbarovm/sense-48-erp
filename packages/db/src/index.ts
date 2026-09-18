@@ -38,3 +38,4 @@ export * from './services/auditView.js';
 export * from './services/kspImport.js';
 export * from './services/ceo.js';
 export * from './services/property.js';
+export * from './services/propertyImport.js';

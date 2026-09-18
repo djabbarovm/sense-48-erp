@@ -9,6 +9,9 @@ const chromiumPath =
 
 export default defineConfig({
   testDir: './e2e',
+  // Сценарии мутируют общий seed и гоняются против dev-сервера (компиляция по первому запросу):
+  // параллельные воркеры дают ложные таймауты — последовательный запуск стабилен.
+  workers: 1,
   use: {
     baseURL: 'http://localhost:3000',
     ...(chromiumPath ? { launchOptions: { executablePath: chromiumPath } } : {}),

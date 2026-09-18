@@ -42,7 +42,10 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     path: '/',
   });
   const tenants = await listUserTenants(user.id);
-  if (tenants[0] && !jar.get(TENANT_COOKIE)) {
+  // Cookie tenant'а от предыдущего пользователя в этом браузере сбрасывается, если у нового нет там роли
+  // (иначе каждая страница падала бы на buildTenantContext → 404/500).
+  const current = jar.get(TENANT_COOKIE)?.value;
+  if (tenants[0] && (!current || !tenants.some((t) => t.slug === current))) {
     jar.set(TENANT_COOKIE, tenants[0].slug, { sameSite: 'lax', path: '/' });
   }
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });

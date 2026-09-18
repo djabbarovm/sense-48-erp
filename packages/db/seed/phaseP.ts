@@ -16,8 +16,8 @@ const USERS: { email: string; fullName: string; roles: RoleCode[] }[] = [
   { email: 'broker@piramit.test', fullName: 'Бекзод Тураев', roles: ['BROKER'] },
   { email: 'ops@piramit.test', fullName: 'Шерзод Мирзаев', roles: ['OPERATIONS_MANAGER'] },
   { email: 'marketing@piramit.test', fullName: 'Нигора Абдуллаева', roles: ['MARKETING'] },
-  { email: 'admin@fos.test', fullName: 'Санжар Ибрагимов', roles: ['ADMIN'] },
-  { email: 'lead@fos.test', fullName: 'Нилуфар Рашидова', roles: ['FINANCE_OPS_LEAD'] },
+  { email: 'admin@piramit.test', fullName: 'Санжар Ибрагимов', roles: ['ADMIN'] },
+  { email: 'finance@piramit.test', fullName: 'Нилуфар Рашидова', roles: ['FINANCE_OPS_LEAD'] },
 ];
 
 const FIRST = ['Рустам', 'Дилноза', 'Жасур', 'Малика', 'Отабек', 'Севара', 'Улугбек', 'Зарина', 'Фаррух', 'Камола', 'Санжар', 'Гульнара', 'Азиз', 'Мадина', 'Тимур'];

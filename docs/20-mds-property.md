@@ -65,7 +65,8 @@
 | BR-P12 | Единый фильтр | map/list/floor возвращают один набор; KPI считается по нему же | property.test |
 | BR-P13 | PII собственника по праву | Без `unit.owner.view` — инициалы, контакты null; контакты не пишутся в audit | property.test |
 | BR-P14 | Публикуется только sellable | READY + VACANT + на рынке; заселение/снятие c рынка снимает публикацию | property.test |
-| BR-P15 | Unit ID неизменяем | `UNIT_NO_IMMUTABLE`; уникален в здании | property.test |
+| BR-P15 | Unit ID неизменяем | `UNIT_NO_IMMUTABLE`; уникален в здании; импорт пропускает существующие | property.test, property-import.test |
+| BR-P16 | Геометрия только для существующих юнитов этажа | неизвестный unit_no → отказ файла, geometryVersion++ | property-import.test |
 
 ## 6. Роли и права
 
@@ -123,13 +124,25 @@ HTTP-роуты и realtime-события (`unit.status.changed`) — Wave 2 (�
 |---|---|---|
 | 0 Foundation | IP/ownership (docs/17), роли, data dictionary, Unit ID | ✓ IP-01, P-01 |
 | 1 Core MVP | Property Core + Building/Floor/Unit + фильтры + audit + seed | ✓ P-02…P-06 |
-| 1b | Импорт инвентаря из XLSX (immutable Unit ID mapping), floor-plan geometry import, e2e | P-07, P-08 |
+| 1b | Импорт инвентаря из XLSX, планов этажей JSON/SVG, e2e | ✓ P-07, P-08 |
 | 2 Commercial | CRM lead/deal/activity/viewing/offer, LeaseContract как сущность, public-safe inventory API, HTTP API + события | P-10… |
 | 3 AI Operations | WorkBot: voice/text/photo → structured draft → confirm → commit → audit | после API |
 | 4 Owner/Operations | Owner Portal, work orders/SLA, документы, services | после identity |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
-## 11. Acceptance (blueprint §1.15 → тесты)
+## 11. Wave 2 — договоры аренды, сделки, события, публичный API (ADR-018)
+
+### 11.1 LeaseContract
+Поля: unitId, ownerId?, occupantName, occupantContact (PII), type LTR/STR/OWNER_USE, startAt, endAt, rentMinor, depositMinor, currency, status DRAFT/ACTIVE/EXPIRING/TERMINATED, terminatedReason. Один активный на юнит. Переходы: activate (unit.status.occupancy) — юнит становится OCCUPIED/OWNER_USE, rentalMode по типу, leaseStatus ACTIVE, occupantName/leaseEndsAt/monthlyRent копируются; terminate (unit.status.occupancy, reason) — юнит VACANT, vacantSince=now, occupant очищен, публикация снята. Джоб `lease-expiry` (ежедневно): ACTIVE c endAt ≤ +30 дн → EXPIRING + Task LEASE_EXPIRY владельцу сделки.
+
+### 11.2 Deal
+Стадии: NEW → QUALIFIED → PROPERTY_SELECTED → VIEWING → OFFER → NEGOTIATION → LOI → CONTRACT → MOVE_IN → WON; из любой активной → LOST (lossReason: PRICE/TIMING/LOCATION/COMPETITOR/NO_RESPONSE/OTHER). Вероятность стадии (ожидаемая выручка): NEW 5 · QUALIFIED 10 · PROPERTY_SELECTED 20 · VIEWING 30 · OFFER 45 · NEGOTIATION 60 · LOI 75 · CONTRACT 90 · MOVE_IN 100. Поля: contactName/contactPhone/contactEmail (PII), company, source (WEBSITE/TELEGRAM/INSTAGRAM/REFERRAL/BROKER/WALK_IN/OTHER), utm (json), demand (budgetMinor, areaMin/areaMax, purpose, timing), unitId?, alternativeUnitIds[], managerId, nextAction, nextActionAt, expectedRateMinor, reserved (bool, до даты), stage, lostReason, wonLeaseId.
+Правила: BR-P20 — активная сделка проставляет commercialStatus юнита (самая продвинутая по стадии; reserved → RESERVED); BR-P21 — брокер видит и меняет только свои сделки (managerId = user) и только до стадии CONTRACT (BR-P11); BR-P22 — сделка без nextAction или c просроченным nextActionAt попадает в «просроченную активность» (smart-фильтр); BR-P23 — WON только через активацию LeaseContract (wonLeaseId).
+
+### 11.3 События и публичный API
+`DomainEvent(type, objectType, objectId, payload без PII, createdAt, deliveredAt)`: `unit.status.changed`, `lease.activated`, `lease.terminated`, `deal.stage.changed`. Воркер `domain-events` доставляет уведомления (Telegram) подписанным ролям и помечает deliveredAt. `GET /api/property/public/inventory?tenant=<slug>` c заголовком `X-Api-Key` (таблица ApiKey: sha256, scope PUBLIC_INVENTORY, revokedAt) → только publishedAt≠null, поля: unitNo, building, floor, type, areaM2, askingRate, currency, статус-цвет; без собственника/арендатора.
+
+## 12. Acceptance (blueprint §1.15 → тесты)
 
 | AC | Проверка | Где |
 |---|---|---|

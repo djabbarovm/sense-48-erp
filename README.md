@@ -6,7 +6,7 @@ Copyright (c) 2026 Murad Djabbarov. Проприетарное ПО, все пр
 
 ## MDS Property (Phase P)
 
-После `pnpm seed` доступен демо-тенант «Piramit Tower (демо)»: 3 здания, 30 этажей, 230 юнитов. Пользователи (пароль как в docs/10): `owner@piramit.test` (OWNER), `commercial@piramit.test` (COMMERCIAL_MANAGER), `broker@piramit.test` (BROKER), `ops@piramit.test` (OPERATIONS_MANAGER), `marketing@piramit.test` (MARKETING). Экраны: `/property` (Building View: KPI, фильтры, 2.5D фасад) → `/property/floors/[id]` (план этажа) → `/property/units/[id]` (карточка юнита, смена статуса по правам, аудит). Цвет юнита вычисляется из полей (`packages/core/src/property`), не хранится.
+После `pnpm seed` доступен демо-тенант «Piramit Tower (демо)»: 3 здания, 30 этажей, 230 юнитов. Пользователи (пароль как в docs/10): `owner@piramit.test` (OWNER), `commercial@piramit.test` (COMMERCIAL_MANAGER), `broker@piramit.test` (BROKER), `ops@piramit.test` (OPERATIONS_MANAGER), `marketing@piramit.test` (MARKETING), `admin@piramit.test` (ADMIN), `finance@piramit.test` (FINANCE_OPS_LEAD). Экраны: `/property` (Building View: KPI, фильтры, 2.5D фасад) → `/property/floors/[id]` (план этажа) → `/property/units/[id]` (карточка юнита, смена статуса по правам, аудит). Цвет юнита вычисляется из полей (`packages/core/src/property`), не хранится.
 
 ## Finance OS
 

@@ -88,6 +88,27 @@ const SPECS: TemplateSpec[] = [
       'period — ГГГГ-ММ. planned — план в сумах. Существующие строки бюджета не перезаписываются.',
     ],
   },
+  {
+    fileName: 'inventory.xlsx',
+    headers: ['building_code', 'building_name', 'building_kind', 'floor_no', 'unit_no', 'unit_type', 'area_m2', 'owner_name', 'owner_kind', 'owner_phone', 'owner_email', 'management_consent', 'managed_by_platform', 'readiness', 'occupancy', 'rental_mode', 'lease_status', 'commercial_status', 'occupant_name', 'lease_ends_at', 'asking_rate', 'currency', 'monthly_rent'],
+    example: [
+      ['TOWER', 'Residence Tower', 'TOWER', '12', '1201', 'APARTMENT', '126.6', 'Рустам Каримов', 'PERSON', '+998901234567', 'owner@example.test', 'Y', 'Y', 'READY', 'OCCUPIED', 'LTR', 'ACTIVE', 'CONTRACTED', 'CityNet LLC', '2027-03-01', '1350', 'USD', '1200'],
+      ['TOWER', '', '', '12', '1202', 'APARTMENT', '128.5', '', '', '', '', '', 'N', 'READY', 'VACANT', 'NONE', 'NONE', 'AVAILABLE', '', '', '1400', 'USD', ''],
+      ['OFFICES', 'Business Center', 'OFFICES', '3', 'B3-1', 'OFFICE', '84', 'Silk Road Logistics', 'COMPANY', '', '', 'N', 'N', 'FITOUT', 'VACANT', 'NONE', 'NONE', 'OFF_MARKET', '', '', '2500', 'USD', ''],
+    ],
+    instructions: [
+      'MDS Property: инвентарь здания — юниты c собственниками и статусами (docs/20 §4).',
+      ...COMMON,
+      'unit_no — неизменяемый Unit ID (BR-P15): существующие юниты НЕ перезаписываются, а пропускаются. Уникален в пределах здания.',
+      'building_code — стабильный код здания (TOWER/OFFICES/MALL/…); building_name и building_kind обязательны только при первом появлении кода в файле или системе.',
+      'unit_type: APARTMENT / OFFICE / RETAIL / PARKING / STORAGE / COMMON / TECHNICAL. COMMON и TECHNICAL не входят в коммерческую статистику.',
+      'readiness: READY / RENOVATION / FITOUT / FURNISHING / BLOCKED. occupancy: VACANT / OCCUPIED / OWNER_USE / UNAVAILABLE. rental_mode: NONE / LTR / STR.',
+      'lease_status: NONE / DRAFT / ACTIVE / EXPIRING / TERMINATED. commercial_status: OFF_MARKET / AVAILABLE / RESERVED / VIEWING / NEGOTIATION / LOI / CONTRACTED.',
+      'Жёсткие правила: неготовый юнит нельзя выставить AVAILABLE (BR-P04); OWNER_USE несовместим c rental_mode (BR-P10). Прочие противоречия импортируются и подсвечиваются как alert.',
+      'owner_name — собственник ищется по имени в tenant, при отсутствии создаётся. Контакты — только c согласия собственника.',
+      'asking_rate / monthly_rent — в месяц, в валюте currency (по умолчанию USD), можно c копейками.',
+    ],
+  },
 ];
 
 const root = join(import.meta.dirname, '..', '..', '..');
