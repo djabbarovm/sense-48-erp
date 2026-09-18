@@ -102,7 +102,9 @@
 - [x] P-08 Импорт плана этажа JSON/SVG (`adapters/property/floorplan`: polygon/rect/path; неизвестный юнит → отказ; geometryVersion++; audit) + карточка на /migration; Playwright e2e трёх экранов (property.spec: навигация ≤ 2 действия, PII брокера, стадии, cross-tenant 404); фикс входа — сброс чужой tenant-cookie
 - [ ] P-09 Владелец: переименовать репозиторий и workspace-scope в нейтральное имя (git-история сохраняется)
 - [x] P-10 Wave 2 (ADR-018): LeaseContract (DRAFT→ACTIVE→EXPIRING→TERMINATED, один действующий на юнит, юнит — зеркало, LEASE_IS_SOURCE), Deal (воронка 11 стадий, вероятности, BR-P20 commercialStatus из сделок, BR-P21 брокер видит своё, BR-P22 attention + Task DEAL_FOLLOWUP, BR-P23 WON через активацию договора), outbox DomainEvent + джоб domain-events → Telegram, ApiKey (sha256, scope) + `GET /api/property/public/inventory` без PII; экраны /deals (доска), /deals/[id], /deals/new, /leases, /admin/api-keys, секции договора и сделок в карточке юнита; джобы lease-expiry/deal-followup/domain-events; seed: 163 договора + 20 сделок; 8 unit + 9 интеграционных тестов, e2e deals.spec
-- [ ] P-11 Wave 2b: HTTP API для WorkBot (structured action draft → confirm → commit), realtime repaint (SSE) для Building View, бонусы продажников после положения (blueprint §17)
+- [x] P-11 Пульт управления `/property/today` (blueprint §9): сегодня (новые сделки, переходы, показы, внимание, просроченные задачи, противоречия, критичные), коммерция (KPI, по зданиям, воронка, истекающие 30/90), собственники (согласны без аренды — smart query §1.8), эксплуатация (ремонт/проблемы, противоречия, простой > 60 дн); стартовая страница для ролей недвижимости; сервис `controlRoom.ts` + тест
+- [ ] P-12 Wave 3: WorkBot — structured action draft → confirm → commit → audit (IntentExtractor adapter c rule-based mock, docs/07), API для бота, экран «Черновики действий»
+- [ ] P-13 Realtime repaint Building View (SSE по DomainEvent), бонусы продажников после положения (blueprint §17)
 
 ## IP — принадлежность продукта
 - [x] IP-01 Правообладатель зафиксирован (ADR-015): LICENSE, docs/17-ip-ownership.md, package.json, README, git-идентичность владельца

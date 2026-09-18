@@ -33,7 +33,8 @@ import {
   Sunrise,
   Building,
   Handshake,
-  FileSignature } from 'lucide-react';
+  FileSignature,
+  Activity } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
 import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
@@ -51,6 +52,7 @@ const ICON = 'h-[18px] w-[18px]';
 
 const NAV: NavItem[] = [
   { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, permission: 'dashboard.owner' },
+  { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, permission: 'property.view' },
   { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
   { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, permission: 'lease.view' },

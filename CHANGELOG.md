@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-18 — MDS Property: Пульт управления (blueprint §9)
+- P-11: `services/controlRoom.ts::getControlRoom` — композиция сервисов без новой бизнес-логики: сегодня (новые сделки, переходы, показы, сделки-внимание, просроченные задачи DEAL_FOLLOWUP/LEASE_EXPIRY, противоречия, критичные юниты), коммерция (KPI strip, загрузка по зданиям, воронка потенциальная/ожидаемая/подтверждённая, договоры истекают 30/90), собственники (всего/согласны/под управлением, «согласны, но без действующей аренды»), эксплуатация (ремонт/проблема/критично/заблокировано, юниты c противоречиями, простой > 60 дней). PII и воронка — по правам. Экран `/property/today`, пункт меню «Пульт (MDS)»; главная `/` перенаправляет на пульт роли без `dashboard.ops`. Тест control-room.test; e2e-хелперы входа учитывают редирект.
+
 ## [Phase P] 2026-09-18 — MDS Property Wave 2: договоры аренды, сделки, события, публичный API
 - P-10 core: `property/lease.ts` (state machine договора, `unitPatchFromLease`), `property/deal.ts` (воронка blueprint §6, вероятности стадий, `commercialStatusFromDeals` BR-P20, `pipelineTotals` потенциальная/ожидаемая/подтверждённая, `dealAttention` BR-P22); 6 новых прав (`lease.*`, `deal.*`, `apikey.manage`); 8 unit-тестов.
 - P-10 db: схема §P2 — LeaseContract (partial unique один ACTIVE/EXPIRING на юнит), Deal (DEAL-YYYY-NNNNNN через sequence), DomainEvent (outbox без PII), ApiKey (sha256, prefix, scopes, revokedAt), UnitActivity.dealId, TaskType LEASE_EXPIRY/DEAL_FOLLOWUP; миграция `mds_property_wave2`. Сервисы `leases.ts` (create/activate/terminate/update/list, `markExpiringLeases`), `deals.ts` (create/update/move/list/pipeline/get/activity, `createDealFollowupTasks`, `listDealManagers`), `domainEvents.ts` (`deliverDomainEvents`), `apiKeys.ts`, `publicInventory.ts`; guards LEASE_IS_SOURCE/DEAL_IS_SOURCE в `changeUnitStatus`; 9 интеграционных тестов (403/404/audit/PII/идемпотентность джобов).

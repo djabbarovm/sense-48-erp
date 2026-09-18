@@ -8,7 +8,7 @@ async function login(page: Page, email: string) {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Пароль').fill('Passw0rd!');
   await page.getByRole('button', { name: 'Войти' }).click();
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL(/\/(property\/today)?$/); // роли недвижимости попадают на «Пульт»
 }
 
 test('доска сделок: сводка, колонки, карточка; advance меняет стадию и пишет историю', async ({ page }) => {
@@ -16,13 +16,17 @@ test('доска сделок: сводка, колонки, карточка; a
   await page.goto('/deals');
   await expect(page.getByRole('heading', { name: 'Сделки' })).toBeVisible();
   await expect(page.getByText('Потенциальная')).toBeVisible();
-  await page.locator('a[href^="/deals/"]').filter({ hasText: 'DEAL-2026-000001' }).click();
-  await expect(page).toHaveURL(/\/deals\//);
+  // свежая сделка — тест не зависит от состояния seed после прошлых прогонов
+  await page.goto('/deals/new');
+  await page.getByLabel('Контакт *').fill('E2E Клиент');
+  await page.getByRole('button', { name: 'Создать сделку' }).click();
+  await expect(page).toHaveURL(/\/deals\/[0-9a-f-]+$/);
+  await expect(page.locator('h1 ~ span span').first()).toContainText('Новый лид');
   const advance = page.locator('form').filter({ has: page.locator('input[name=trigger][value=advance]') }).getByRole('button');
   await expect(advance).toBeVisible();
   await advance.click();
-  await expect(page.getByText('deal.stage.change').first()).toBeVisible();
   await expect(page.locator('h1 ~ span span').first()).toContainText('Квалифицирован');
+  await expect(page.getByText('deal.stage.change').first()).toBeVisible();
 });
 
 test('брокер: видит только свои сделки, договорные стадии недоступны; маркетинг не создаёт сделки', async ({ page }) => {

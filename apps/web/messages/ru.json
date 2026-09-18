@@ -56,7 +56,8 @@
     "ceoMorning": "Моё утро",
     "property": "Здание (MDS)",
     "deals": "Сделки",
-    "leases": "Договоры аренды"
+    "leases": "Договоры аренды",
+    "controlRoom": "Пульт (MDS)"
   },
   "home": {
     "title": "Finance OS",
@@ -1396,5 +1397,35 @@
     "revoked": "Отозван",
     "revoke": "Отозвать",
     "empty": "Ключей пока нет"
+  },
+  "controlRoom": {
+    "title": "Пульт управления",
+    "today": "Сегодня",
+    "newDeals": "Новых сделок",
+    "stageMoves": "Переходов по воронке",
+    "viewings": "Показов сегодня",
+    "attentionDeals": "Сделки: внимание",
+    "overdueTasks": "Просроченных задач",
+    "alerts": "Противоречий данных",
+    "critical": "Критичных юнитов",
+    "commercial": "Коммерция",
+    "openBuilding": "Открыть здание →",
+    "pipeline": "Воронка",
+    "expiring30_90": "Договоры истекают 30 / 90 дн.",
+    "attentionList": "Сделки, требующие внимания",
+    "allDeals": "Все сделки →",
+    "expiringList": "Истекающие договоры",
+    "allLeases": "Все договоры →",
+    "inDays": "через {n} дн.",
+    "owners": "Собственники",
+    "ownersTotal": "всего",
+    "ownersConsented": "согласны на управление",
+    "managedUnits": "юнитов под управлением",
+    "consentedWithoutLease": "Согласны, но без действующей аренды",
+    "operations": "Эксплуатация",
+    "showAlerts": "Показать на карте →",
+    "alertUnits": "Противоречия в данных",
+    "idleUnits": "Простаивают > 60 дней",
+    "nothing": "Ничего нет — хорошо."
   }
 }

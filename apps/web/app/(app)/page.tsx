@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
+import { can } from '@finance-os/core';
 import { CheckCircle2, Circle, Flame, ListTodo, ShieldCheck, ShoppingCart, Store, Zap } from 'lucide-react';
 import { prisma } from '@finance-os/db';
 import { requireSessionUser, requireTenantContext } from '@/lib/session';
@@ -10,6 +12,8 @@ import { CutoffCountdown } from '@/components/game/Countdown';
 export default async function HomePage() {
   const user = await requireSessionUser();
   const ctx = await requireTenantContext();
+  // Роли недвижимости без финансового дашборда попадают на «Пульт» MDS Property (blueprint §9)
+  if (!can(ctx, 'dashboard.ops') && can(ctx, 'property.view')) redirect('/property/today');
   const t = await getTranslations('home');
   const tm = await getTranslations('mission');
 
