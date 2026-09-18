@@ -81,6 +81,7 @@ enum RoleCode {
   BROKER
   OPERATIONS_MANAGER
   MARKETING
+  PROPERTY_OWNER
 }
 
 model UserTenantRole {
@@ -1672,12 +1673,17 @@ model PropertyOwner {
   contactPhone      String?           @map("contact_phone")
   contactEmail      String?           @map("contact_email")
   managementConsent Boolean           @default(false) @map("management_consent") // согласен на управление платформой
+  listingConsent    Boolean           @default(false) @map("listing_consent") // согласен сдавать через платформу
+  marketingConsent  Boolean           @default(false) @map("marketing_consent") // согласен на публикацию фото/объявлений
+  consentUpdatedAt  DateTime?         @map("consent_updated_at")
+  userId            String?           @map("user_id") @db.Uuid // Owner Portal: учётка собственника (роль PROPERTY_OWNER)
   notes             String?
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
   units Unit[]
 
+  @@unique([tenantId, userId])
   @@index([tenantId, displayName])
   @@map("property_owner")
 }

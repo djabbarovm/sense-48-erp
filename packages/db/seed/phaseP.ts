@@ -19,6 +19,8 @@ const USERS: { email: string; fullName: string; roles: RoleCode[]; telegramChatI
   { email: 'marketing@piramit.test', fullName: 'Нигора Абдуллаева', roles: ['MARKETING'] },
   { email: 'admin@piramit.test', fullName: 'Санжар Ибрагимов', roles: ['ADMIN'] },
   { email: 'finance@piramit.test', fullName: 'Нилуфар Рашидова', roles: ['FINANCE_OPS_LEAD'] },
+  // Owner Portal: собственник (привязывается к PropertyOwner ниже)
+  { email: 'owner1@piramit.test', fullName: 'Рустам Каримов', roles: ['PROPERTY_OWNER'] },
 ];
 
 const FIRST = ['Рустам', 'Дилноза', 'Жасур', 'Малика', 'Отабек', 'Севара', 'Улугбек', 'Зарина', 'Фаррух', 'Камола', 'Санжар', 'Гульнара', 'Азиз', 'Мадина', 'Тимур'];
@@ -115,8 +117,8 @@ function pickStatus(kind: BuildingSpec['kind'], r: () => number, askingMinor: bi
 export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   const tenant = await prisma.tenant.upsert({
     where: { slug: PROPERTY_TENANT.slug },
-    create: { slug: PROPERTY_TENANT.slug, legalName: PROPERTY_TENANT.legalName, taxId: PROPERTY_TENANT.taxId, settings: { product: 'MDS Property' } },
-    update: { legalName: PROPERTY_TENANT.legalName },
+    create: { slug: PROPERTY_TENANT.slug, legalName: PROPERTY_TENANT.legalName, taxId: PROPERTY_TENANT.taxId, settings: { product: 'MDS Property', management_fee_bp: 1000 } },
+    update: { legalName: PROPERTY_TENANT.legalName, settings: { product: 'MDS Property', management_fee_bp: 1000 } },
   });
   const tenantId = tenant.id;
 
@@ -142,6 +144,12 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
     owners.push(row.id);
   }
   console.log(`  property owners: ${owners.length}`);
+  // Owner Portal: первый собственник-физлицо (Рустам Каримов) ↔ owner1@piramit.test
+  const ownerUser = await prisma.user.findUnique({ where: { email: 'owner1@piramit.test' } });
+  if (ownerUser) {
+    const first = await prisma.propertyOwner.findFirst({ where: { tenantId, displayName: 'Рустам Каримов' } });
+    if (first && !first.userId) await prisma.propertyOwner.update({ where: { id: first.id }, data: { userId: ownerUser.id, managementConsent: true, listingConsent: true } });
+  }
 
   let unitsTotal = 0;
   let unitIndex = 0;

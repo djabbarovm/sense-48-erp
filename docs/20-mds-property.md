@@ -138,7 +138,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
 | 2b | WorkBot API (draft→confirm→commit), realtime repaint, бонусы продажников | P-11 |
 | 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
-| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal — P-15b; services — позже | частично |
+| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services — P-16 | частично |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
 ## 11. Wave 2 — договоры аренды, сделки, события, публичный API (ADR-018)
@@ -167,6 +167,13 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 |---|---|---|---|
 | BR-P31 | operationalStatus юнита — из открытых заявок | CRITICAL открытая → CRITICAL; любая открытая (кроме DONE) → ISSUE; нет → NORMAL; BLOCKED только вручную; ручная смена при открытых → WORKORDER_IS_SOURCE | workOrder.test, work-orders.test |
 | BR-P32 | QA не исполнителем и только c фото | verify: actor ≠ assignee, ≥1 Document; иначе QA_SELF_VERIFY / PROOF_REQUIRED | workOrder.test, work-orders.test |
+
+### 11.6 Owner Portal (blueprint §10)
+Роль `PROPERTY_OWNER` привязана к `PropertyOwner.userId` (одна учётка — один собственник в тенанте); у роли нет `property.view`, поэтому карта здания, карточки чужих юнитов и любые мутации статусов недоступны — только `/owner`. Портал показывает: свои помещения (цвет/статус, арендатор, договор, депозит, под управлением ли), выписку за месяц (аренда − комиссия `management_fee_bp` для помещений под управлением = к выплате), заявки (создание → WorkOrder c source API, приоритет ≤ HIGH), согласия (управление / сдача через платформу / публикации) c audit. Привязка учётки — реестр `/property/owners` (property.manage). E-sign и делегирование — по юридической готовности.
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P33 | Собственник видит и трогает только своё | выборки через PropertyOwner.userId; заявка по чужому юниту → 404; нет property.view → 403 на карту/карточку/статусы | owner-portal.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

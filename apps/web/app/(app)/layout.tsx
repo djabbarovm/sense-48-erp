@@ -36,7 +36,9 @@ import {
   FileSignature,
   Activity,
   Bot,
-  Wrench } from 'lucide-react';
+  Wrench,
+  Home,
+  Users } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
 import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
@@ -54,11 +56,13 @@ const ICON = 'h-[18px] w-[18px]';
 
 const NAV: NavItem[] = [
   { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, permission: 'dashboard.owner' },
+  { key: 'ownerPortal', href: '/owner', icon: <Home className={ICON} />, permission: 'owner.portal' },
   { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, permission: 'property.view' },
   { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
   { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, permission: 'lease.view' },
   { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, permission: 'workorder.view' },
+  { key: 'owners', href: '/property/owners', icon: <Users className={ICON} />, permission: 'property.manage' },
   { key: 'workbot', href: '/property/actions', icon: <Bot className={ICON} />, permission: 'action.draft' },
   { key: 'dashboard', href: '/', icon: <LayoutDashboard className={ICON} />, permission: 'dashboard.ops' },
   { key: 'ownerDash', href: '/dashboard', icon: <Crown className={ICON} />, permission: 'dashboard.owner' },

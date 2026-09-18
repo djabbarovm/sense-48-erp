@@ -17,6 +17,8 @@ export const ROLE_CODES = [
   'BROKER',
   'OPERATIONS_MANAGER',
   'MARKETING',
+  // Owner Portal (docs/20 §11.6): собственник видит только свои юниты
+  'PROPERTY_OWNER',
 ] as const;
 
 export type RoleCode = (typeof ROLE_CODES)[number];

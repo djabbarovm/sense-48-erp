@@ -39,12 +39,19 @@ export async function recomputeUnitOperationalStatus(tx: Prisma.TransactionClien
 }
 
 export async function createWorkOrder(ctx: TenantContext, input: WorkOrderInput, now = new Date()): Promise<WorkOrder> {
-  requirePermission(ctx, 'workorder.create');
+  // Собственник (owner.request) заводит заявку только по своему юниту (BR-P33); остальным нужен workorder.create
+  const asOwner = !can(ctx, 'workorder.create');
+  if (asOwner) requirePermission(ctx, 'owner.request');
   if (!input.title.trim()) throw new ValidationError('TITLE_REQUIRED');
   if (!input.unitId && !input.buildingId) throw new ValidationError('LOCATION_REQUIRED', 'LOCATION_REQUIRED: укажите юнит или здание');
-  const priority = input.priority ?? 'NORMAL';
+  if (asOwner && !input.unitId) throw new ValidationError('LOCATION_REQUIRED');
+  const priority = asOwner ? (input.priority === 'CRITICAL' ? 'HIGH' : (input.priority ?? 'NORMAL')) : (input.priority ?? 'NORMAL');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const unit = input.unitId ? await findScopedOr404(tx.unit, ctx, input.unitId) : null;
+    if (asOwner) {
+      const owner = await tx.propertyOwner.findFirst({ where: { tenantId: ctx.tenantId, userId: ctx.userId }, select: { id: true } });
+      if (!owner || unit?.ownerId !== owner.id) throw new NotFoundError();
+    }
     if (input.buildingId) await findScopedOr404(tx.building, ctx, input.buildingId);
     const number = await nextNumber(tx, ctx.tenantId, 'WO', now);
     const assigneeId = can(ctx, 'workorder.manage') ? (input.assigneeId ?? null) : null;
@@ -52,7 +59,7 @@ export async function createWorkOrder(ctx: TenantContext, input: WorkOrderInput,
       data: {
         tenantId: ctx.tenantId, number, unitId: unit?.id ?? null, buildingId: unit?.buildingId ?? input.buildingId ?? null, category: input.category, priority,
         status: assigneeId ? 'ASSIGNED' : 'OPEN', title: input.title.trim(), description: input.description ?? null, location: input.location ?? null,
-        reporterId: ctx.userId, assigneeId, contractorName: input.contractorName ?? null, source: input.source ?? 'UI', slaDueAt: slaDueAt(priority, now), createdAt: now,
+        reporterId: ctx.userId, assigneeId, contractorName: input.contractorName ?? null, source: asOwner ? 'API' : (input.source ?? 'UI'), slaDueAt: slaDueAt(priority, now), createdAt: now,
       },
     });
     if (unit) await recomputeUnitOperationalStatus(tx, ctx.tenantId, unit.id, now);

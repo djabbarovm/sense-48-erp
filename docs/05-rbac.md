@@ -24,6 +24,7 @@
 | BROKER | MDS Property: назначенный inventory, показы, стадии до договора | — |
 | OPERATIONS_MANAGER | MDS Property: готовность, эксплуатация, заявки | — |
 | MARKETING | MDS Property: публикация approved inventory, без PII собственников | — |
+| PROPERTY_OWNER | MDS Property: кабинет собственника — только свои помещения, договоры, выплаты, заявки, согласия (docs/20 §11.6) | рекомендован |
 
 ## Матрица прав
 
