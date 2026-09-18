@@ -280,6 +280,10 @@ export async function changeUnitStatus(ctx: TenantContext, unitId: string, input
       const live = await tx.leaseContract.count({ where: { tenantId: ctx.tenantId, unitId, status: { in: ['ACTIVE', 'EXPIRING'] } } });
       if (live > 0) throw new ValidationError('LEASE_IS_SOURCE', 'LEASE_IS_SOURCE: на юните действует договор аренды — занятость меняется через договор (расторжение/новый договор)');
     }
+    if (patch.operationalStatus !== undefined && patch.operationalStatus !== 'BLOCKED') {
+      const openWo = await tx.workOrder.count({ where: { tenantId: ctx.tenantId, unitId, status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] } } });
+      if (openWo > 0) throw new ValidationError('WORKORDER_IS_SOURCE', 'WORKORDER_IS_SOURCE: по юниту есть открытые заявки — статус эксплуатации рассчитывается из них');
+    }
     if (patch.commercialStatus !== undefined) {
       const activeDeals = await tx.deal.count({ where: { tenantId: ctx.tenantId, unitId, stage: { notIn: ['WON', 'LOST'] } } });
       if (activeDeals > 0) throw new ValidationError('DEAL_IS_SOURCE', 'DEAL_IS_SOURCE: по юниту есть активная сделка — стадия меняется в сделке');

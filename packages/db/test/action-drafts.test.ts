@@ -67,15 +67,18 @@ describe('P-12 WorkBot: draft → preview → confirm → commit → audit (BR-P
     expect((await listDeals(ctx(['COMMERCIAL_MANAGER'], cmId), { unitId })).length).toBe(1);
   });
 
-  it('«1704 после клининга, жалоба на ванную» → операционный статус ISSUE (только ops/owner), активность', async () => {
+  it('«1704 после клининга, жалоба на ванную» → заявка (HIGH), статус эксплуатации юнита из заявки (BR-P31), активность', async () => {
     const d = await createActionDraft(ctx(['OPERATIONS_MANAGER']), { text: '1704 после клининга, жалоба на ванную' });
     expect(d.kind).toBe('UNIT_ISSUE');
-    await expect(confirmActionDraft(ctx(['COMMERCIAL_MANAGER'], cmId), d.id)).rejects.toThrow(PermissionDeniedError);
+    expect(d.preview).toMatch(/создать заявку/);
+    await expect(confirmActionDraft(ctx(['ACCOUNTANT']), d.id)).rejects.toThrow(PermissionDeniedError);
     const ok = await confirmActionDraft(ctx(['OPERATIONS_MANAGER']), d.id);
     expect(ok.status).toBe('CONFIRMED');
+    expect(ok.resultRef).toMatch(/^\/workorders\//);
     const card = await getUnitCard(ctx(['OPERATIONS_MANAGER']), unitId);
     expect(card.unit.operationalStatus).toBe('ISSUE');
     expect(card.activities.some((a) => a.note.startsWith('[PLUMBING]'))).toBe(true);
+    await expect(changeUnitStatus(ctx(['OPERATIONS_MANAGER']), unitId, { operationalStatus: 'NORMAL' })).rejects.toThrow(/WORKORDER_IS_SOURCE/);
   });
 
   it('запрос «покажи все красные больше 90 дней» → ссылка c фильтром, данные не меняются; нераспознанное → NEEDS_INFO; reject; 404 чужой tenant', async () => {

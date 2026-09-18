@@ -266,4 +266,53 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
     else if (seq.nextValue < want) await prisma.sequence.update({ where: { id: seq.id }, data: { nextValue: want } });
   }
   console.log(`  deals: ${dealsCreated} created`);
+
+  // ── Wave 4: заявки (blueprint §12) — детерминированные номера, юнит → operationalStatus из открытых ──
+  const opsUsers = await prisma.userTenantRole.findMany({ where: { tenantId, role: 'OPERATIONS_MANAGER' }, select: { userId: true } });
+  const reporter = (await prisma.userTenantRole.findFirst({ where: { tenantId, role: 'COMMERCIAL_MANAGER' }, select: { userId: true } }))?.userId;
+  const opsId = opsUsers[0]?.userId;
+  const allUnits = await prisma.unit.findMany({ where: { tenantId, type: { notIn: ['COMMON', 'TECHNICAL'] } }, orderBy: { unitNo: 'asc' } });
+  const WO: { cat: 'PLUMBING' | 'ELECTRICAL' | 'HVAC' | 'CLEANING' | 'DAMAGE' | 'ACCESS' | 'OTHER'; prio: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL'; status: 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'DONE' | 'VERIFIED' | 'CANCELLED'; title: string; ageH: number }[] = [
+    { cat: 'PLUMBING', prio: 'HIGH', status: 'OPEN', title: 'Жалоба на ванную после клининга', ageH: 30 },
+    { cat: 'ELECTRICAL', prio: 'CRITICAL', status: 'IN_PROGRESS', title: 'Нет света в квартире', ageH: 2 },
+    { cat: 'HVAC', prio: 'NORMAL', status: 'ASSIGNED', title: 'Кондиционер не холодит', ageH: 20 },
+    { cat: 'DAMAGE', prio: 'NORMAL', status: 'DONE', title: 'Повреждена дверь B2', ageH: 50 },
+    { cat: 'CLEANING', prio: 'LOW', status: 'VERIFIED', title: 'Генеральная уборка после выезда', ageH: 200 },
+    { cat: 'ACCESS', prio: 'HIGH', status: 'OPEN', title: 'Не работает домофон', ageH: 40 },
+    { cat: 'PLUMBING', prio: 'NORMAL', status: 'CANCELLED', title: 'Течь под раковиной (дубликат)', ageH: 90 },
+    { cat: 'OTHER', prio: 'LOW', status: 'OPEN', title: 'Заменить табличку на двери', ageH: 10 },
+    { cat: 'ELECTRICAL', prio: 'HIGH', status: 'ASSIGNED', title: 'Искрит розетка в офисе', ageH: 5 },
+    { cat: 'CLEANING', prio: 'NORMAL', status: 'IN_PROGRESS', title: 'Уборка общего коридора после ремонта', ageH: 12 },
+  ];
+  let woCreated = 0;
+  if (reporter && opsId) {
+    const year = new Date().getFullYear();
+    for (let i = 0; i < WO.length; i++) {
+      const number = `WO-${year}-${String(i + 1).padStart(6, '0')}`;
+      if (await prisma.workOrder.findUnique({ where: { tenantId_number: { tenantId, number } } })) continue;
+      const w = WO[i]!;
+      const unit = allUnits[(i * 13 + 7) % allUnits.length]!;
+      const createdAt = daysAgo(w.ageH / 24);
+      const sla = { CRITICAL: 4, HIGH: 24, NORMAL: 72, LOW: 168 }[w.prio];
+      const assigned = w.status !== 'OPEN' ? opsUsers[i % Math.max(1, opsUsers.length)]!.userId : null;
+      await prisma.workOrder.create({
+        data: {
+          tenantId, number, unitId: unit.id, buildingId: unit.buildingId, category: w.cat, priority: w.prio, status: w.status, title: w.title, reporterId: reporter, assigneeId: assigned,
+          slaDueAt: new Date(createdAt.getTime() + sla * 3_600_000), createdAt,
+          startedAt: ['IN_PROGRESS', 'DONE', 'VERIFIED'].includes(w.status) ? new Date(createdAt.getTime() + 3_600_000) : null,
+          doneAt: ['DONE', 'VERIFIED'].includes(w.status) ? new Date(createdAt.getTime() + 6 * 3_600_000) : null,
+          verifiedAt: w.status === 'VERIFIED' ? new Date(createdAt.getTime() + 8 * 3_600_000) : null, verifiedBy: w.status === 'VERIFIED' ? reporter : null,
+          cancelReason: w.status === 'CANCELLED' ? 'дубликат' : null,
+        },
+      });
+      // BR-P31: статус юнита из открытых заявок
+      if (['OPEN', 'ASSIGNED', 'IN_PROGRESS'].includes(w.status)) await prisma.unit.update({ where: { id: unit.id }, data: { operationalStatus: w.prio === 'CRITICAL' ? 'CRITICAL' : unit.operationalStatus === 'CRITICAL' ? 'CRITICAL' : 'ISSUE' } });
+      woCreated++;
+    }
+    const want = WO.length + 1;
+    const seq = await prisma.sequence.findUnique({ where: { tenantId_key_year: { tenantId, key: 'WO', year } } });
+    if (!seq) await prisma.sequence.create({ data: { tenantId, key: 'WO', year, nextValue: want } });
+    else if (seq.nextValue < want) await prisma.sequence.update({ where: { id: seq.id }, data: { nextValue: want } });
+  }
+  console.log(`  work orders: ${woCreated} created`);
 }

@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-18 — MDS Property Wave 4a: заявки и инциденты (blueprint §12)
+- P-15a core: `property/workOrder.ts` — категории/приоритеты/статусы, SLA по приоритету, state machine (assign требует исполнителя; verify — фото и не самого исполнителя, BR-P32; cancel/reopen — причину), `operationalStatusFromWorkOrders` (BR-P31); права `workorder.view/create/manage/verify`, `document.upload` расширен на OPERATIONS_MANAGER/COMMERCIAL_MANAGER; 3 теста.
+- P-15a db: модель `WorkOrder` (миграция `mds_work_orders`), TaskType WORKORDER_OVERDUE, sequence WO; `services/workOrders.ts` — create (брокер/маркетинг без назначения), transition (переходы c audit и событиями), list/get (SLA-остаток, просрочка, фото), listAssignees, `escalateOverdueWorkOrders` (Task + событие, дедуп); `changeUnitStatus` блокирует ручной operationalStatus при открытых заявках (WORKORDER_IS_SOURCE, BLOCKED — вручную); WorkBot UNIT_ISSUE теперь создаёт заявку; джоб `workorder-sla` каждые 30 мин; 3 интеграционных теста.
+- P-15a web: `/workorders` (вкладки открытые/просроченные/мои/закрытые, форма создания, SLA-остаток и просрочка), `/workorders/[id]` (карточка, действия по state machine, назначение подрядчика, загрузка фото → Document c sha256 и signed URL, приёмка QA, история), блок «Заявки по юниту» на карточке юнита c блокировкой ручного статуса; словарь `workorders`; пункт меню. Seed: 10 заявок в разных статусах.
+
 ## [Phase P] 2026-09-18 — MDS Property: live-обновление (blueprint §1.13)
 - P-13: `listDomainEventsSince` (курсор по outbox), SSE-роут `/api/property/events/stream` (сессия, property.view, опрос каждые 2 с, heartbeat 25 с, лимит жизни 10 мин c переподключением), клиентский `LiveRefresh` (EventSource → `router.refresh()` c троттлингом 1.5 с, индикатор live/подключение) на Building View, плане этажа, карточке юнита и пульте. Замер в двух браузерах: перекраска юнита у наблюдателя через несколько секунд после сохранения статуса другим пользователем.
 

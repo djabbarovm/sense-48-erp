@@ -35,7 +35,8 @@ import {
   Handshake,
   FileSignature,
   Activity,
-  Bot } from 'lucide-react';
+  Bot,
+  Wrench } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
 import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
@@ -57,6 +58,7 @@ const NAV: NavItem[] = [
   { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
   { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, permission: 'lease.view' },
+  { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, permission: 'workorder.view' },
   { key: 'workbot', href: '/property/actions', icon: <Bot className={ICON} />, permission: 'action.draft' },
   { key: 'dashboard', href: '/', icon: <LayoutDashboard className={ICON} />, permission: 'dashboard.ops' },
   { key: 'ownerDash', href: '/dashboard', icon: <Crown className={ICON} />, permission: 'dashboard.owner' },

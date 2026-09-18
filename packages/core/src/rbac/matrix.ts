@@ -44,7 +44,7 @@ export const PERMISSION_MATRIX = {
   'invoice.import': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT'],
   'invoice.match': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
   'invoice.resolve_duplicate': ['FINANCE_OPS_LEAD'],
-  'document.upload': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER'],
+  'document.upload': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER'],
   'document.mark_received': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER'],
   // ── Payments ──
   'payment.create': ['FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
@@ -112,6 +112,11 @@ export const PERMISSION_MATRIX = {
   'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
   'apikey.manage': ['OWNER', 'ADMIN'],
   // WorkBot (docs/20 §11.4): черновик может создать любой c property.view; подтверждение — по праву самого действия
+  // Заявки и инциденты (docs/20 §11.5)
+  'workorder.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING'],
+  'workorder.create': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING'],
+  'workorder.manage': ['OWNER', 'OPERATIONS_MANAGER'],
+  'workorder.verify': ['OWNER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER'],
   'action.draft': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'],
 } as const satisfies Record<string, readonly RoleCode[]>;
 

@@ -25,6 +25,7 @@ describe('D-05 workers: реестр джобов', () => {
       'contract-expiry',
       'lease-expiry',
       'deal-followup',
+      'workorder-sla',
       'domain-events',
       'event-progress',
       'batch-cutoff-freeze',

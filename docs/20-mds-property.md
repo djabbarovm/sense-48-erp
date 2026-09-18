@@ -138,7 +138,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
 | 2b | WorkBot API (draft→confirm→commit), realtime repaint, бонусы продажников | P-11 |
 | 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
-| 4 Owner/Operations | Owner Portal, work orders/SLA, документы, services | после identity |
+| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal — P-15b; services — позже | частично |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
 ## 11. Wave 2 — договоры аренды, сделки, события, публичный API (ADR-018)
@@ -159,6 +159,14 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | ID | Правило | Поведение | Тест |
 |---|---|---|---|
 | BR-P30 | AI/бот только предлагает; commit — человек c правом, через сервисы | preview без изменений; confirm → право по виду действия; guard'ы сервисов; FAILED c кодом при отказе правила | action-drafts.test |
+
+### 11.5 Заявки и инциденты (blueprint §12)
+`WorkOrder`: unit/building, category (PLUMBING/ELECTRICAL/HVAC/CLEANING/DAMAGE/ACCESS/OTHER), priority → SLA (CRITICAL 4 ч, HIGH 24 ч, NORMAL 72 ч, LOW 168 ч), reporter, assignee (только workorder.manage), contractor, статусы OPEN → ASSIGNED → IN_PROGRESS → DONE → VERIFIED; cancel (OPEN/ASSIGNED/IN_PROGRESS, причина), reopen (DONE/VERIFIED, причина). Фото-подтверждения — `Document(objectType=work_order)`. Джоб `workorder-sla`: просрочка → Task WORKORDER_OVERDUE исполнителю/эксплуатации + событие `work_order.overdue`. Источники заявок: UI, WorkBot (UNIT_ISSUE), позже Owner Portal.
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P31 | operationalStatus юнита — из открытых заявок | CRITICAL открытая → CRITICAL; любая открытая (кроме DONE) → ISSUE; нет → NORMAL; BLOCKED только вручную; ручная смена при открытых → WORKORDER_IS_SOURCE | workOrder.test, work-orders.test |
+| BR-P32 | QA не исполнителем и только c фото | verify: actor ≠ assignee, ≥1 Document; иначе QA_SELF_VERIFY / PROOF_REQUIRED | workOrder.test, work-orders.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

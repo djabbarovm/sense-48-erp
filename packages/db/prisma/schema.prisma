@@ -515,6 +515,7 @@ enum TaskType {
   REVIEW_EXCEPTION
   LEASE_EXPIRY
   DEAL_FOLLOWUP
+  WORKORDER_OVERDUE
 }
 
 enum TaskStatus {
@@ -1720,6 +1721,7 @@ model Unit {
   activities UnitActivity[]
   leases     LeaseContract[]
   deals      Deal[]
+  workOrders WorkOrder[]
 
   @@unique([buildingId, unitNo])
   @@index([tenantId, buildingId])
@@ -1947,4 +1949,69 @@ model ActionDraft {
   @@index([tenantId, status, createdAt])
   @@index([tenantId, createdBy])
   @@map("action_draft")
+}
+
+// ───────────────────────────── §P4 Заявки и инциденты (docs/20 §11.5, blueprint §12) ─────────────────────────────
+
+enum WorkOrderCategory {
+  PLUMBING
+  ELECTRICAL
+  HVAC
+  CLEANING
+  DAMAGE
+  ACCESS
+  OTHER
+}
+
+enum WorkOrderPriority {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum WorkOrderStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  DONE
+  VERIFIED
+  CANCELLED
+}
+
+// Источник истины operationalStatus юнита (BR-P31). Фото-подтверждения — Document(objectType=work_order).
+model WorkOrder {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  number         String // WO-2026-000001
+  unitId         String?           @map("unit_id") @db.Uuid
+  buildingId     String?           @map("building_id") @db.Uuid
+  category       WorkOrderCategory
+  priority       WorkOrderPriority @default(NORMAL)
+  status         WorkOrderStatus   @default(OPEN)
+  title          String
+  description    String?
+  location       String? // «дверь B2», «ванная» — свободный текст места внутри юнита/здания
+  reporterId     String            @map("reporter_id") @db.Uuid
+  assigneeId     String?           @map("assignee_id") @db.Uuid
+  contractorName String?           @map("contractor_name")
+  source         ChangeSource      @default(UI)
+  slaDueAt       DateTime          @map("sla_due_at")
+  startedAt      DateTime?         @map("started_at")
+  doneAt         DateTime?         @map("done_at")
+  verifiedAt     DateTime?         @map("verified_at")
+  verifiedBy     String?           @map("verified_by") @db.Uuid
+  cancelReason   String?           @map("cancel_reason")
+  overdueNotifiedAt DateTime?      @map("overdue_notified_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  updatedBy      String?           @map("updated_by") @db.Uuid
+
+  unit Unit? @relation(fields: [unitId], references: [id])
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, priority])
+  @@index([tenantId, unitId, status])
+  @@index([tenantId, assigneeId, status])
+  @@map("work_order")
 }

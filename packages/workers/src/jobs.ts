@@ -10,6 +10,7 @@ import {
   createDealFollowupTasks,
   createExpiryTasksForTenant,
   deliverDomainEvents,
+  escalateOverdueWorkOrders,
   markExpiringLeases,
   escalateOverdueTasks,
   generateTaxObligations,
@@ -82,6 +83,11 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'deal-followup',
       cron: '0 8 * * *',
       run: (tenantId, now) => createDealFollowupTasks(tenantId, now),
+    },
+    {
+      name: 'workorder-sla',
+      cron: '*/30 * * * *',
+      run: (tenantId, now) => escalateOverdueWorkOrders(tenantId, now),
     },
     {
       name: 'domain-events',

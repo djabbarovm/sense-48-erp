@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare, Wrench } from 'lucide-react';
 import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, can, hasRole } from '@finance-os/core';
-import { getUnitCard, listDeals, listLeases } from '@finance-os/db';
+import { getUnitCard, listDeals, listLeases, listWorkOrders } from '@finance-os/db';
 import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction } from '../../../leases/actions';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
@@ -33,10 +33,13 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
     throw e;
   }
   const { unit, building, floor, owner, activities, audit, auditVisible, permissions } = card;
-  const [deals, leases] = await Promise.all([
+  const [deals, leases, workOrders] = await Promise.all([
     can(ctx, 'deal.view') ? listDeals(ctx, { unitId: unit.id, includeClosed: true }) : Promise.resolve([]),
     can(ctx, 'lease.view') ? listLeases(ctx, { unitId: unit.id }) : Promise.resolve([]),
+    can(ctx, 'workorder.view') ? listWorkOrders(ctx, { unitId: unit.id }) : Promise.resolve([]),
   ]);
+  const tW = await getTranslations('workorders');
+  const openWo = workOrders.filter((w) => w.status !== 'VERIFIED' && w.status !== 'CANCELLED');
   const activeDeals = deals.filter((d) => d.stage !== 'WON' && d.stage !== 'LOST');
   const liveLease = leases.find((l) => l.status === 'ACTIVE' || l.status === 'EXPIRING') ?? null;
   const draftLeases = leases.filter((l) => l.status === 'DRAFT');
@@ -171,7 +174,8 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
               {permissions.commercial ? (
                 <div><Label htmlFor="f-commercial">{t('dim.commercialStatus')}</Label><Select id="f-commercial" name="commercialStatus" defaultValue={unit.commercialStatus}>{commercialOptions.map((s) => (<option key={s} value={s}>{t(`commercial.${s}`)}</option>))}</Select></div>
               ) : null}
-              {permissions.operational ? (
+              {permissions.operational && openWo.some((w) => w.status !== 'DONE') ? <p className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">{tW('operationalLocked')}</p> : null}
+              {permissions.operational && !openWo.some((w) => w.status !== 'DONE') ? (
                 <div><Label htmlFor="f-operational">{t('dim.operationalStatus')}</Label><Select id="f-operational" name="operationalStatus" defaultValue={unit.operationalStatus}>{OPERATIONAL_STATUSES.map((s) => (<option key={s} value={s}>{t(`operational.${s}`)}</option>))}</Select></div>
               ) : null}
               <div><Label htmlFor="f-reason">{t('reason')}</Label><Input id="f-reason" name="reason" placeholder={t('reasonPlaceholder')} /></div>
@@ -279,6 +283,25 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
             </Card>
           ) : null}
         </div>
+      ) : null}
+
+      {can(ctx, 'workorder.view') ? (
+        <Card>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{tW('unitSection')}</h3>{openWo.length ? <Badge tone={openWo.some((w) => w.priority === 'CRITICAL') ? 'red' : 'yellow'} dot>{tW('openN', { n: openWo.length })}</Badge> : null}</div>
+            {can(ctx, 'workorder.create') ? <Link href={`/workorders?unit=${unit.id}`} className="text-sm font-medium text-brand-600 hover:underline">{tW('newShort')}</Link> : null}
+          </div>
+          <ul className="mt-3 divide-y divide-gray-100">
+            {workOrders.length === 0 ? <li className="py-2 text-sm text-gray-400">{tW('noneForUnit')}</li> : null}
+            {workOrders.slice(0, 6).map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                <div><Link href={`/workorders/${w.id}`} className="font-mono text-xs text-brand-600 hover:underline">{w.number}</Link><span className="ml-2 text-gray-900">{w.title}</span><span className="ml-2 text-xs text-gray-500">{tW(`category.${w.category}`)}</span></div>
+                <div className="flex items-center gap-1.5"><Badge tone={w.priority === 'CRITICAL' ? 'red' : w.priority === 'HIGH' ? 'yellow' : 'gray'}>{tW(`priority.${w.priority}`)}</Badge><Badge tone={w.status === 'VERIFIED' || w.status === 'DONE' ? 'green' : w.status === 'CANCELLED' ? 'gray' : 'blue'} dot>{tW(`status.${w.status}`)}</Badge>{w.overdue ? <Badge tone="red">{tW('overdue')}</Badge> : null}</div>
+              </li>
+            ))}
+          </ul>
+          {openWo.length ? <p className="mt-2 text-[11px] text-gray-400">{tW('sourceHint')}</p> : null}
+        </Card>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">

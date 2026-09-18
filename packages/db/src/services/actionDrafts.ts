@@ -14,6 +14,7 @@ import { findScopedOr404, whereTenant } from '../repository.js';
 import { addDealActivity, createDeal, moveDeal } from './deals.js';
 import { terminateLease } from './leases.js';
 import { addUnitActivity, changeUnitStatus, setUnitPublished } from './property.js';
+import { createWorkOrder } from './workOrders.js';
 
 let defaultExtractor: IntentExtractor = new RuleBasedIntentExtractor();
 /** Подмена извлекателя (LLM-адаптер в проде, mock в тестах). */
@@ -32,7 +33,7 @@ const parse = (payload: unknown): Intent => {
 export const CONFIRM_PERMISSION = {
   UNIT_VACATE: 'lease.manage',
   DEAL_VIEWING_NOTE: 'deal.manage',
-  UNIT_ISSUE: 'unit.status.operational',
+  UNIT_ISSUE: 'workorder.create',
   QUERY_UNITS: 'property.view',
 } as const;
 
@@ -59,7 +60,7 @@ function buildPreview(intent: Intent | null, unit: Unit | null, activeLease: boo
     case 'DEAL_VIEWING_NOTE':
       return `${unit.unitNo}: ${activeDeal ? `записать показ в сделку ${activeDeal.number}` : `создать сделку «${intent.company ?? 'клиент c показа'}» на стадии «Показ»`}${intent.expectedRateMinor != null ? `, ожидаемая ставка $${Number(intent.expectedRateMinor) / 100}${intent.perSqm ? '/м² (пересчёт на площадь)' : '/мес'}` : ''}. Стадия юнита обновится из сделки.`;
     case 'UNIT_ISSUE':
-      return `${unit.unitNo}: статус эксплуатации → ${intent.severity === 'CRITICAL' ? 'КРИТИЧНО' : 'есть проблема'} (${intent.category}), заметка в активности. Ответственный — эксплуатация.`;
+      return `${unit.unitNo}: создать заявку (${intent.category}, приоритет ${intent.severity === 'CRITICAL' ? 'КРИТИЧНЫЙ, SLA 4 ч' : 'высокий, SLA 24 ч'}); статус эксплуатации юнита пересчитается из заявки. Ответственный — эксплуатация.`;
   }
 }
 
@@ -133,9 +134,10 @@ export async function confirmActionDraft(ctx: TenantContext, id: string): Promis
         break;
       }
       case 'UNIT_ISSUE': {
-        if (unit!.operationalStatus !== intent.severity) await changeUnitStatus(ctx, unit!.id, { operationalStatus: intent.severity, reason: `WorkBot: ${intent.category}`, source: 'AI' });
-        if (can(ctx, 'unit.activity.create')) await addUnitActivity(ctx, unit!.id, { kind: 'NOTE', note: `[${intent.category}] ${draft.rawText}`, source: 'AI' });
-        resultRef = `/property/units/${unit!.id}`;
+        // Заявка — источник истины operationalStatus (BR-P31): статус юнита пересчитается из неё
+        const wo = await createWorkOrder(ctx, { unitId: unit!.id, category: intent.category === 'CLEANING' ? 'CLEANING' : intent.category === 'DAMAGE' ? 'DAMAGE' : intent.category === 'ELECTRICAL' ? 'ELECTRICAL' : intent.category === 'PLUMBING' ? 'PLUMBING' : 'OTHER', priority: intent.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH', title: draft.rawText.slice(0, 120), description: draft.rawText, source: 'AI' });
+        if (can(ctx, 'unit.activity.create')) await addUnitActivity(ctx, unit!.id, { kind: 'NOTE', note: `[${intent.category}] ${draft.rawText} → ${wo.number}`, source: 'AI' });
+        resultRef = `/workorders/${wo.id}`;
         break;
       }
     }
