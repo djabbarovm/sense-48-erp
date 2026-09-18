@@ -274,6 +274,15 @@ export async function changeUnitStatus(ctx: TenantContext, unitId: string, input
   const brokerOnly = hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const before = await findScopedOr404(tx.unit, ctx, unitId);
+    // ADR-018: при действующем договоре занятость/режим/договор меняет только договор; при активной сделке — стадия только через сделку
+    if (patch.occupancy !== undefined || patch.rentalMode !== undefined || patch.leaseStatus !== undefined || input.occupantName !== undefined || input.leaseEndsAt !== undefined || input.monthlyRentMinor !== undefined) {
+      const live = await tx.leaseContract.count({ where: { tenantId: ctx.tenantId, unitId, status: { in: ['ACTIVE', 'EXPIRING'] } } });
+      if (live > 0) throw new ValidationError('LEASE_IS_SOURCE', 'LEASE_IS_SOURCE: на юните действует договор аренды — занятость меняется через договор (расторжение/новый договор)');
+    }
+    if (patch.commercialStatus !== undefined) {
+      const activeDeals = await tx.deal.count({ where: { tenantId: ctx.tenantId, unitId, stage: { notIn: ['WON', 'LOST'] } } });
+      if (activeDeals > 0) throw new ValidationError('DEAL_IS_SOURCE', 'DEAL_IS_SOURCE: по юниту есть активная сделка — стадия меняется в сделке');
+    }
     const extraChanged = input.occupantName !== undefined || input.leaseEndsAt !== undefined || input.monthlyRentMinor !== undefined;
     const violations = validateStatusPatch(before, patch, { override: input.override ?? false, brokerOnly }).filter((v) => !(v === 'NO_CHANGES' && extraChanged));
     if (violations.length) throw new ValidationError(violations[0]!, `${violations.join(', ')}: недопустимое изменение статуса`);

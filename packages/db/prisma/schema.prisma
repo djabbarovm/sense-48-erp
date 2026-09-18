@@ -513,6 +513,8 @@ enum TaskType {
   UNMATCHED_TX
   ADVANCE_RETURN
   REVIEW_EXCEPTION
+  LEASE_EXPIRY
+  DEAL_FOLLOWUP
 }
 
 enum TaskStatus {
@@ -1712,10 +1714,12 @@ model Unit {
   createdBy            String?           @map("created_by") @db.Uuid
   updatedBy            String?           @map("updated_by") @db.Uuid
 
-  building   Building       @relation(fields: [buildingId], references: [id])
-  floor      Floor          @relation(fields: [floorId], references: [id])
-  owner      PropertyOwner? @relation(fields: [ownerId], references: [id])
+  building   Building        @relation(fields: [buildingId], references: [id])
+  floor      Floor           @relation(fields: [floorId], references: [id])
+  owner      PropertyOwner?  @relation(fields: [ownerId], references: [id])
   activities UnitActivity[]
+  leases     LeaseContract[]
+  deals      Deal[]
 
   @@unique([buildingId, unitNo])
   @@index([tenantId, buildingId])
@@ -1728,7 +1732,8 @@ model Unit {
 model UnitActivity {
   id                String           @id @default(uuid(7)) @db.Uuid
   tenantId          String           @map("tenant_id") @db.Uuid
-  unitId            String           @map("unit_id") @db.Uuid
+  unitId            String?          @map("unit_id") @db.Uuid
+  dealId            String?          @map("deal_id") @db.Uuid
   kind              UnitActivityKind
   note              String
   expectedRateMinor BigInt?          @map("expected_rate_minor")
@@ -1738,8 +1743,168 @@ model UnitActivity {
   happenedAt        DateTime         @default(now()) @map("happened_at")
   createdAt         DateTime         @default(now()) @map("created_at")
 
-  unit Unit @relation(fields: [unitId], references: [id])
+  unit Unit? @relation(fields: [unitId], references: [id])
+  deal Deal? @relation(fields: [dealId], references: [id])
 
   @@index([tenantId, unitId, happenedAt])
+  @@index([tenantId, dealId, happenedAt])
   @@map("unit_activity")
+}
+
+// ───────────────────────────── §P2 MDS Property Wave 2 (docs/20 §11, ADR-018) ─────────────────────────────
+
+enum LeaseType {
+  LTR
+  STR
+  OWNER_USE
+}
+
+enum LeaseContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRING
+  TERMINATED
+}
+
+// Договор аренды — источник истины для occupancy/rentalMode/leaseStatus юнита (юнит — зеркало).
+model LeaseContract {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  unitId           String              @map("unit_id") @db.Uuid
+  ownerId          String?             @map("owner_id") @db.Uuid
+  dealId           String?             @map("deal_id") @db.Uuid
+  type             LeaseType
+  occupantName     String              @map("occupant_name")
+  occupantContact  String?             @map("occupant_contact") // PII: телефон/email, отдаётся по праву
+  startAt          DateTime            @map("start_at") @db.Date
+  endAt            DateTime?           @map("end_at") @db.Date
+  rentMinor        BigInt              @map("rent_minor") // в месяц
+  depositMinor     BigInt?             @map("deposit_minor")
+  depositReceived  Boolean             @default(false) @map("deposit_received")
+  currency         String              @default("USD") @db.Char(3)
+  status           LeaseContractStatus @default(DRAFT)
+  terminatedAt     DateTime?           @map("terminated_at")
+  terminatedReason String?             @map("terminated_reason")
+  notes            String?
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  createdBy        String?             @map("created_by") @db.Uuid
+  updatedBy        String?             @map("updated_by") @db.Uuid
+
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  // partial unique: один ACTIVE/EXPIRING договор на юнит — в migration SQL
+  @@index([tenantId, unitId, status])
+  @@index([tenantId, status, endAt])
+  @@map("lease_contract")
+}
+
+enum DealStage {
+  NEW
+  QUALIFIED
+  PROPERTY_SELECTED
+  VIEWING
+  OFFER
+  NEGOTIATION
+  LOI
+  CONTRACT
+  MOVE_IN
+  WON
+  LOST
+}
+
+enum DealSource {
+  WEBSITE
+  TELEGRAM
+  INSTAGRAM
+  REFERRAL
+  BROKER
+  WALK_IN
+  OTHER
+}
+
+enum DealLostReason {
+  PRICE
+  TIMING
+  LOCATION
+  COMPETITOR
+  NO_RESPONSE
+  OTHER
+}
+
+// Сделка CRM (blueprint §6). commercialStatus юнита — производное от активных сделок (BR-P20).
+model Deal {
+  id                 String          @id @default(uuid(7)) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  number             String // DEAL-2026-000001
+  contactName        String          @map("contact_name") // PII
+  contactPhone       String?         @map("contact_phone") // PII
+  contactEmail       String?         @map("contact_email") // PII
+  company            String?
+  source             DealSource      @default(OTHER)
+  utm                Json?
+  budgetMinor        BigInt?         @map("budget_minor") // в месяц
+  areaMinM2          Decimal?        @map("area_min_m2") @db.Decimal(10, 2)
+  areaMaxM2          Decimal?        @map("area_max_m2") @db.Decimal(10, 2)
+  purpose            String?
+  timing             String?
+  unitId             String?         @map("unit_id") @db.Uuid
+  alternativeUnitIds String[]        @default([]) @map("alternative_unit_ids") @db.Uuid
+  managerId          String          @map("manager_id") @db.Uuid
+  stage              DealStage       @default(NEW)
+  stageChangedAt     DateTime        @default(now()) @map("stage_changed_at")
+  nextAction         String?         @map("next_action")
+  nextActionAt       DateTime?       @map("next_action_at") @db.Date
+  expectedRateMinor  BigInt?         @map("expected_rate_minor")
+  reservedUntil      DateTime?       @map("reserved_until") @db.Date
+  depositReceived    Boolean         @default(false) @map("deposit_received")
+  lostReason         DealLostReason? @map("lost_reason")
+  lostNote           String?         @map("lost_note")
+  wonLeaseId         String?         @map("won_lease_id") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  createdBy          String?         @map("created_by") @db.Uuid
+  updatedBy          String?         @map("updated_by") @db.Uuid
+
+  unit       Unit?          @relation(fields: [unitId], references: [id])
+  activities UnitActivity[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, stage])
+  @@index([tenantId, managerId, stage])
+  @@index([tenantId, unitId])
+  @@map("deal")
+}
+
+// Outbox доменных событий (blueprint §1.11): payload без PII; доставка — воркер domain-events.
+model DomainEvent {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  type        String // unit.status.changed · lease.activated · lease.terminated · deal.stage.changed
+  objectType  String    @map("object_type")
+  objectId    String    @map("object_id") @db.Uuid
+  payload     Json
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deliveredAt DateTime? @map("delivered_at")
+  attempts    Int       @default(0)
+
+  @@index([tenantId, deliveredAt, createdAt])
+  @@map("domain_event")
+}
+
+// API-ключи тенанта для внешних интерфейсов (сайт, бот): хранится только sha256, plaintext показывается один раз.
+model ApiKey {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  name       String
+  prefix     String // первые 8 символов — для идентификации в UI/логах
+  keyHash    String    @unique @map("key_hash")
+  scopes     String[]  @default([])
+  createdBy  String?   @map("created_by") @db.Uuid
+  createdAt  DateTime  @default(now()) @map("created_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  @@index([tenantId, revokedAt])
+  @@map("api_key")
 }

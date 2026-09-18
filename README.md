@@ -6,7 +6,7 @@ Copyright (c) 2026 Murad Djabbarov. Проприетарное ПО, все пр
 
 ## MDS Property (Phase P)
 
-После `pnpm seed` доступен демо-тенант «Piramit Tower (демо)»: 3 здания, 30 этажей, 230 юнитов. Пользователи (пароль как в docs/10): `owner@piramit.test` (OWNER), `commercial@piramit.test` (COMMERCIAL_MANAGER), `broker@piramit.test` (BROKER), `ops@piramit.test` (OPERATIONS_MANAGER), `marketing@piramit.test` (MARKETING), `admin@piramit.test` (ADMIN), `finance@piramit.test` (FINANCE_OPS_LEAD). Экраны: `/property` (Building View: KPI, фильтры, 2.5D фасад) → `/property/floors/[id]` (план этажа) → `/property/units/[id]` (карточка юнита, смена статуса по правам, аудит). Цвет юнита вычисляется из полей (`packages/core/src/property`), не хранится.
+После `pnpm seed` доступен демо-тенант «Piramit Tower (демо)»: 3 здания, 30 этажей, 230 юнитов. Пользователи (пароль как в docs/10): `owner@piramit.test` (OWNER), `commercial@piramit.test` (COMMERCIAL_MANAGER), `broker@piramit.test` (BROKER), `ops@piramit.test` (OPERATIONS_MANAGER), `marketing@piramit.test` (MARKETING), `admin@piramit.test` (ADMIN), `finance@piramit.test` (FINANCE_OPS_LEAD). Экраны: `/property` (Building View: KPI, фильтры, 2.5D фасад) → `/property/floors/[id]` (план этажа) → `/property/units/[id]` (карточка юнита, смена статуса по правам, аудит). Цвет юнита вычисляется из полей (`packages/core/src/property`), не хранится. Wave 2: `/deals` (воронка сделок, стадия юнита — из сделок), `/leases` (договоры аренды — источник истины занятости), `/admin/api-keys` + `GET /api/property/public/inventory` (заголовок `X-Api-Key`, только опубликованные юниты без персональных данных). Импорт инвентаря и планов этажей — экран «Миграция данных».
 
 ## Finance OS
 

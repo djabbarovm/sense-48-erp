@@ -7,7 +7,10 @@
 import type { NotificationAdapter } from '@finance-os/adapters';
 import {
   autoFreezeBatches,
+  createDealFollowupTasks,
   createExpiryTasksForTenant,
+  deliverDomainEvents,
+  markExpiringLeases,
   escalateOverdueTasks,
   generateTaxObligations,
   markOverdueAdvances,
@@ -68,6 +71,22 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'contract-expiry',
       cron: '0 5 * * *',
       run: (tenantId, now) => createExpiryTasksForTenant(tenantId, now),
+    },
+    // MDS Property Wave 2 (docs/20 §11)
+    {
+      name: 'lease-expiry',
+      cron: '15 5 * * *',
+      run: (tenantId, now) => markExpiringLeases(tenantId, now),
+    },
+    {
+      name: 'deal-followup',
+      cron: '0 8 * * *',
+      run: (tenantId, now) => createDealFollowupTasks(tenantId, now),
+    },
+    {
+      name: 'domain-events',
+      cron: '*/5 * * * *',
+      run: (tenantId, now) => deliverDomainEvents(tenantId, now, notifier),
     },
     {
       name: 'event-progress',

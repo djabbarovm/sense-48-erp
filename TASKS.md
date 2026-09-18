@@ -101,7 +101,8 @@
 - [x] P-07 Импорт инвентаря `inventory.xlsx` (all-or-nothing, здание/этаж/собственник по ключам, существующие Unit ID пропускаются, BR-P04/P10 — ошибки строк) + шаблон templates/inventory.xlsx + карточка на /migration; 3 теста
 - [x] P-08 Импорт плана этажа JSON/SVG (`adapters/property/floorplan`: polygon/rect/path; неизвестный юнит → отказ; geometryVersion++; audit) + карточка на /migration; Playwright e2e трёх экранов (property.spec: навигация ≤ 2 действия, PII брокера, стадии, cross-tenant 404); фикс входа — сброс чужой tenant-cookie
 - [ ] P-09 Владелец: переименовать репозиторий и workspace-scope в нейтральное имя (git-история сохраняется)
-- [ ] P-10 Wave 2: LeaseContract и Deal как сущности, CRM-воронка, public-safe inventory API, HTTP API + событие unit.status.changed
+- [x] P-10 Wave 2 (ADR-018): LeaseContract (DRAFT→ACTIVE→EXPIRING→TERMINATED, один действующий на юнит, юнит — зеркало, LEASE_IS_SOURCE), Deal (воронка 11 стадий, вероятности, BR-P20 commercialStatus из сделок, BR-P21 брокер видит своё, BR-P22 attention + Task DEAL_FOLLOWUP, BR-P23 WON через активацию договора), outbox DomainEvent + джоб domain-events → Telegram, ApiKey (sha256, scope) + `GET /api/property/public/inventory` без PII; экраны /deals (доска), /deals/[id], /deals/new, /leases, /admin/api-keys, секции договора и сделок в карточке юнита; джобы lease-expiry/deal-followup/domain-events; seed: 163 договора + 20 сделок; 8 unit + 9 интеграционных тестов, e2e deals.spec
+- [ ] P-11 Wave 2b: HTTP API для WorkBot (structured action draft → confirm → commit), realtime repaint (SSE) для Building View, бонусы продажников после положения (blueprint §17)
 
 ## IP — принадлежность продукта
 - [x] IP-01 Правообладатель зафиксирован (ADR-015): LICENSE, docs/17-ip-ownership.md, package.json, README, git-идентичность владельца

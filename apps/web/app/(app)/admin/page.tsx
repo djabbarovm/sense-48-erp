@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { can, ROLE_CODES } from '@finance-os/core';
 import { listCategories, listCostCenters, listTenantUsers, prisma } from '@finance-os/db';
+import Link from 'next/link';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, Select, Table, Td, Th } from '@/components/ui';
 import {
@@ -41,7 +42,10 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">{t('title')}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold">{t('title')}</h1>
+        {can(ctx, 'apikey.manage') ? <Link href="/admin/api-keys" className="text-sm font-medium text-brand-600 hover:underline">{t('apiKeys')}</Link> : null}
+      </div>
 
       <Card>
         <h2 className="mb-3 font-medium">{t('tenantSettings')}</h2>

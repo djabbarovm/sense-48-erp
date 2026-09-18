@@ -4,7 +4,7 @@
  * Никаких реальных собственников/арендаторов — все имена вымышлены.
  */
 import { hashPassword } from '@finance-os/core';
-import type { CommercialStatus, LeaseStatus, OccupancyStatus, PrismaClient, ReadinessStatus, RentalMode, RoleCode, UnitType } from '@prisma/client';
+import type { CommercialStatus, DealSource, DealStage, LeaseStatus, OccupancyStatus, PrismaClient, ReadinessStatus, RentalMode, RoleCode, UnitType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { DEV_PASSWORD } from './phaseA.js';
 
@@ -194,4 +194,72 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   await prisma.unit.update({ where: { buildingId_unitNo: { buildingId: tower.id, unitNo: '1507' } }, data: { readiness: 'READY', occupancy: 'VACANT', rentalMode: 'NONE', leaseStatus: 'ACTIVE', commercialStatus: 'AVAILABLE', leaseEndsAt: daysAhead(90), vacantSince: daysAgo(12) } });
 
   console.log(`  property units: ${unitsTotal} + common areas`);
+
+  // ── Wave 2: договоры аренды как источник истины занятых юнитов (docs/20 §11.1) ──
+  const occupied = await prisma.unit.findMany({ where: { tenantId, occupancy: { in: ['OCCUPIED', 'OWNER_USE'] }, type: { notIn: ['COMMON', 'TECHNICAL'] } } });
+  let leases = 0;
+  for (const u of occupied) {
+    const exists = await prisma.leaseContract.count({ where: { unitId: u.id, status: { in: ['ACTIVE', 'EXPIRING'] } } });
+    if (exists) continue;
+    const r = rng(9000 + leases);
+    const type = u.occupancy === 'OWNER_USE' ? 'OWNER_USE' : u.rentalMode === 'STR' ? 'STR' : 'LTR';
+    const startAt = daysAgo(Math.floor(30 + r() * 700));
+    const rent = u.monthlyRentMinor ?? ((u.askingRateMinor ?? 0n) * 9n) / 10n;
+    await prisma.leaseContract.create({
+      data: {
+        tenantId, unitId: u.id, ownerId: u.ownerId, type, occupantName: u.occupantName ?? 'Собственник',
+        occupantContact: type === 'LTR' ? `+99890${String(2000000 + leases * 3571).slice(0, 7)}` : null,
+        startAt, endAt: type === 'STR' ? daysAhead(Math.floor(2 + r() * 20)) : u.leaseEndsAt, rentMinor: rent, depositMinor: type === 'LTR' ? rent : null,
+        depositReceived: type === 'LTR' ? r() < 0.85 : false, currency: u.askingCurrency, status: u.leaseStatus === 'EXPIRING' ? 'EXPIRING' : 'ACTIVE',
+      },
+    });
+    leases++;
+  }
+  console.log(`  lease contracts: ${leases} created`);
+
+  // ── Wave 2: воронка сделок (blueprint §6) — детерминированные номера, идемпотентно по (tenant, number) ──
+  const managers = await prisma.userTenantRole.findMany({ where: { tenantId, role: { in: ['COMMERCIAL_MANAGER', 'BROKER'] } }, select: { userId: true, role: true } });
+  const cmUser = managers.find((m) => m.role === 'COMMERCIAL_MANAGER')?.userId;
+  const brUser = managers.find((m) => m.role === 'BROKER')?.userId;
+  const sellable = await prisma.unit.findMany({ where: { tenantId, occupancy: 'VACANT', readiness: 'READY', type: { notIn: ['COMMON', 'TECHNICAL'] } }, orderBy: { unitNo: 'asc' } });
+  const STAGES: DealStage[] = ['NEW', 'QUALIFIED', 'PROPERTY_SELECTED', 'VIEWING', 'VIEWING', 'OFFER', 'NEGOTIATION', 'NEGOTIATION', 'LOI', 'CONTRACT', 'LOST', 'NEW', 'QUALIFIED', 'VIEWING', 'NEGOTIATION', 'LOST', 'PROPERTY_SELECTED', 'OFFER', 'VIEWING', 'NEW'];
+  const SOURCES: DealSource[] = ['WEBSITE', 'TELEGRAM', 'INSTAGRAM', 'REFERRAL', 'BROKER', 'WALK_IN'];
+  const DEAL_COMPANIES = [null, 'Aral IT Solutions', null, 'Delta Consulting', 'NovaPharm', null, 'Silk Road Logistics', null, 'Amir Legal', 'Registan Trade'];
+  let dealsCreated = 0;
+  if (cmUser && brUser) {
+    const year = new Date().getFullYear();
+    for (let i = 0; i < STAGES.length; i++) {
+      const number = `DEAL-${year}-${String(i + 1).padStart(6, '0')}`;
+      const exists = await prisma.deal.findUnique({ where: { tenantId_number: { tenantId, number } } });
+      if (exists) continue;
+      const r = rng(7000 + i);
+      const stage = STAGES[i]!;
+      const withUnit = stage !== 'NEW' && stage !== 'QUALIFIED';
+      const unit = withUnit ? sellable[(i * 7) % Math.max(1, sellable.length)] : undefined;
+      const managerId = i % 3 === 0 ? brUser : cmUser;
+      const expected = unit?.askingRateMinor ? (unit.askingRateMinor * BigInt(85 + Math.floor(r() * 15))) / 100n : BigInt(Math.floor(800 + r() * 4000)) * 100n;
+      const nextIn = Math.floor(r() * 14) - 4; // часть просрочена → attention
+      const created = await prisma.deal.create({
+        data: {
+          tenantId, number, contactName: `${FIRST[(i * 5) % FIRST.length]} ${LAST[(i * 3) % LAST.length]}`, contactPhone: `+99890${String(3000000 + i * 4111).slice(0, 7)}`,
+          company: DEAL_COMPANIES[i % DEAL_COMPANIES.length] ?? null, source: SOURCES[i % SOURCES.length]!, budgetMinor: expected, purpose: unit?.type === 'OFFICE' ? 'офис' : unit?.type === 'RETAIL' ? 'торговая точка' : 'жильё',
+          unitId: unit?.id ?? null, managerId, stage, stageChangedAt: daysAgo(Math.floor(r() * 20)),
+          nextAction: stage === 'LOST' || i % 4 === 3 ? null : ['перезвонить', 'отправить КП', 'назначить показ', 'согласовать скидку'][i % 4]!, nextActionAt: stage === 'LOST' || i % 4 === 3 ? null : daysAhead(nextIn),
+          expectedRateMinor: unit ? expected : null, reservedUntil: stage === 'NEGOTIATION' && i % 2 === 0 ? daysAhead(5) : null, depositReceived: stage === 'CONTRACT',
+          lostReason: stage === 'LOST' ? (i % 2 ? 'PRICE' : 'COMPETITOR') : null, createdBy: managerId,
+        },
+      });
+      dealsCreated++;
+      if (unit && stage !== 'LOST') {
+        // BR-P20: стадия юнита из самой продвинутой активной сделки
+        const map: Record<string, CommercialStatus> = { VIEWING: 'VIEWING', OFFER: 'NEGOTIATION', NEGOTIATION: created.reservedUntil ? 'RESERVED' : 'NEGOTIATION', LOI: 'LOI', CONTRACT: 'CONTRACTED', PROPERTY_SELECTED: 'AVAILABLE' };
+        const cs = map[stage] ?? 'AVAILABLE';
+        const rank: Record<string, number> = { AVAILABLE: 0, VIEWING: 1, NEGOTIATION: 2, RESERVED: 3, LOI: 4, CONTRACTED: 5 };
+        if ((rank[cs] ?? 0) >= (rank[unit.commercialStatus] ?? 0)) await prisma.unit.update({ where: { id: unit.id }, data: { commercialStatus: cs, ...(cs === 'LOI' || cs === 'CONTRACTED' ? { publishedAt: null } : {}) } });
+      }
+    }
+    // Sequence: следующий номер после сидовых
+    await prisma.sequence.upsert({ where: { tenantId_key_year: { tenantId, key: 'DEAL', year } }, create: { tenantId, key: 'DEAL', year, nextValue: STAGES.length + 1 }, update: { nextValue: { set: STAGES.length + 1 } } });
+  }
+  console.log(`  deals: ${dealsCreated} created`);
 }

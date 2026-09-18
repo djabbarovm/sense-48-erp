@@ -39,3 +39,8 @@ export * from './services/kspImport.js';
 export * from './services/ceo.js';
 export * from './services/property.js';
 export * from './services/propertyImport.js';
+export * from './services/domainEvents.js';
+export * from './services/apiKeys.js';
+export * from './services/publicInventory.js';
+export * from './services/leases.js';
+export * from './services/deals.js';

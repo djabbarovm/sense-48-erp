@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, History, MessageSquare } from 'lucide-react';
-import { COMMERCIAL_STATUSES, LEASE_STATUSES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, can, hasRole } from '@finance-os/core';
-import { getUnitCard } from '@finance-os/db';
+import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare } from 'lucide-react';
+import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, can, hasRole } from '@finance-os/core';
+import { getUnitCard, listDeals, listLeases } from '@finance-os/db';
+import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction } from '../../../leases/actions';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
 import { COLOR_BG, fmtDate, fmtRate } from '@/components/property';
@@ -31,6 +32,15 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
     throw e;
   }
   const { unit, building, floor, owner, activities, audit, auditVisible, permissions } = card;
+  const [deals, leases] = await Promise.all([
+    can(ctx, 'deal.view') ? listDeals(ctx, { unitId: unit.id, includeClosed: true }) : Promise.resolve([]),
+    can(ctx, 'lease.view') ? listLeases(ctx, { unitId: unit.id }) : Promise.resolve([]),
+  ]);
+  const activeDeals = deals.filter((d) => d.stage !== 'WON' && d.stage !== 'LOST');
+  const liveLease = leases.find((l) => l.status === 'ACTIVE' || l.status === 'EXPIRING') ?? null;
+  const draftLeases = leases.filter((l) => l.status === 'DRAFT');
+  const tD = await getTranslations('deals');
+  const tL = await getTranslations('leases');
   const v = unit.view;
   const canStatus = permissions.readiness || permissions.occupancy || permissions.commercial || permissions.operational;
   const brokerOnly = hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
@@ -143,7 +153,8 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
               {permissions.readiness ? (
                 <div><Label htmlFor="f-readiness">{t('dim.readiness')}</Label><Select id="f-readiness" name="readiness" defaultValue={unit.readiness}>{READINESS_STATUSES.map((s) => (<option key={s} value={s}>{t(`readiness.${s}`)}</option>))}</Select></div>
               ) : null}
-              {permissions.occupancy ? (
+              {permissions.occupancy && liveLease ? <p className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">{tL('occupancyLocked')}</p> : null}
+              {permissions.occupancy && !liveLease ? (
                 <>
                   <div><Label htmlFor="f-occupancy">{t('dim.occupancy')}</Label><Select id="f-occupancy" name="occupancy" defaultValue={unit.occupancy}>{OCCUPANCY_STATUSES.map((s) => (<option key={s} value={s}>{t(`occupancy.${s}`)}</option>))}</Select></div>
                   <div><Label htmlFor="f-rental">{t('dim.rentalMode')}</Label><Select id="f-rental" name="rentalMode" defaultValue={unit.rentalMode}>{RENTAL_MODES.map((s) => (<option key={s} value={s}>{t(`rental.${s}`)}</option>))}</Select></div>
@@ -186,6 +197,87 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
           ) : null}
         </Card>
       </div>
+
+      {(can(ctx, 'deal.view') || can(ctx, 'lease.view')) ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {/* Wave 2: договор аренды — источник истины занятости */}
+          {can(ctx, 'lease.view') ? (
+            <Card>
+              <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{tL('cardTitle')}</h3></div>
+              {liveLease ? (
+                <dl className="mt-3 space-y-1.5">
+                  <Row k={tL('status')} v={<Badge tone={liveLease.status === 'ACTIVE' ? 'green' : 'yellow'} dot>{tL(`leaseStatus.${liveLease.status}`)}</Badge>} />
+                  <Row k={tL('occupant')} v={liveLease.occupantName} />
+                  {liveLease.occupantContact ? <Row k={t('phone')} v={<span className="font-mono">{liveLease.occupantContact}</span>} /> : null}
+                  <Row k={tL('type')} v={tL(`leaseType.${liveLease.type}`)} />
+                  <Row k={tL('period')} v={`${fmtDate(liveLease.startAt)} → ${liveLease.endAt ? fmtDate(liveLease.endAt) : tL('openEnded')}`} />
+                  {liveLease.rentMinor != null ? <Row k={tL('rent')} v={<span className="font-mono">{fmtRate(liveLease.rentMinor, liveLease.currency)}</span>} /> : null}
+                  {liveLease.depositMinor != null ? <Row k={tL('deposit')} v={<span className={liveLease.depositReceived ? 'text-emerald-600' : 'text-red-600'}>{fmtRate(liveLease.depositMinor, liveLease.currency)} · {liveLease.depositReceived ? tL('received') : tL('notReceived')}</span>} /> : null}
+                </dl>
+              ) : <p className="mt-2 text-sm text-gray-400">{tL('none')}</p>}
+              {can(ctx, 'lease.manage') && liveLease ? (
+                <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3">
+                  {liveLease.depositMinor != null && !liveLease.depositReceived ? <form action={markDepositReceivedAction}><input type="hidden" name="unitId" value={unit.id} /><input type="hidden" name="leaseId" value={liveLease.id} /><Button type="submit" variant="outline" size="sm">{tL('markDeposit')}</Button></form> : null}
+                  <form action={terminateLeaseAction} className="flex flex-1 items-end gap-2">
+                    <input type="hidden" name="unitId" value={unit.id} /><input type="hidden" name="leaseId" value={liveLease.id} />
+                    <div className="flex-1"><Label htmlFor="lt-reason">{tL('terminateReason')}</Label><Input id="lt-reason" name="reason" required placeholder={tL('terminatePlaceholder')} /></div>
+                    <Button type="submit" variant="danger" size="sm">{tL('terminate')}</Button>
+                  </form>
+                </div>
+              ) : null}
+              {can(ctx, 'lease.manage') && !liveLease ? (
+                <>
+                  {draftLeases.map((l) => (
+                    <form key={l.id} action={activateLeaseAction} className="mt-2 flex items-center justify-between gap-2 rounded-md bg-gray-50 px-3 py-2 text-sm">
+                      <input type="hidden" name="unitId" value={unit.id} /><input type="hidden" name="leaseId" value={l.id} />
+                      <span>{tL('draft')}: {l.occupantName} · {fmtDate(l.startAt)}</span>
+                      <Button type="submit" size="sm">{tL('activate')}</Button>
+                    </form>
+                  ))}
+                  <form action={createLeaseAction} className="mt-3 space-y-2 border-t border-gray-100 pt-3">
+                    <h4 className="text-[13px] font-semibold text-gray-800">{tL('newLease')}</h4>
+                    <input type="hidden" name="unitId" value={unit.id} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label htmlFor="nl-type">{tL('type')}</Label><Select id="nl-type" name="type" defaultValue="LTR">{LEASE_TYPES.map((x) => (<option key={x} value={x}>{tL(`leaseType.${x}`)}</option>))}</Select></div>
+                      <div><Label htmlFor="nl-occ">{tL('occupant')}</Label><Input id="nl-occ" name="occupantName" /></div>
+                      <div><Label htmlFor="nl-contact">{tL('occupantContact')}</Label><Input id="nl-contact" name="occupantContact" /></div>
+                      <div><Label htmlFor="nl-rent">{tL('rentUsd')}</Label><Input id="nl-rent" name="rent" type="number" min="0" step="0.01" defaultValue={unit.askingRateMinor ? (Number(unit.askingRateMinor) / 100).toFixed(2) : ''} required /></div>
+                      <div><Label htmlFor="nl-start">{tL('startAt')}</Label><Input id="nl-start" name="startAt" type="date" required /></div>
+                      <div><Label htmlFor="nl-end">{tL('endAt')}</Label><Input id="nl-end" name="endAt" type="date" /></div>
+                      <div><Label htmlFor="nl-dep">{tL('depositUsd')}</Label><Input id="nl-dep" name="deposit" type="number" min="0" step="0.01" /></div>
+                      <div className="flex flex-col justify-end gap-1 text-xs text-gray-700">
+                        <label className="flex items-center gap-2"><input type="checkbox" name="depositReceived" className="h-4 w-4" />{tL('received')}</label>
+                        <label className="flex items-center gap-2"><input type="checkbox" name="activate" defaultChecked className="h-4 w-4" />{tL('activateNow')}</label>
+                      </div>
+                    </div>
+                    <Button type="submit" size="sm">{tL('create')}</Button>
+                    <p className="text-[11px] text-gray-400">{tL('sourceHint')}</p>
+                  </form>
+                </>
+              ) : null}
+            </Card>
+          ) : null}
+          {/* Wave 2: сделки по юниту */}
+          {can(ctx, 'deal.view') ? (
+            <Card>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2"><Handshake className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{tD('unitDeals')}</h3></div>
+                {can(ctx, 'deal.manage') && v.isSellable ? <Link href={`/deals/new?unit=${unit.id}`} className="text-sm font-medium text-brand-600 hover:underline">{tD('newDeal')}</Link> : null}
+              </div>
+              <ul className="mt-3 divide-y divide-gray-100">
+                {deals.length === 0 ? <li className="py-2 text-sm text-gray-400">{tD('noDealsForUnit')}</li> : null}
+                {[...activeDeals, ...deals.filter((d) => d.stage === 'WON' || d.stage === 'LOST')].slice(0, 8).map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                    <div><Link href={`/deals/${d.id}`} className="font-mono text-xs text-brand-600 hover:underline">{d.number}</Link><span className="ml-2 font-medium text-gray-900">{d.company ?? d.contactName}</span><span className="ml-2 text-xs text-gray-500">{d.managerName}</span></div>
+                    <Badge tone={d.stage === 'WON' ? 'green' : d.stage === 'LOST' ? 'red' : 'blue'}>{tD(`stage.${d.stage}`)}</Badge>
+                  </li>
+                ))}
+              </ul>
+              {activeDeals.length ? <p className="mt-2 text-[11px] text-gray-400">{tD('dealIsSourceHint')}</p> : null}
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Activities */}

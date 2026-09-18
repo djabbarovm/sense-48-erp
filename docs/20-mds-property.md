@@ -67,6 +67,11 @@
 | BR-P14 | Публикуется только sellable | READY + VACANT + на рынке; заселение/снятие c рынка снимает публикацию | property.test |
 | BR-P15 | Unit ID неизменяем | `UNIT_NO_IMMUTABLE`; уникален в здании; импорт пропускает существующие | property.test, property-import.test |
 | BR-P16 | Геометрия только для существующих юнитов этажа | неизвестный unit_no → отказ файла, geometryVersion++ | property-import.test |
+| BR-P20 | commercialStatus юнита — из активных сделок | пересчёт при каждом изменении сделки; ручная смена при активной сделке → DEAL_IS_SOURCE | deal.test, property-wave2.test |
+| BR-P21 | Брокер видит и ведёт только свои сделки | чужая сделка → 404; managerId нельзя переназначить | property-wave2.test |
+| BR-P22 | Просроченная активность | NO_NEXT_ACTION / NEXT_ACTION_OVERDUE / STALE / RESERVATION_EXPIRING; джоб → Task DEAL_FOLLOWUP | deal.test, property-wave2.test |
+| BR-P23 | WON только через активацию договора | activateLease c dealId → stage WON + wonLeaseId | property-wave2.test |
+| BR-P24 | Договор — источник истины занятости | один ACTIVE/EXPIRING на юнит (partial unique); ручная смена occupancy/rentalMode/leaseStatus → LEASE_IS_SOURCE | lease.test, property-wave2.test |
 
 ## 6. Роли и права
 
@@ -125,7 +130,8 @@ HTTP-роуты и realtime-события (`unit.status.changed`) — Wave 2 (�
 | 0 Foundation | IP/ownership (docs/17), роли, data dictionary, Unit ID | ✓ IP-01, P-01 |
 | 1 Core MVP | Property Core + Building/Floor/Unit + фильтры + audit + seed | ✓ P-02…P-06 |
 | 1b | Импорт инвентаря из XLSX, планов этажей JSON/SVG, e2e | ✓ P-07, P-08 |
-| 2 Commercial | CRM lead/deal/activity/viewing/offer, LeaseContract как сущность, public-safe inventory API, HTTP API + события | P-10… |
+| 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
+| 2b | WorkBot API (draft→confirm→commit), realtime repaint, бонусы продажников | P-11 |
 | 3 AI Operations | WorkBot: voice/text/photo → structured draft → confirm → commit → audit | после API |
 | 4 Owner/Operations | Owner Portal, work orders/SLA, документы, services | после identity |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |

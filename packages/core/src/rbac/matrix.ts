@@ -104,6 +104,13 @@ export const PERMISSION_MATRIX = {
   'unit.owner.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER'],
   'unit.finance.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'COMMERCIAL_MANAGER'],
   'unit.activity.create': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER'],
+  // ── MDS Property Wave 2 (docs/20 §11) ──
+  'lease.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'OPERATIONS_MANAGER'],
+  'lease.manage': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'deal.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING'],
+  'deal.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
+  'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
+  'apikey.manage': ['OWNER', 'ADMIN'],
 } as const satisfies Record<string, readonly RoleCode[]>;
 
 export type PermissionCode = keyof typeof PERMISSION_MATRIX;

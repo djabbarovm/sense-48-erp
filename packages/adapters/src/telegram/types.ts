@@ -10,7 +10,8 @@ export type NotificationTemplate =
   | 'BATCH_STATUS'
   | 'AR_REMINDER'
   | 'BANK_IMPORT_DONE'
-  | 'SECURITY_ALERT';
+  | 'SECURITY_ALERT'
+  | 'PROPERTY_EVENT';
 
 export interface NotificationInput {
   userId: string;
@@ -32,4 +33,5 @@ export const NOTIFICATION_TEXTS: Record<NotificationTemplate, (p: Record<string,
   AR_REMINDER: (p) => `Счёт ${p.invoice_number} клиенту: ${p.offset}.`,
   BANK_IMPORT_DONE: (p) => `Выписка импортирована: ${p.matched}/${p.total} сопоставлено.`,
   SECURITY_ALERT: (p) => `Изменены реквизиты vendor ${p.vendor_display_name}. Требуется верификация.`,
+  PROPERTY_EVENT: (p) => `MDS Property: ${p.event} — ${p.object}${p.detail ? ` (${p.detail})` : ''}.`,
 };
