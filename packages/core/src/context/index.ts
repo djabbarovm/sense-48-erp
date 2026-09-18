@@ -12,6 +12,11 @@ export const ROLE_CODES = [
   'ACCOUNTANT',
   'REQUESTER',
   'ADMIN',
+  // MDS Property (docs/20 §6): коммерция и эксплуатация недвижимости
+  'COMMERCIAL_MANAGER',
+  'BROKER',
+  'OPERATIONS_MANAGER',
+  'MARKETING',
 ] as const;
 
 export type RoleCode = (typeof ROLE_CODES)[number];

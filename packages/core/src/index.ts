@@ -9,3 +9,4 @@ export * from './policy/index.js';
 export * from './rbac/index.js';
 export * from './security/index.js';
 export * from './workflows/index.js';
+export * from './property/index.js';

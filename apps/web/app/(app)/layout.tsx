@@ -30,7 +30,8 @@ import {
   Upload,
   UsersRound,
   Wallet,
-  Sunrise } from 'lucide-react';
+  Sunrise,
+  Building } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
 import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
@@ -48,6 +49,7 @@ const ICON = 'h-[18px] w-[18px]';
 
 const NAV: NavItem[] = [
   { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, permission: 'dashboard.owner' },
+  { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'dashboard', href: '/', icon: <LayoutDashboard className={ICON} />, permission: 'dashboard.ops' },
   { key: 'ownerDash', href: '/dashboard', icon: <Crown className={ICON} />, permission: 'dashboard.owner' },
   { key: 'approvals', href: '/approvals', icon: <CheckSquare className={ICON} /> },

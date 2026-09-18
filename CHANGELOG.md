@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-18 — MDS Property: Property Core + Живое здание (Wave 1)
+- P-01: docs/20-mds-property.md — спецификация модуля по blueprint владельца (статусная модель, цветовая логика, BR-P01…P15, роли, экраны, API, seed, этапы, acceptance); ADR-016 (имя продукта MDS, монорепо), ADR-017 (статусы — шесть полей, цвет вычисляется, договор/сделка в v1 — поля юнита).
+- P-02: схема §P — Building/Floor/Unit/PropertyOwner/UnitActivity, 10 enum'ов; четыре новые роли платформы и 12 прав `property.*`/`unit.*`; миграция `20260918214205_mds_property_core`.
+- P-03: `packages/core/src/property` — `deriveUnitView` (цвет по приоритету Readiness→Occupancy→Rental→Contract→Overlay, alert'ы, sellable, дни простоя), `validateStatusPatch` (BR-P04/P10/P11), `matchesUnitFilter` (единый предикат), `computeUnitKpi`; 21 unit-тест.
+- P-04: `services/property.ts` — getStatusMap/getFloor/getUnitCard/listUnits, changeUnitStatus (право на каждое поле, override только c причиной, vacant_since и публикация управляются системой), updateUnitPricing, setUnitPublished, addUnitActivity, master data; маскирование PII собственника без права; 10 интеграционных тестов (403, cross-tenant 404, audit, идентичность фильтров).
+- P-05: экраны /property (KPI strip 12 показателей, smart-фильтры через URL, легенда, 2.5D фасад по этажам c hover-подсказками), /property/floors/[id] (SVG-план из geometry + таблица-fallback, навигация по этажам), /property/units/[id] (карточка по blueprint §1.7: identity, статусы, собственник, арендатор, коммерция, форма смены статуса по правам, цены, публикация, активности, аудит c diff и причиной); словарь `property` (~200 строк), пункт меню «Здание (MDS)».
+- P-06: seed Phase P — тенант `piramit`: Residence Tower 19×8, Business Center 8×6, Piramit Mall 3×10 (+ common-ядра), 60 вымышленных собственников, пользователи пяти ролей, три намеренных противоречия для демонстрации alert'ов; детерминирован и идемпотентен.
+
 ## [IP] 2026-09-18 — правообладатель и состав продукта
 - IP-01: зафиксирован правообладатель (физлицо, ADR-015): `LICENSE` (проприетарная, RU/EN), `docs/17-ip-ownership.md` (состав продукта, исключения — данные клиента PALYM/секреты/сторонние библиотеки, доказательная база авторства, схема передачи в компанию, реестр задач юристу 6.1–6.9, правила для коммитов), `package.json` license=UNLICENSED + author, шапка копирайта в README, строка в индексе документации CLAUDE.md. Git-идентичность репозитория переключена на владельца — коммиты больше не подписываются обезличенным аккаунтом инструмента.
 

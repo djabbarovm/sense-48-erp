@@ -1,6 +1,14 @@
-# Finance OS
+# MDS
 
 Copyright (c) 2026 Murad Djabbarov. Проприетарное ПО, все права защищены — см. `LICENSE` и `docs/17-ip-ownership.md`.
+
+Платформа владельца из двух модулей (ADR-016): **Finance OS** — Finance Operations для бизнесов; **MDS Property** — Property Core и «Живое здание» для управления недвижимостью (`docs/20-mds-property.md`).
+
+## MDS Property (Phase P)
+
+После `pnpm seed` доступен демо-тенант «Piramit Tower (демо)»: 3 здания, 30 этажей, 230 юнитов. Пользователи (пароль как в docs/10): `owner@piramit.test` (OWNER), `commercial@piramit.test` (COMMERCIAL_MANAGER), `broker@piramit.test` (BROKER), `ops@piramit.test` (OPERATIONS_MANAGER), `marketing@piramit.test` (MARKETING). Экраны: `/property` (Building View: KPI, фильтры, 2.5D фасад) → `/property/floors/[id]` (план этажа) → `/property/units/[id]` (карточка юнита, смена статуса по правам, аудит). Цвет юнита вычисляется из полей (`packages/core/src/property`), не хранится.
+
+## Finance OS
 
 Multi-tenant Finance Operations platform. Спецификация — `CLAUDE.md` + `docs/`. Мастер-промпт для Claude Code — `MASTER_PROMPT.md`.
 

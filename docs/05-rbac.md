@@ -20,6 +20,10 @@
 | ACCOUNTANT | Бухгалтер 1С (внешний) | — |
 | REQUESTER | Инициатор закупок / sales | — |
 | ADMIN | Настройка tenant | обязателен |
+| COMMERCIAL_MANAGER | MDS Property: коммерция, сделки, цены, статусы занятости (docs/20 §6) | рекомендован |
+| BROKER | MDS Property: назначенный inventory, показы, стадии до договора | — |
+| OPERATIONS_MANAGER | MDS Property: готовность, эксплуатация, заявки | — |
+| MARKETING | MDS Property: публикация approved inventory, без PII собственников | — |
 
 ## Матрица прав
 
@@ -102,6 +106,10 @@
 | policy.manage | ✓ (approve) | — | — | — | — | — | ✓ (edit) |
 | user.manage | — | — | — | — | — | — | ✓ |
 | audit.view | ✓ | ✓ | — | — | R | — | ✓ |
+
+## MDS Property
+
+Права `property.*` и `unit.*` и их матрица по ролям — в `docs/20-mds-property.md` §6 (source of truth — `PERMISSION_MATRIX`).
 
 ## Portfolio access
 

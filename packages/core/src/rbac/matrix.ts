@@ -91,6 +91,19 @@ export const PERMISSION_MATRIX = {
   'policy.manage': ['OWNER', 'ADMIN'],
   'user.manage': ['ADMIN'],
   'audit.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ACCOUNTANT', 'ADMIN'],
+  // ── MDS Property (docs/20 §6) ──
+  'property.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING'],
+  'property.manage': ['OWNER', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  'unit.status.readiness': ['OWNER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER'],
+  'unit.status.occupancy': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'unit.status.commercial': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
+  'unit.status.operational': ['OWNER', 'OPERATIONS_MANAGER'],
+  'unit.status.override': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'unit.publish': ['OWNER', 'COMMERCIAL_MANAGER', 'MARKETING'],
+  'unit.pricing.edit': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'unit.owner.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  'unit.finance.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'COMMERCIAL_MANAGER'],
+  'unit.activity.create': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER'],
 } as const satisfies Record<string, readonly RoleCode[]>;
 
 export type PermissionCode = keyof typeof PERMISSION_MATRIX;

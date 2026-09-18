@@ -91,6 +91,18 @@
 
 - [ ] H-08 ТЗ CEO-дашборда (docs/16, ADR-014): переключатель Группа/Rooftop/Sense48, «Нет данных»≠0 + источник/свежесть на показателях, решения CEO как сущность (6 действий + аудит), сделки в работе (потенц./ожид./подтв.), физическая и денежная загрузка, условия автоподтверждения (п.15), адаптеры amoCRM → Altegio → iiko. Блокеры: доступы amoCRM/Altegio, ответы на вопросы 9–15 ТЗ
 
+## Phase P — MDS Property (docs/20, blueprint Wave 0–1)
+- [x] P-01 Спецификация docs/20-mds-property.md (статусы, BR-P01…P15, роли, экраны, этапы) + ADR-016 (имя MDS, монорепо) + ADR-017 (статусная модель)
+- [x] P-02 Prisma §P: Building/Floor/Unit/PropertyOwner/UnitActivity + enum'ы; роли COMMERCIAL_MANAGER/BROKER/OPERATIONS_MANAGER/MARKETING; 12 прав property.*/unit.* в матрице; миграция `mds_property_core`
+- [x] P-03 Движок статусов в core (`deriveUnitView`, `validateStatusPatch`, `matchesUnitFilter`, `computeUnitKpi`) — 21 тест BR-P01…P12
+- [x] P-04 Сервисы property.ts: status-map/floor/unit-card/list c единым фильтром, changeUnitStatus (право на поле, override c причиной, BR-P09/P14), pricing, publish, activities, master data; PII-маскирование — 10 интеграционных тестов (403/404/audit)
+- [x] P-05 Экраны: /property (KPI strip, фильтры, легенда, 2.5D фасад), /property/floors/[id] (SVG-план + список), /property/units/[id] (карточка, формы по правам, аудит); i18n `property`; пункт меню
+- [x] P-06 Seed Phase P: тенант `piramit` — 3 здания, 30 этажей, 230 юнитов + ядра, 60 собственников, 5 ролевых пользователей, 3 намеренных противоречия; идемпотентен
+- [ ] P-07 Импорт инвентаря XLSX (immutable Unit ID mapping, all-or-nothing, отчёт) + шаблон в templates/
+- [ ] P-08 Импорт геометрии этажей (SVG/JSON polygons → Unit.geometry, версионирование) + Playwright e2e трёх экранов
+- [ ] P-09 Владелец: переименовать репозиторий и workspace-scope в нейтральное имя (git-история сохраняется)
+- [ ] P-10 Wave 2: LeaseContract и Deal как сущности, CRM-воронка, public-safe inventory API, HTTP API + событие unit.status.changed
+
 ## IP — принадлежность продукта
 - [x] IP-01 Правообладатель зафиксирован (ADR-015): LICENSE, docs/17-ip-ownership.md, package.json, README, git-идентичность владельца
 - [ ] IP-02 Юрист: задачи 6.1–6.9 из docs/17 (сверка имени, договор отчуждения, форма передачи, регистрация ПО/ТЗ, депонирование, шаблоны договоров c клиентами и подрядчиками, ПДн, соглашение по книге KSP)

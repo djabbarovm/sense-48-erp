@@ -77,6 +77,10 @@ enum RoleCode {
   ACCOUNTANT
   REQUESTER
   ADMIN
+  COMMERCIAL_MANAGER
+  BROKER
+  OPERATIONS_MANAGER
+  MARKETING
 }
 
 model UserTenantRole {
@@ -1529,4 +1533,213 @@ model SenseDailyStat {
 
   @@unique([tenantId, date])
   @@map("sense_daily_stat")
+}
+
+// ───────────────────────────── §P MDS Property Core (docs/20) ─────────────────────────────
+// Building → Floor → Unit; статусы нормализованы, цвет НЕ хранится (BR-P01, выводится в core).
+
+enum BuildingKind {
+  TOWER
+  OFFICES
+  MALL
+  MIXED
+}
+
+enum UnitType {
+  APARTMENT
+  OFFICE
+  RETAIL
+  PARKING
+  STORAGE
+  COMMON
+  TECHNICAL
+}
+
+enum ReadinessStatus {
+  READY
+  RENOVATION
+  FITOUT
+  FURNISHING
+  BLOCKED
+}
+
+enum OccupancyStatus {
+  VACANT
+  OCCUPIED
+  OWNER_USE
+  UNAVAILABLE
+}
+
+enum RentalMode {
+  NONE
+  LTR
+  STR
+}
+
+enum LeaseStatus {
+  NONE
+  DRAFT
+  ACTIVE
+  EXPIRING
+  TERMINATED
+}
+
+enum CommercialStatus {
+  OFF_MARKET
+  AVAILABLE
+  RESERVED
+  VIEWING
+  NEGOTIATION
+  LOI
+  CONTRACTED
+}
+
+enum OperationalStatus {
+  NORMAL
+  ISSUE
+  CRITICAL
+  BLOCKED
+}
+
+enum PropertyOwnerKind {
+  PERSON
+  COMPANY
+}
+
+enum UnitActivityKind {
+  VIEWING
+  CALL
+  NOTE
+  FOLLOW_UP
+  OFFER
+}
+
+enum ChangeSource {
+  UI
+  API
+  IMPORT
+  AI
+}
+
+model Building {
+  id              String       @id @default(uuid(7)) @db.Uuid
+  tenantId        String       @map("tenant_id") @db.Uuid
+  code            String // TOWER / OFFICES / MALL — стабильный код для импорта
+  name            String
+  kind            BuildingKind
+  address         String?
+  geometryVersion Int          @default(1) @map("geometry_version")
+  sortOrder       Int          @default(0) @map("sort_order")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  floors Floor[]
+  units  Unit[]
+
+  @@unique([tenantId, code])
+  @@map("building")
+}
+
+model Floor {
+  id              String   @id @default(uuid(7)) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  buildingId      String   @map("building_id") @db.Uuid
+  floorNo         Int      @map("floor_no")
+  name            String?
+  // viewBox плана этажа; полигоны юнитов лежат в Unit.geometry в этой системе координат
+  planViewBox     String   @default("0 0 1000 600") @map("plan_view_box")
+  geometryVersion Int      @default(1) @map("geometry_version")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  building Building @relation(fields: [buildingId], references: [id])
+  units    Unit[]
+
+  @@unique([buildingId, floorNo])
+  @@index([tenantId, buildingId])
+  @@map("floor")
+}
+
+// Собственник помещения. Контакты — PII: отдаются только c правом unit.owner.view (BR-P13).
+model PropertyOwner {
+  id                String            @id @default(uuid(7)) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  kind              PropertyOwnerKind
+  displayName       String            @map("display_name")
+  contactPhone      String?           @map("contact_phone")
+  contactEmail      String?           @map("contact_email")
+  managementConsent Boolean           @default(false) @map("management_consent") // согласен на управление платформой
+  notes             String?
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  units Unit[]
+
+  @@index([tenantId, displayName])
+  @@map("property_owner")
+}
+
+model Unit {
+  id                   String            @id @default(uuid(7)) @db.Uuid
+  tenantId             String            @map("tenant_id") @db.Uuid
+  buildingId           String            @map("building_id") @db.Uuid
+  floorId              String            @map("floor_id") @db.Uuid
+  unitNo               String            @map("unit_no") // immutable Unit ID (blueprint §5)
+  type                 UnitType
+  areaM2               Decimal           @map("area_m2") @db.Decimal(10, 2)
+  geometry             Json? // {points: [[x,y],...]} в planViewBox этажа
+  ownerId              String?           @map("owner_id") @db.Uuid
+  occupantName         String?           @map("occupant_name") // арендатор/гость (PII-light, без контактов)
+  readiness            ReadinessStatus   @default(READY)
+  occupancy            OccupancyStatus   @default(VACANT)
+  rentalMode           RentalMode        @default(NONE) @map("rental_mode")
+  leaseStatus          LeaseStatus       @default(NONE) @map("lease_status")
+  commercialStatus     CommercialStatus  @default(OFF_MARKET) @map("commercial_status")
+  operationalStatus    OperationalStatus @default(NORMAL) @map("operational_status")
+  statusEffectiveAt    DateTime          @default(now()) @map("status_effective_at")
+  vacantSince          DateTime?         @map("vacant_since") @db.Date
+  leaseEndsAt          DateTime?         @map("lease_ends_at") @db.Date
+  askingCurrency       String            @default("USD") @map("asking_currency") @db.Char(3)
+  askingRateMinor      BigInt?           @map("asking_rate_minor") // в месяц
+  minApprovedRateMinor BigInt?           @map("min_approved_rate_minor")
+  monthlyRentMinor     BigInt?           @map("monthly_rent_minor") // по действующему договору
+  salePriceMinor       BigInt?           @map("sale_price_minor")
+  managedByPlatform    Boolean           @default(false) @map("managed_by_platform")
+  publishedAt          DateTime?         @map("published_at")
+  notes                String?
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+  createdBy            String?           @map("created_by") @db.Uuid
+  updatedBy            String?           @map("updated_by") @db.Uuid
+
+  building   Building       @relation(fields: [buildingId], references: [id])
+  floor      Floor          @relation(fields: [floorId], references: [id])
+  owner      PropertyOwner? @relation(fields: [ownerId], references: [id])
+  activities UnitActivity[]
+
+  @@unique([buildingId, unitNo])
+  @@index([tenantId, buildingId])
+  @@index([tenantId, occupancy, readiness])
+  @@index([tenantId, ownerId])
+  @@map("unit")
+}
+
+// Активность по юниту: показ, звонок, заметка, follow-up, предложение (blueprint §1.11 POST /units/{id}/activities)
+model UnitActivity {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  unitId            String           @map("unit_id") @db.Uuid
+  kind              UnitActivityKind
+  note              String
+  expectedRateMinor BigInt?          @map("expected_rate_minor")
+  followUpAt        DateTime?        @map("follow_up_at") @db.Date
+  source            ChangeSource     @default(UI)
+  actorId           String           @map("actor_id") @db.Uuid
+  happenedAt        DateTime         @default(now()) @map("happened_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  unit Unit @relation(fields: [unitId], references: [id])
+
+  @@index([tenantId, unitId, happenedAt])
+  @@map("unit_activity")
 }
