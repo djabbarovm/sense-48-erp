@@ -7,6 +7,7 @@ import { getControlRoom } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Card, PageHeader, StatCard, cn } from '@/components/ui';
 import { COLOR_BG, fmtDate, fmtRate } from '@/components/property';
+import { LiveRefresh } from '@/components/property/live';
 
 /* Wave 2 — Management Control Room (blueprint §9): сегодня · коммерция · собственники · эксплуатация. */
 
@@ -34,7 +35,7 @@ export default async function ControlRoomPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('title')} meta={<span className="text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}</span>} />
+      <PageHeader title={t('title')} meta={<span className="flex items-center gap-3 text-sm text-gray-500">{new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}<LiveRefresh /></span>} />
 
       {/* Today */}
       <Section icon={<Activity className="h-3.5 w-3.5" />} title={t('today')}>

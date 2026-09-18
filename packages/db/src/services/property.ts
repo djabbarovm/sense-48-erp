@@ -20,6 +20,7 @@ import { Prisma } from '@prisma/client';
 import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
+import { emitDomainEvent } from './domainEvents.js';
 
 type UnitWithOwner = Unit & { owner: PropertyOwner | null };
 
@@ -306,6 +307,8 @@ export async function changeUnitStatus(ctx: TenantContext, unitId: string, input
     if (before.publishedAt && !nextView.isSellable) data.publishedAt = null;
     const after = await tx.unit.update({ where: { id: unitId }, data });
     const pick = (u: Unit) => Object.fromEntries(STATUS_FIELDS.map((f) => [f, u[f]]));
+    // P-13: событие для live-обновления и уведомлений (без PII — только статусы)
+    await emitDomainEvent(tx, ctx.tenantId, 'unit.status.changed', 'unit', unitId, { unitNo: after.unitNo, ...(pick(after) as Record<string, string>), detail: (Object.keys(patch) as string[]).join(','), source: input.source ?? 'UI', deepLink: `/property/units/${unitId}` });
     return {
       result: after,
       audit: {
@@ -353,6 +356,7 @@ export async function setUnitPublished(ctx: TenantContext, unitId: string, publi
     const before = await findScopedOr404(tx.unit, ctx, unitId);
     if (published && !deriveUnitView(before).isSellable) throw new ValidationError('NOT_SELLABLE', 'NOT_SELLABLE: публиковать можно только готовый свободный юнит на рынке');
     const after = await tx.unit.update({ where: { id: unitId }, data: { publishedAt: published ? new Date() : null, updatedBy: ctx.userId } });
+    await emitDomainEvent(tx, ctx.tenantId, 'unit.status.changed', 'unit', unitId, { unitNo: after.unitNo, published, detail: published ? 'publish' : 'unpublish', deepLink: `/property/units/${unitId}` });
     return {
       result: after,
       audit: { action: published ? 'unit.publish' : 'unit.unpublish', objectType: 'unit', objectId: unitId, before: { publishedAt: before.publishedAt }, after: { publishedAt: after.publishedAt } },

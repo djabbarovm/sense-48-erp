@@ -45,3 +45,13 @@ export async function deliverDomainEvents(tenantId: string, now = new Date(), no
   }
   return delivered;
 }
+
+/** P-13 realtime: события тенанта после курсора (для SSE-потока). Payload без PII по построению. */
+export async function listDomainEventsSince(tenantId: string, since: Date, types?: string[], limit = 200) {
+  return prisma.domainEvent.findMany({
+    where: { tenantId, createdAt: { gt: since }, ...(types?.length ? { type: { in: types } } : {}) },
+    orderBy: { createdAt: 'asc' },
+    take: limit,
+    select: { id: true, type: true, objectType: true, objectId: true, payload: true, createdAt: true },
+  });
+}

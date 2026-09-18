@@ -8,6 +8,7 @@ import { requireTenantContext } from '@/lib/session';
 import { filterQuery, parseUnitFilter, type PropertySearchParams } from '@/lib/property-filters';
 import { Badge, Card, EmptyState, PageHeader, Table, Td, Th, cn } from '@/components/ui';
 import { COLOR_BG, COLOR_ORDER, FloorPlan, Legend, fmtDate, fmtRate } from '@/components/property';
+import { LiveRefresh } from '@/components/property/live';
 
 /* MDS Property — Floor View (docs/20 §7.2): план этажа + список (2D fallback и mobile). */
 
@@ -38,7 +39,7 @@ export default async function FloorViewPage({ params, searchParams }: { params: 
     <div className="space-y-5">
       <PageHeader
         title={`${building.name} · ${t('floorTitle', { n: floor.floorNo })}`}
-        meta={<Badge tone="gray">{t('unitsCount', { n: units.length })}</Badge>}
+        meta={<span className="flex items-center gap-3"><Badge tone="gray">{t('unitsCount', { n: units.length })}</Badge><LiveRefresh /></span>}
         actions={
           <div className="flex items-center gap-1.5">
             <Link href={`/property${filterQuery(sp, { building: building.id, floor: null })}`} className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"><ArrowLeft className="h-4 w-4" />{t('backToBuilding')}</Link>

@@ -5,7 +5,7 @@ import { prisma } from '../src/client.js';
 import { createBuilding, createFloor, createUnit, changeUnitStatus, getUnitCard } from '../src/services/property.js';
 import { activateLease, createLease, listLeases, markExpiringLeases, terminateLease } from '../src/services/leases.js';
 import { addDealActivity, createDeal, createDealFollowupTasks, getDeal, getPipelineSummary, listDeals, moveDeal, updateDeal } from '../src/services/deals.js';
-import { deliverDomainEvents } from '../src/services/domainEvents.js';
+import { deliverDomainEvents, listDomainEventsSince } from '../src/services/domainEvents.js';
 import { createApiKey, listApiKeys, revokeApiKey, verifyApiKey } from '../src/services/apiKeys.js';
 import { listPublicInventory } from '../src/services/publicInventory.js';
 
@@ -148,6 +148,11 @@ describe('Wave 2 — сделки (BR-P20/P21/P22/P23)', () => {
     const types = new Set((await prisma.domainEvent.findMany({ where: { tenantId }, select: { type: true } })).map((e) => e.type));
     expect([...types]).toEqual(expect.arrayContaining(['unit.status.changed', 'deal.stage.changed', 'lease.activated', 'lease.expiring', 'lease.terminated']));
     expect(JSON.stringify(await prisma.domainEvent.findMany({ where: { tenantId }, select: { payload: true } }))).not.toContain('998901112233');
+    // P-13: курсор для SSE — только события после метки, фильтр по типам
+    const since = new Date(Date.now() - 60_000);
+    const recent = await listDomainEventsSince(tenantId, since, ['lease.activated']);
+    expect(recent.length).toBe(1);
+    expect(await listDomainEventsSince(tenantId, new Date())).toEqual([]);
     const notifier = new MockNotificationAdapter();
     const delivered = await deliverDomainEvents(tenantId, new Date(), notifier);
     expect(delivered).toBe(pending);

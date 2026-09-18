@@ -8,6 +8,7 @@ import { requireTenantContext } from '@/lib/session';
 import { filterQuery, hasActiveFilter, parseUnitFilter, type PropertySearchParams } from '@/lib/property-filters';
 import { Badge, Button, Card, EmptyState, Input, PageHeader, Select, cn } from '@/components/ui';
 import { COLOR_ORDER, KpiStrip, Legend, UnitCell, fmtDate, fmtRate } from '@/components/property';
+import { LiveRefresh } from '@/components/property/live';
 
 /* MDS Property — Building View (docs/20 §7.1): 2.5D фасад, KPI strip, фильтры, легенда. */
 
@@ -53,7 +54,7 @@ export default async function BuildingViewPage({ searchParams }: { searchParams:
     <div className="space-y-5">
       <PageHeader
         title={t('title')}
-        meta={<span className="text-sm text-gray-500">{t('matched', { n: map.matched })}</span>}
+        meta={<span className="flex items-center gap-3 text-sm text-gray-500">{t('matched', { n: map.matched })}<LiveRefresh /></span>}
         actions={
           <div className="flex flex-wrap gap-1.5">
             <Link href={q({ building: null })} className={cn('rounded-md px-3 py-1.5 text-sm font-medium', !filter.buildingId ? 'bg-ink-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200')}>{t('allBuildings')}</Link>

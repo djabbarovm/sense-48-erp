@@ -8,6 +8,7 @@ import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, term
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
 import { COLOR_BG, fmtDate, fmtRate } from '@/components/property';
+import { LiveRefresh } from '@/components/property/live';
 import { addUnitActivityAction, changeUnitStatusAction, setUnitPublishedAction, updateUnitPricingAction } from '../../actions';
 
 /* MDS Property — Unit Card (docs/20 §7.3): identity, статусы, собственник, коммерция, договор, активности, аудит. */
@@ -58,6 +59,7 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
             {v.overlay ? <Badge tone="yellow">{t(`commercial.${unit.commercialStatus}`)}</Badge> : null}
             {unit.publishedAt ? <Badge tone="blue">{t('published')}</Badge> : null}
             {unit.managedByPlatform ? <Badge tone="gray">{t('managed')}</Badge> : null}
+            <LiveRefresh />
           </span>
         }
         actions={

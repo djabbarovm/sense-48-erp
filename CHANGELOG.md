@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-18 — MDS Property: live-обновление (blueprint §1.13)
+- P-13: `listDomainEventsSince` (курсор по outbox), SSE-роут `/api/property/events/stream` (сессия, property.view, опрос каждые 2 с, heartbeat 25 с, лимит жизни 10 мин c переподключением), клиентский `LiveRefresh` (EventSource → `router.refresh()` c троттлингом 1.5 с, индикатор live/подключение) на Building View, плане этажа, карточке юнита и пульте. Замер в двух браузерах: перекраска юнита у наблюдателя через несколько секунд после сохранения статуса другим пользователем.
+
 ## [Phase P] 2026-09-18 — MDS Property Wave 3: WorkBot (черновики действий)
 - P-12 adapters: `workbot/types.ts` — интерфейс `IntentExtractor` и типы намерений (UNIT_VACATE, DEAL_VIEWING_NOTE, UNIT_ISSUE, QUERY_UNITS); `workbot/ruleBased.ts` — детерминированный извлекатель по примерам blueprint §1.9 (номер юнита c префиксом, компания, ставка $/м², категория и критичность инцидента, цвет/простой/истечение для запросов); 6 тестов. Реального LLM нет (docs/07): интерфейс готов под адаптер.
 - P-12 db: модель `ActionDraft` (миграция `mds_workbot_drafts`), право `action.draft`, scope ключа `WORKBOT`; `services/actionDrafts.ts` — createActionDraft (extract → юнит по номеру → preview → DRAFT/NEEDS_INFO), confirmActionDraft (право по виду действия; commit только через terminateLease/changeUnitStatus/setUnitPublished/createDeal/addDealActivity/moveDeal/addUnitActivity — guard'ы сервисов действуют и через бота, BR-P30; ошибка → FAILED c кодом), rejectActionDraft, listActionDrafts, resolveBotUser (telegramChatId → пользователь c ролью в тенанте); rawText в audit не пишется; 6 интеграционных тестов.

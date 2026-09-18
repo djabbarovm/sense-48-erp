@@ -122,7 +122,7 @@ Identity · статусы (6 измерений + дней простоя) · �
 | setUnitPublished / updateUnitPricing | — | unit.publish / unit.pricing.edit |
 | createBuilding / createFloor / createUnit / updateUnit / createPropertyOwner | master data | property.manage |
 
-HTTP-роуты и realtime-события (`unit.status.changed`) — Wave 2 (после стабилизации сервисного контракта). Сейчас UI обновляется через `revalidatePath`.
+Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent тенанта (опрос outbox 2 с); `LiveRefresh` на экранах перечитывает данные ≤ 5 с после commit (NFR §1.13). Публичный API и API WorkBot — §11.3–11.4.
 
 ## 9. Seed (docs/10 дополнение)
 
