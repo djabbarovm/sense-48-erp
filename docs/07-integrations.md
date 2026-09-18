@@ -99,6 +99,15 @@ interface NotificationAdapter {
 
 Бот **не принимает** команд, меняющих финансовые данные. Только `/start`, `/help`, `/mute`.
 
+## 5a. WorkBot / IntentExtractor (MDS Property, docs/20 §11.4)
+
+```ts
+interface IntentExtractor {
+  extract(input: { text: string }): Promise<{ intent: Intent | null; confidence: number; entities: Record<string, unknown> }>;
+}
+```
+Mock: `RuleBasedIntentExtractor` (регулярные выражения, детерминирован). Реальный LLM-адаптер — отдельный пакет позже; core/db зависят только от интерфейса. Извлекатель никогда не меняет данные: commit — после подтверждения человеком через сервисы (BR-P30). Telegram-бот вызывает `POST /api/property/actions/draft` и `/{id}/confirm` c API-ключом тенанта (scope WORKBOT) и `telegramChatId` сотрудника.
+
 ## 6. Email (fallback)
 Тот же `NotificationAdapter`, реализация через SMTP (nodemailer), те же шаблоны.
 

@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-18 — MDS Property Wave 3: WorkBot (черновики действий)
+- P-12 adapters: `workbot/types.ts` — интерфейс `IntentExtractor` и типы намерений (UNIT_VACATE, DEAL_VIEWING_NOTE, UNIT_ISSUE, QUERY_UNITS); `workbot/ruleBased.ts` — детерминированный извлекатель по примерам blueprint §1.9 (номер юнита c префиксом, компания, ставка $/м², категория и критичность инцидента, цвет/простой/истечение для запросов); 6 тестов. Реального LLM нет (docs/07): интерфейс готов под адаптер.
+- P-12 db: модель `ActionDraft` (миграция `mds_workbot_drafts`), право `action.draft`, scope ключа `WORKBOT`; `services/actionDrafts.ts` — createActionDraft (extract → юнит по номеру → preview → DRAFT/NEEDS_INFO), confirmActionDraft (право по виду действия; commit только через terminateLease/changeUnitStatus/setUnitPublished/createDeal/addDealActivity/moveDeal/addUnitActivity — guard'ы сервисов действуют и через бота, BR-P30; ошибка → FAILED c кодом), rejectActionDraft, listActionDrafts, resolveBotUser (telegramChatId → пользователь c ролью в тенанте); rawText в audit не пишется; 6 интеграционных тестов.
+- P-12 web: `/property/actions` (сообщение → черновик; ожидают решения c подтверждением по праву и отклонением; история c ссылкой на результат); API `POST /api/property/actions/draft` и `POST /api/property/actions/{id}/confirm` (X-Api-Key WORKBOT + telegramChatId, rate limit 60/мин); словарь `workbot`; пункт меню. Seed: demo telegramChatId у пользователей piramit.
+
 ## [Phase P] 2026-09-18 — MDS Property: Пульт управления (blueprint §9)
 - P-11: `services/controlRoom.ts::getControlRoom` — композиция сервисов без новой бизнес-логики: сегодня (новые сделки, переходы, показы, сделки-внимание, просроченные задачи DEAL_FOLLOWUP/LEASE_EXPIRY, противоречия, критичные юниты), коммерция (KPI strip, загрузка по зданиям, воронка потенциальная/ожидаемая/подтверждённая, договоры истекают 30/90), собственники (всего/согласны/под управлением, «согласны, но без действующей аренды»), эксплуатация (ремонт/проблема/критично/заблокировано, юниты c противоречиями, простой > 60 дней). PII и воронка — по правам. Экран `/property/today`, пункт меню «Пульт (MDS)»; главная `/` перенаправляет на пульт роли без `dashboard.ops`. Тест control-room.test; e2e-хелперы входа учитывают редирект.
 

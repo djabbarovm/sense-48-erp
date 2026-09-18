@@ -10,11 +10,12 @@ import { DEV_PASSWORD } from './phaseA.js';
 
 export const PROPERTY_TENANT = { slug: 'piramit', legalName: 'Piramit Tower (демо)', taxId: '311234599' } as const;
 
-const USERS: { email: string; fullName: string; roles: RoleCode[] }[] = [
-  { email: 'owner@piramit.test', fullName: 'Мурад Джаббаров', roles: ['OWNER'] },
-  { email: 'commercial@piramit.test', fullName: 'Алия Сафарова', roles: ['COMMERCIAL_MANAGER'] },
-  { email: 'broker@piramit.test', fullName: 'Бекзод Тураев', roles: ['BROKER'] },
-  { email: 'ops@piramit.test', fullName: 'Шерзод Мирзаев', roles: ['OPERATIONS_MANAGER'] },
+// telegramChatId — синтетический (demo-*): для проверки WorkBot API без реального бота
+const USERS: { email: string; fullName: string; roles: RoleCode[]; telegramChatId?: string }[] = [
+  { email: 'owner@piramit.test', fullName: 'Мурад Джаббаров', roles: ['OWNER'], telegramChatId: 'demo-owner' },
+  { email: 'commercial@piramit.test', fullName: 'Алия Сафарова', roles: ['COMMERCIAL_MANAGER'], telegramChatId: 'demo-commercial' },
+  { email: 'broker@piramit.test', fullName: 'Бекзод Тураев', roles: ['BROKER'], telegramChatId: 'demo-broker' },
+  { email: 'ops@piramit.test', fullName: 'Шерзод Мирзаев', roles: ['OPERATIONS_MANAGER'], telegramChatId: 'demo-ops' },
   { email: 'marketing@piramit.test', fullName: 'Нигора Абдуллаева', roles: ['MARKETING'] },
   { email: 'admin@piramit.test', fullName: 'Санжар Ибрагимов', roles: ['ADMIN'] },
   { email: 'finance@piramit.test', fullName: 'Нилуфар Рашидова', roles: ['FINANCE_OPS_LEAD'] },
@@ -121,7 +122,7 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
 
   const passwordHash = await hashPassword(DEV_PASSWORD);
   for (const u of USERS) {
-    const user = await prisma.user.upsert({ where: { email: u.email }, create: { email: u.email, fullName: u.fullName, passwordHash }, update: {} });
+    const user = await prisma.user.upsert({ where: { email: u.email }, create: { email: u.email, fullName: u.fullName, passwordHash, telegramChatId: u.telegramChatId ?? null }, update: { ...(u.telegramChatId ? { telegramChatId: u.telegramChatId } : {}) } });
     for (const role of u.roles) {
       await prisma.userTenantRole.upsert({ where: { userId_tenantId_role: { userId: user.id, tenantId, role } }, create: { userId: user.id, tenantId, role }, update: {} });
     }
@@ -258,8 +259,11 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
         if ((rank[cs] ?? 0) >= (rank[unit.commercialStatus] ?? 0)) await prisma.unit.update({ where: { id: unit.id }, data: { commercialStatus: cs, ...(cs === 'LOI' || cs === 'CONTRACTED' ? { publishedAt: null } : {}) } });
       }
     }
-    // Sequence: следующий номер после сидовых
-    await prisma.sequence.upsert({ where: { tenantId_key_year: { tenantId, key: 'DEAL', year } }, create: { tenantId, key: 'DEAL', year, nextValue: STAGES.length + 1 }, update: { nextValue: { set: STAGES.length + 1 } } });
+    // Sequence: следующий номер после сидовых; при повторном запуске счётчик только растёт (иначе дубликаты номеров)
+    const want = STAGES.length + 1;
+    const seq = await prisma.sequence.findUnique({ where: { tenantId_key_year: { tenantId, key: 'DEAL', year } } });
+    if (!seq) await prisma.sequence.create({ data: { tenantId, key: 'DEAL', year, nextValue: want } });
+    else if (seq.nextValue < want) await prisma.sequence.update({ where: { id: seq.id }, data: { nextValue: want } });
   }
   console.log(`  deals: ${dealsCreated} created`);
 }

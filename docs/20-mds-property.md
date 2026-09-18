@@ -137,7 +137,7 @@ HTTP-роуты и realtime-события (`unit.status.changed`) — Wave 2 (�
 | 1b | Импорт инвентаря из XLSX, планов этажей JSON/SVG, e2e | ✓ P-07, P-08 |
 | 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
 | 2b | WorkBot API (draft→confirm→commit), realtime repaint, бонусы продажников | P-11 |
-| 3 AI Operations | WorkBot: voice/text/photo → structured draft → confirm → commit → audit | после API |
+| 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
 | 4 Owner/Operations | Owner Portal, work orders/SLA, документы, services | после identity |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
@@ -152,6 +152,13 @@ HTTP-роуты и realtime-события (`unit.status.changed`) — Wave 2 (�
 
 ### 11.3 События и публичный API
 `DomainEvent(type, objectType, objectId, payload без PII, createdAt, deliveredAt)`: `unit.status.changed`, `lease.activated`, `lease.terminated`, `deal.stage.changed`. Воркер `domain-events` доставляет уведомления (Telegram) подписанным ролям и помечает deliveredAt. `GET /api/property/public/inventory?tenant=<slug>` c заголовком `X-Api-Key` (таблица ApiKey: sha256, scope PUBLIC_INVENTORY, revokedAt) → только publishedAt≠null, поля: unitNo, building, floor, type, areaM2, askingRate, currency, статус-цвет; без собственника/арендатора.
+
+### 11.4 WorkBot: structured draft → preview → confirm → commit → audit (blueprint §1.9, §7)
+`IntentExtractor` (adapters/workbot) извлекает намерение из текста: UNIT_VACATE («1704 освободился, можно выставлять»), DEAL_VIEWING_NOTE («1103 показали X Company, хотят 35 долларов»), UNIT_ISSUE («2804 жалоба на ванную»), QUERY_UNITS («покажи все красные больше 90 дней»). Реализация v1 — rule-based (детерминированная, без сети); LLM-адаптер подключается тем же интерфейсом. `ActionDraft` хранит текст, намерение, юнит, preview и статус; подтверждение требует права на само действие (`CONFIRM_PERMISSION`) и выполняется существующими сервисами — бот не может обойти BR-P04/P10/P11/P24 (BR-P30). API для бота: `POST /api/property/actions/draft`, `POST /api/property/actions/{id}/confirm` c `X-Api-Key` (scope WORKBOT) и `telegramChatId` сотрудника (User.telegramChatId): бот действует от имени сотрудника, права и audit — его. Голос/фото — вход в тот же extractor после speech-to-text/классификации (Wave 3b).
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P30 | AI/бот только предлагает; commit — человек c правом, через сервисы | preview без изменений; confirm → право по виду действия; guard'ы сервисов; FAILED c кодом при отказе правила | action-drafts.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

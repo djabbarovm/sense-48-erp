@@ -1908,3 +1908,43 @@ model ApiKey {
   @@index([tenantId, revokedAt])
   @@map("api_key")
 }
+
+// ───────────────────────────── §P3 WorkBot: черновики действий (docs/20 §11.4, blueprint §1.9) ─────────────────────────────
+
+enum ActionDraftStatus {
+  DRAFT
+  CONFIRMED
+  REJECTED
+  FAILED
+  NEEDS_INFO
+}
+
+enum ActionSource {
+  WEB
+  TELEGRAM
+  API
+}
+
+// AI/бот только предлагает draft; commit — после подтверждения человеком c правом (structured draft → preview → confirm → commit → audit).
+model ActionDraft {
+  id          String            @id @default(uuid(7)) @db.Uuid
+  tenantId    String            @map("tenant_id") @db.Uuid
+  source      ActionSource      @default(WEB)
+  rawText     String            @map("raw_text")
+  kind        String? // IntentKind или null, если не распознано
+  payload     Json // structured intent (BigInt → string)
+  confidence  Int               @default(0) // 0..100
+  unitId      String?           @map("unit_id") @db.Uuid
+  status      ActionDraftStatus @default(DRAFT)
+  preview     String // человекочитаемое «что будет сделано»
+  resultRef   String?           @map("result_ref") // ссылка на результат: /property/units/…, /deals/…
+  error       String?
+  createdBy   String            @map("created_by") @db.Uuid
+  confirmedBy String?           @map("confirmed_by") @db.Uuid
+  confirmedAt DateTime?         @map("confirmed_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, createdBy])
+  @@map("action_draft")
+}

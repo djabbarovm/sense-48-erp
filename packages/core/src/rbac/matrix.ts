@@ -111,6 +111,8 @@ export const PERMISSION_MATRIX = {
   'deal.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
   'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
   'apikey.manage': ['OWNER', 'ADMIN'],
+  // WorkBot (docs/20 §11.4): черновик может создать любой c property.view; подтверждение — по праву самого действия
+  'action.draft': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'],
 } as const satisfies Record<string, readonly RoleCode[]>;
 
 export type PermissionCode = keyof typeof PERMISSION_MATRIX;
