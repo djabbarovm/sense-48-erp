@@ -71,6 +71,7 @@ DECISIONS.md TASKS.md CHANGELOG.md README.md
 | `docs/10-seed-data.md` | Спецификация синтетических данных Rooftop/Sense48/ORDO |
 | `docs/11-security.md` | Threat model, секреты, маскирование, permission tests |
 | `docs/12-domain-glossary.md` | Термины: СФ, Didox, ЭЦП, подотчёт, GPH и т.д. |
+| `docs/17-ip-ownership.md` | Правообладатель, состав продукта, что продукту не принадлежит, передача в компанию, задачи юристу |
 
 ## Definition of Done (для любой задачи)
 

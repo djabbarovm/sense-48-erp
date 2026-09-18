@@ -1,5 +1,7 @@
 # Finance OS
 
+Copyright (c) 2026 Murat Djabbarov. Проприетарное ПО, все права защищены — см. `LICENSE` и `docs/17-ip-ownership.md`.
+
 Multi-tenant Finance Operations platform. Спецификация — `CLAUDE.md` + `docs/`. Мастер-промпт для Claude Code — `MASTER_PROMPT.md`.
 
 ## Как запустить приложение (dev)

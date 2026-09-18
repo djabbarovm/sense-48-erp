@@ -1,0 +1,47 @@
+Finance OS — проприетарное программное обеспечение
+Copyright (c) 2026 Murat Djabbarov (Мурат Джаббаров). Все права защищены.
+
+Настоящий репозиторий, включая исходный код, спецификации в каталоге docs/,
+шаблоны в каталоге templates/, архитектурные решения (DECISIONS.md), схемы
+данных, тексты интерфейса и сопроводительную документацию, является объектом
+исключительного права правообладателя, указанного выше.
+
+Без письменного разрешения правообладателя запрещается: копирование,
+распространение, модификация, декомпиляция, публикация, сублицензирование,
+коммерческое и некоммерческое использование любой части репозитория.
+
+Исключения:
+- сторонние библиотеки и компоненты используются по их собственным лицензиям
+  (см. package.json и pnpm-lock.yaml);
+- данные клиентов (тенанты, импортированные книги, реестры) принадлежат
+  соответствующим клиентам и в состав продукта не входят — см.
+  docs/17-ip-ownership.md.
+
+Правообладатель намерен передать исключительное право юридическому лицу
+(компании) в порядке, описанном в docs/17-ip-ownership.md. До момента такой
+передачи и её регистрации правообладателем остаётся физическое лицо, указанное
+выше.
+
+----------------------------------------------------------------------
+
+Finance OS — proprietary software
+Copyright (c) 2026 Murat Djabbarov. All rights reserved.
+
+This repository — including source code, specifications under docs/, templates
+under templates/, architecture decision records (DECISIONS.md), data schemas,
+UI strings and accompanying documentation — is the exclusive property of the
+copyright holder named above.
+
+Without the copyright holder's written permission, the following are
+prohibited: copying, distribution, modification, decompilation, publication,
+sublicensing, and any commercial or non-commercial use of any part of this
+repository.
+
+Exceptions: third-party libraries are used under their own licenses (see
+package.json and pnpm-lock.yaml); customer data (tenants, imported ledgers,
+registers) belongs to the respective customers and is not part of the product
+— see docs/17-ip-ownership.md.
+
+The copyright holder intends to assign the exclusive rights to a legal entity
+(company) as described in docs/17-ip-ownership.md. Until such assignment is
+executed, the individual named above remains the copyright holder.
