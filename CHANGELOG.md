@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — Реальный тенант ORDO в bootstrap (P-30)
+- scripts/bootstrap-prod: тенант `ordo` без демо-данных, владелец OWNER+ADMIN, пилот Tower umar (CALL_CENTER) / aziz (COMMERCIAL_MANAGER) по системному логину без email; идемпотентно (update:{} не трогает пароль и привязку Telegram).
+- scripts/rotate-passwords: ротация APP_TEMP_PASSWORD теперь охватывает и логины umar/aziz.
+
 ## [Phase P] 2026-09-19 — Сотрудники без email: системный логин (P-31)
 - db: `User.email` стал nullable, добавлен `User.username` (unique) — миграция `user_username_optional_email`; `createUser` (право user.manage, логин + временный пароль, роль в тенанте, аудит без пароля); nullable email учтён в contacts/telephony.
 - web: вход по логину или email, форма входа принимает не только email; в «Администрирование» форма «Создать сотрудника» (ФИО, логин, временный пароль, роль, email опционально).

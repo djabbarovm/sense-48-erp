@@ -17,10 +17,10 @@ async function main() {
   }
   const hash = await hashPassword(pwd);
   const res = await prisma.user.updateMany({
-    where: { OR: [{ email: { endsWith: '@palym.test' } }, { email: { endsWith: '@piramit.test' } }] },
+    where: { OR: [{ email: { endsWith: '@palym.test' } }, { email: { endsWith: '@piramit.test' } }, { username: { in: ['umar', 'aziz'] } }] },
     data: { passwordHash: hash },
   });
-  console.log(`Пароль обновлён у ${res.count} учёток (@palym.test, @piramit.test). Значение пароля в логах не печатается.`);
+  console.log(`Пароль обновлён у ${res.count} учёток (@palym.test, @piramit.test, логины umar/aziz). Значение пароля в логах не печатается.`);
   await prisma.$disconnect();
 }
 

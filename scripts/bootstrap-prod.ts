@@ -97,6 +97,32 @@ async function main() {
     console.log('  Учётки *@piramit.test получают пароль ротации (APP_TEMP_PASSWORD), см. rotate-passwords.ts');
   }
 
+  // P-30/P-31: реальный тенант ORDO (без демо-данных; реестр помещений импортируется отдельно после сверки).
+  // Владелец — OWNER+ADMIN; пилот коммерческой команды заводится по системному логину без email.
+  // Пароли выравнивает шаг ротации (APP_TEMP_PASSWORD) — те же учётки; здесь ставится временный до ротации.
+  {
+    const ORDO = { slug: 'ordo', legalName: 'ООО «ORDO Management»', taxId: '311234503' } as const;
+    let ordo = await prisma.tenant.findUnique({ where: { slug: ORDO.slug } });
+    ordo ??= await prisma.tenant.create({ data: { slug: ORDO.slug, legalName: ORDO.legalName, taxId: ORDO.taxId, settings: { product: 'MDS Property' } } });
+    console.log(`Тенант: ${ordo.legalName} (реестр пуст — импорт отдельно)`);
+    const owner = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
+    if (owner) for (const role of ['OWNER', 'ADMIN'] as const) {
+      await prisma.userTenantRole.upsert({ where: { userId_tenantId_role: { userId: owner.id, tenantId: ordo.id, role } }, create: { userId: owner.id, tenantId: ordo.id, role }, update: {} });
+    }
+    // Пилот Tower: логин без email, роль в ORDO. update:{} — не перезаписываем пароль/привязку Telegram при повторном деплое.
+    const empHash = await hashPassword(TEMP_PASSWORD);
+    const PILOT: [string, string, string][] = [
+      ['Umar Nazarov', 'umar', 'CALL_CENTER'],
+      ['Muhammadaziz Gulomov', 'aziz', 'COMMERCIAL_MANAGER'],
+    ];
+    for (const [fullName, username, role] of PILOT) {
+      const u = await prisma.user.upsert({ where: { username }, create: { username, fullName, passwordHash: empHash }, update: {} });
+      await prisma.userTenantRole.upsert({ where: { userId_tenantId_role: { userId: u.id, tenantId: ordo.id, role: role as never } }, create: { userId: u.id, tenantId: ordo.id, role: role as never }, update: {} });
+      console.log(`  ${username} → ${role} в «${ordo.legalName}»`);
+    }
+    console.log(`  ${OWNER_EMAIL} → OWNER + ADMIN в «${ordo.legalName}»; логины umar/aziz получают пароль ротации (APP_TEMP_PASSWORD)`);
+  }
+
   console.log('Bootstrap завершён.');
   await prisma.$disconnect();
 }
