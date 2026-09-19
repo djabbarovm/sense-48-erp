@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, Building2, CalendarClock, CheckCircle2, Clock, Flame, Phone, Plus, Send, Sparkles, UserPlus } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarClock, CheckCircle2, Clock, Flame, Gift, Phone, Plus, Send, Sparkles, Target, Trophy, UserPlus } from 'lucide-react';
 import { DEAL_LOST_REASONS, DEAL_SOURCES, can } from '@finance-os/core';
-import { getMyDay, prisma } from '@finance-os/db';
+import { getGamificationState, getMyDay, listMyRedemptions, listRewards, prisma } from '@finance-os/db';
 import { requireSessionUser, requireTenantContext } from '@/lib/session';
 import { Badge, Button, Input, Select, cn } from '@/components/ui';
 import { fmtDate, fmtRate } from '@/components/property';
 import { OWNER_STAGE_TONE } from '../property/owners/tones';
-import { issueTelegramLinkAction, ownerQuickCallAction, quickCallAction, quickLeadAction, scheduleViewingAction, taskDoneAction, unlinkTelegramAction, viewingResultAction } from './actions';
+import { issueTelegramLinkAction, ownerQuickCallAction, quickCallAction, quickLeadAction, requestRewardAction, scheduleViewingAction, taskDoneAction, unlinkTelegramAction, viewingResultAction } from './actions';
 
 /* CRM Tower — «Мой день» (docs/21 §5, P-23): mobile-first экран сотрудника — показы, лиды, просрочки, собственники, задачи, быстрые действия. */
 
@@ -21,6 +21,9 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const t = await getTranslations('me'); const tD = await getTranslations('deals'); const tO = await getTranslations('owners');
   const day = await getMyDay(ctx);
+  const [game, rewards, redemptions] = await Promise.all([getGamificationState(ctx), listRewards(ctx), listMyRedemptions(ctx)]);
+  const nextReward = rewards.filter((r) => r.costXp > game.totalXp).sort((a, b) => a.costXp - b.costXp)[0] ?? null;
+  const openReward = new Set(redemptions.filter((r) => r.status === 'REQUESTED' || r.status === 'APPROVED').map((r) => r.rewardKey));
   const tg = await prisma.user.findUnique({ where: { id: user.id }, select: { telegramChatId: true, telegramLinkCode: true, telegramLinkedAt: true } });
   const botName = process.env.TELEGRAM_BOT_USERNAME ?? null;
   const manage = can(ctx, 'deal.manage');
@@ -45,6 +48,27 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
         ))}
       </div>
       {attention ? <p className="flex items-center gap-1.5 text-sm text-amber-700"><Flame className="h-4 w-4" />{t('attention', { n: attention })}</p> : <p className="flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />{t('allClear')}</p>}
+
+      {/* Прогресс дня (геймификация, ТЗ §12-13) */}
+      <section className="rounded-xl bg-gradient-to-br from-ink-900 to-ink-700 p-4 text-white shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2"><Trophy className="h-5 w-5 text-amber-300" /><div><p className="font-display text-base font-bold leading-none">{game.level.current.name}</p><p className="mt-0.5 text-[11px] text-white/60">{t('game.level', { n: game.level.current.level })} · {game.totalXp} XP</p></div></div>
+          <div className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-sm font-semibold"><Flame className={cn('h-4 w-4', game.streakDoneToday ? 'text-orange-400' : 'text-white/40')} />{game.streakDays}</div>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-amber-300 transition-all" style={{ width: `${game.level.pctToNext}%` }} /></div>
+        <p className="mt-1 text-[11px] text-white/60">{game.level.xpForNext != null ? t('game.toNext', { n: game.level.xpForNext, name: game.level.next!.name }) : t('game.max')} · {t('game.todayXp', { n: game.todayXp })}</p>
+        {game.missions.length ? (
+          <ul className="mt-3 space-y-1.5">
+            {game.missions.map((m) => (
+              <li key={m.key} className="flex items-center gap-2 text-sm">
+                {m.complete ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" /> : <Target className="h-4 w-4 shrink-0 text-white/40" />}
+                <span className={cn('flex-1', m.complete && 'text-white/50 line-through')}>{m.title}</span>
+                <span className="font-mono text-xs text-white/70">{Math.min(m.done, m.target)}/{m.target}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
 
       {/* Быстрый лид */}
       {manage ? (
@@ -133,6 +157,24 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
                 <form action={taskDoneAction}><input type="hidden" name="taskId" value={task.id} /><Button type="submit" size="sm" variant="ghost" aria-label={t('tasks.done')}><CheckCircle2 className="h-4 w-4 text-emerald-600" /></Button></form>
               </li>
             ))}
+          </ul>
+        </section>
+      ) : null}
+      {/* Награды (ТЗ §18) */}
+      {rewards.length ? (
+        <section className="rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><Gift className="h-4 w-4 text-fuchsia-500" />{t('rewards.title')}</h2>
+          {nextReward ? <p className="mt-1 text-xs text-gray-500">{t('rewards.next', { name: nextReward.name, n: nextReward.costXp - game.totalXp })}</p> : <p className="mt-1 text-xs text-emerald-700">{t('rewards.allOpen')}</p>}
+          <ul className="mt-2 grid gap-1.5">
+            {rewards.slice(0, 5).map((r) => {
+              const affordable = game.totalXp >= r.costXp; const pending = openReward.has(r.key);
+              return (
+                <li key={r.key} className="flex items-center justify-between gap-2 text-sm">
+                  <span className={cn(affordable ? 'text-ink-900' : 'text-gray-400')}>{r.name} <span className="font-mono text-[11px] text-gray-400">{r.costXp} XP</span></span>
+                  {pending ? <span className="text-[11px] text-amber-600">{t('rewards.pending')}</span> : affordable ? <form action={requestRewardAction}><input type="hidden" name="rewardKey" value={r.key} /><Button type="submit" size="sm" variant="outline">{t('rewards.get')}</Button></form> : null}
+                </li>
+              );
+            })}
           </ul>
         </section>
       ) : null}

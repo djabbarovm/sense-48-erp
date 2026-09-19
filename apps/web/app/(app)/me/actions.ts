@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { IllegalTransitionError, NotFoundError, PermissionDeniedError, ValidationError } from '@finance-os/core';
 import type { DealLostReason, ViewingResult } from '@finance-os/db';
-import { issueTelegramLinkCode, ownerQuickCall, quickCall, quickLead, scheduleViewing, taskDone, unlinkTelegramChat, viewingResult } from '@finance-os/db';
+import { issueTelegramLinkCode, ownerQuickCall, quickCall, quickLead, requestReward, scheduleViewing, taskDone, unlinkTelegramChat, viewingResult } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
 const str = (fd: FormData, k: string): string | undefined => { const v = fd.get(k); return typeof v === 'string' && v.trim() ? v.trim() : undefined; };
@@ -64,4 +64,9 @@ export async function unlinkTelegramAction(): Promise<void> {
   const ctx = await requireTenantContext();
   await unlinkTelegramChat(ctx.userId);
   revalidatePath('/me'); redirect('/me');
+}
+
+export async function requestRewardAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await run('/me', () => requestReward(ctx, str(formData, 'rewardKey') ?? ''));
 }
