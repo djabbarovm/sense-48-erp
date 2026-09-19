@@ -10,3 +10,4 @@ export * from './rbac/index.js';
 export * from './security/index.js';
 export * from './workflows/index.js';
 export * from './property/index.js';
+export * from './tax/index.js';

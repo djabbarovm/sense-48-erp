@@ -214,8 +214,11 @@
 
 ## 6. Compliance & календарь
 
+### TaxCalendarRule
+`type`, `name`, `recurrence` MONTHLY/QUARTERLY/YEARLY, `due_day`, `expected_min/max_minor`, `owner_id`, **H-10:** `rate_bp`, `base_kind` enum TURNOVER/PAYROLL, `note` (например, «ИНПС 0,1% внутри НДФЛ»). Пресеты режимов — `core/tax` (`UZ_TURNOVER_4`: налог c оборота 4% от выручки, ЕСП 12% и НДФЛ 12% от ФОТ, все до 15 числа).
+
 ### TaxObligation
-`type` enum VAT/PROFIT/PAYROLL_TAX/SOCIAL/PROPERTY/OTHER, `period`, `due_date`, `expected_min_minor`, `expected_max_minor`, `calculated_minor`, `owner_id`, `payment_request_id`, `filed_at`, `status` PLANNED/CALCULATED/APPROVED/PAID/FILED/OVERDUE. Recurrence из `TaxCalendarRule` (cron-like: `monthly day 20`).
+`type` enum VAT/PROFIT/PAYROLL_TAX/SOCIAL/PROPERTY/OTHER, `period`, `due_date`, `expected_min_minor`, `expected_max_minor`, `calculated_minor`, `base_minor` (база оценки на момент генерации: ФОТ ведомости периода / счета клиентам периода; коридор ожидания = оценка ±10%), `owner_id`, `payment_request_id`, `filed_at`, `status` PLANNED/CALCULATED/APPROVED/PAID/FILED/OVERDUE. Recurrence из `TaxCalendarRule` (cron-like: `monthly day 20`).
 
 ### PayrollRun
 `period`, `employee_count`, `gross_minor`, `net_minor`, `taxes_minor`, `register_document_id`, `status` DRAFT/CHECKED/APPROVED/PAID/POSTED, `checked_against_active_list_at`. Хранит только агрегаты; построчный реестр — в документе.

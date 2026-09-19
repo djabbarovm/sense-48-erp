@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { can, formatMoney, money } from '@finance-os/core';
+import { TAX_BASES, UZ_TAX_PRESETS, can, formatMoney, money } from '@finance-os/core';
 import { listTaxObligations, listTaxRules } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, PageHeader, Select, StatCard, Table, Td, Th } from '@/components/ui';
@@ -10,6 +10,7 @@ import {
   createTaxPaymentAction,
   fileTaxAction,
   upsertTaxRuleAction,
+  applyTaxPresetAction,
 } from './actions';
 
 const TONE = {
@@ -126,7 +127,7 @@ export default async function TaxPage() {
             {rules.map((rule) => (
               <li key={rule.id} className="flex items-center gap-2">
                 <Badge tone="gray">{rule.type}</Badge>
-                {rule.name} · {t('everyDay', { day: rule.dueDay })} ({t(`recurrence.${rule.recurrence}`)})
+                {rule.name} · {t('everyDay', { day: rule.dueDay })} ({t(`recurrence.${rule.recurrence}`)}){rule.rateBp != null && rule.baseKind ? <span className="font-mono text-xs text-gray-600">· {rule.rateBp / 100}% {t(`base.${rule.baseKind}`)}</span> : null}{rule.note ? <span className="text-xs text-gray-400">· {rule.note}</span> : null}
               </li>
             ))}
           </ul>
@@ -147,8 +148,24 @@ export default async function TaxPage() {
             <Input name="dueDay" type="number" min="1" max="28" defaultValue="20" className="w-20" aria-label={t('dueDay')} />
             <Input name="expectedMin" type="number" min="0" placeholder={t('expectedMin')} className="w-32" />
             <Input name="expectedMax" type="number" min="0" placeholder={t('expectedMax')} className="w-32" />
+            <Input name="ratePct" type="number" min="0" max="100" step="0.1" placeholder={t('ratePct')} className="w-24" aria-label={t('ratePct')} />
+            <Select name="baseKind" className="w-auto" aria-label={t('baseLabel')}>
+              <option value="">{t('baseNone')}</option>
+              {TAX_BASES.map((b) => (<option key={b} value={b}>{t(`base.${b}`)}</option>))}
+            </Select>
+            <Input name="note" placeholder={t('note')} className="w-48" />
             <Button type="submit">{t('addRule')}</Button>
           </form>
+          <div className="mt-3 border-t border-gray-100 pt-3">
+            <p className="mb-2 text-xs text-gray-500">{t('presetHint')}</p>
+            {UZ_TAX_PRESETS.map((p) => (
+              <form key={p.key} action={applyTaxPresetAction} className="flex flex-wrap items-center gap-2 text-sm">
+                <input type="hidden" name="preset" value={p.key} />
+                <span className="text-gray-800">{p.title}</span>
+                <Button type="submit" size="sm" variant="outline">{t('applyPreset')}</Button>
+              </form>
+            ))}
+          </div>
         </Card>
       ) : null}
     </div>

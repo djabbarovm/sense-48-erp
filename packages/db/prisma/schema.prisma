@@ -1371,6 +1371,11 @@ model AccountMapping {
 }
 
 // F-01: налоговый календарь (docs/02 §6)
+enum TaxBase {
+  TURNOVER
+  PAYROLL
+}
+
 enum TaxType {
   VAT
   PROFIT
@@ -1400,6 +1405,10 @@ model TaxCalendarRule {
   expectedMinMinor  BigInt?  @map("expected_min_minor")
   expectedMaxMinor  BigInt?  @map("expected_max_minor")
   ownerId           String?  @map("owner_id") @db.Uuid
+  // H-10: ставка и база для оценки ожидаемой суммы (TURNOVER — выручка периода, PAYROLL — ФОТ ведомости периода)
+  rateBp            Int?     @map("rate_bp")
+  baseKind          TaxBase? @map("base_kind")
+  note              String?
   isActive          Boolean  @default(true) @map("is_active")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
@@ -1417,6 +1426,7 @@ model TaxObligation {
   expectedMinMinor BigInt?             @map("expected_min_minor")
   expectedMaxMinor BigInt?             @map("expected_max_minor")
   calculatedMinor  BigInt?             @map("calculated_minor")
+  baseMinor        BigInt?             @map("base_minor") // база оценки (ФОТ / выручка периода) на момент генерации
   ownerId          String?             @map("owner_id") @db.Uuid
   paymentRequestId String?             @map("payment_request_id") @db.Uuid
   filedAt          DateTime?           @map("filed_at")

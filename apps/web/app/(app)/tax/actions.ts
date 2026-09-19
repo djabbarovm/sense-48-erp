@@ -9,6 +9,7 @@ import {
   fileTaxObligation,
   generateTaxObligations,
   upsertTaxRule,
+  applyTaxPreset,
 } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
@@ -25,7 +26,18 @@ export async function upsertTaxRuleAction(formData: FormData): Promise<void> {
     dueDay: Number(formData.get('dueDay') ?? 20),
     expectedMinMinor: min > 0n ? min : null,
     expectedMaxMinor: max > 0n ? max : null,
+    rateBp: String(formData.get('ratePct') ?? '').trim() ? Math.round(Number(formData.get('ratePct')) * 100) : null,
+    baseKind: (String(formData.get('baseKind') ?? '') || null) as 'TURNOVER' | 'PAYROLL' | null,
+    note: String(formData.get('note') ?? '').trim() || null,
   });
+  await generateTaxObligations(ctx.tenantId);
+  revalidatePath('/tax');
+}
+
+/** H-10: пресет режима (налог c оборота 4% + зарплатные налоги) — правила + обязательства. */
+export async function applyTaxPresetAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await applyTaxPreset(ctx, String(formData.get('preset') ?? ''));
   await generateTaxObligations(ctx.tenantId);
   revalidatePath('/tax');
 }

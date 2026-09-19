@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [Phase H] 2026-09-19 — Налоговый профиль ORDO (H-10)
+- core: `tax/index.ts` — `TAX_BASES`, `UZ_TAX_PRESETS` (`UZ_TURNOVER_4`), `taxPreset`, `taxEstimate`, `splitInps` (ИНПС 0,1% внутри НДФЛ); 3 теста.
+- db: `TaxCalendarRule.rateBp/baseKind/note`, `TaxObligation.baseMinor` (миграция `tax_rule_rate_base`); `upsertTaxRule` c валидацией ставки/базы, `applyTaxPreset` (идемпотентно, tax.approve), `estimateTaxBase` (ФОТ ведомости периода не DRAFT / счета клиентам периода), `generateTaxObligations` — ожидаемый коридор = оценка ±10%, пометка правила в названии обязательства; seed: правила для ORDO; тест `tax-profile.test.ts`.
+- web: `/tax` — ставка %, база, пояснение в форме правила; ставка/база в списке правил; блок пресетов c кнопкой «Применить пресет»; словарь `tax`.
+- docs: `docs/02` §6, ADR-027, TASKS H-03/H-10.
+
 ## [Phase H] 2026-09-19 — Родные выгрузки 1С и Didox (H-09)
 - adapters: `onec/exports.ts` — `parseOnecCounterparties` (ИНН/счёт/МФО, банк без МФО и кавычек, физлицо по ПИНФЛ без самого ПИНФЛ), `parseOnecOsv` (счёт и период из заголовка, строки контрагент → договор, суммы в тийинах), `parseOnecStaff` (ФИО/должность/подразделение, оклады не читаются), `normalizeCounterpartyName`; `edo/didoxExport.ts` — `parseDidoxRegistryExport` (статус, тип, договор «№… от», суммы, ID роуминга); 5 unit-тестов на синтетических фикстурах.
 - db: `services/onecImport.ts` — `importOnecCounterparties` (обогащение KSP-заглушек, новые через importVendorsXlsx, второй счёт UNVERIFIED, audit), `importOnecOsv` (40xx → importOpenArXlsx, 43xx → Advance VENDOR_PREPAYMENT + Task CLOSING_DOCS, 6xxx → importOpenApXlsx; all-or-nothing по неизвестным контрагентам, идемпотентно), `importOnecStaff`, `importDidoxExport` (подписанные договоры → importContractsXlsx, ожидающие подписи/физлица — в заметках); тип `NativeImportReport` c `notes`; 5 интеграционных тестов (permission 403, audit, идемпотентность).

@@ -5,7 +5,7 @@
  * просрочка до PAID → OVERDUE + эскалация Owner.
  */
 import type { TenantContext } from '@finance-os/core';
-import { ValidationError, requirePermission } from '@finance-os/core';
+import { ValidationError, requirePermission, taxEstimate, taxPreset, type TaxBase } from '@finance-os/core';
 import type { TaxObligationStatus, TaxType } from '@prisma/client';
 import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
@@ -25,10 +25,16 @@ export async function upsertTaxRule(
     expectedMinMinor?: bigint | null;
     expectedMaxMinor?: bigint | null;
     ownerId?: string | null;
+    /** H-10: ставка (bp) и база оценки; note — пояснение (например, «ИНПС 0,1% внутри НДФЛ») */
+    rateBp?: number | null;
+    baseKind?: TaxBase | null;
+    note?: string | null;
   },
 ) {
   requirePermission(ctx, 'tax.approve'); // настройка правил — Lead/Owner (docs/06 §15: Admin/Lead)
   if (input.dueDay < 1 || input.dueDay > 28) throw new ValidationError('DUE_DAY_INVALID', 'Число месяца 1–28');
+  if (input.rateBp != null && (!Number.isInteger(input.rateBp) || input.rateBp < 0 || input.rateBp > 10_000)) throw new ValidationError('RATE_INVALID', 'Ставка 0–100%');
+  if (input.rateBp != null && !input.baseKind) throw new ValidationError('BASE_REQUIRED', 'Для ставки нужна база (выручка / ФОТ)');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const data = {
       type: input.type,
@@ -38,6 +44,9 @@ export async function upsertTaxRule(
       expectedMinMinor: input.expectedMinMinor ?? null,
       expectedMaxMinor: input.expectedMaxMinor ?? null,
       ownerId: input.ownerId ?? null,
+      rateBp: input.rateBp ?? null,
+      baseKind: input.baseKind ?? null,
+      note: input.note ?? null,
     };
     if (input.id) {
       const existing = await tx.taxCalendarRule.findFirst({ where: { id: input.id, tenantId: ctx.tenantId } });
@@ -48,7 +57,7 @@ export async function upsertTaxRule(
       : await tx.taxCalendarRule.create({ data: { tenantId: ctx.tenantId, ...data } });
     return {
       result: rule,
-      audit: { action: 'tax_rule.upsert', objectType: 'tax_calendar_rule', objectId: rule.id, after: { type: input.type, name: input.name, dueDay: input.dueDay } },
+      audit: { action: 'tax_rule.upsert', objectType: 'tax_calendar_rule', objectId: rule.id, after: { type: input.type, name: input.name, dueDay: input.dueDay, rateBp: input.rateBp ?? null, baseKind: input.baseKind ?? null } },
     };
   });
 }
@@ -58,7 +67,35 @@ export async function listTaxRules(ctx: TenantContext) {
   return prisma.taxCalendarRule.findMany({ where: whereTenant(ctx, { isActive: true }), orderBy: { dueDay: 'asc' } });
 }
 
-/** Job (D-05/F-01): создаёт PLANNED-обязательства на ближайшие периоды из правил. Идемпотентен. */
+/** H-10: применить пресет режима (core/tax): правила по type+name, повтор не дублирует; обязательства пересоздаются джобом. */
+export async function applyTaxPreset(ctx: TenantContext, key: string): Promise<{ created: number; skipped: number }> {
+  requirePermission(ctx, 'tax.approve');
+  const preset = taxPreset(key);
+  let created = 0; let skipped = 0;
+  for (const r of preset.rules) {
+    const exists = await prisma.taxCalendarRule.findFirst({ where: { tenantId: ctx.tenantId, type: r.type, isActive: true } });
+    if (exists) { skipped++; continue; }
+    await upsertTaxRule(ctx, { type: r.type, name: r.name, recurrence: 'MONTHLY', dueDay: r.dueDay, rateBp: r.rateBp, baseKind: r.baseKind, note: r.note ?? null });
+    created++;
+  }
+  return { created, skipped };
+}
+
+/** База оценки за период YYYY-MM: PAYROLL — gross ведомости периода (не DRAFT), TURNOVER — счета клиентам за период (кроме DRAFT/CANCELLED). Нет данных → null. */
+export async function estimateTaxBase(tenantId: string, baseKind: TaxBase, period: string): Promise<bigint | null> {
+  if (!/^\d{4}-\d{2}$/.test(period)) return null;
+  if (baseKind === 'PAYROLL') {
+    const run = await prisma.payrollRun.findFirst({ where: { tenantId, period, status: { not: 'DRAFT' } }, orderBy: { createdAt: 'desc' } });
+    return run?.grossMinor ?? null;
+  }
+  const [y, m] = period.split('-').map(Number);
+  const from = new Date(Date.UTC(y!, m! - 1, 1)); const to = new Date(Date.UTC(y!, m!, 1));
+  const agg = await prisma.customerInvoice.aggregate({ where: { tenantId, date: { gte: from, lt: to }, status: { notIn: ['DRAFT', 'CANCELLED'] } }, _sum: { amountGrossMinor: true }, _count: true });
+  return agg._count ? (agg._sum.amountGrossMinor ?? 0n) : null;
+}
+
+/** Job (D-05/F-01): создаёт PLANNED-обязательства на ближайшие периоды из правил. Идемпотентен.
+ *  H-10: у правила co ставкой и базой ожидаемый коридор = оценка ±10% (база периода известна), иначе — коридор правила. */
 export async function generateTaxObligations(tenantId: string, now = new Date(), monthsAhead = 2): Promise<number> {
   const rules = await prisma.taxCalendarRule.findMany({ where: { tenantId, isActive: true } });
   let created = 0;
@@ -83,15 +120,18 @@ export async function generateTaxObligations(tenantId: string, now = new Date(),
         where: { tenantId_type_period: { tenantId, type: rule.type, period } },
       });
       if (exists) continue;
+      const base = rule.rateBp != null && rule.baseKind ? await estimateTaxBase(tenantId, rule.baseKind, period) : null;
+      const estimate = base != null && rule.rateBp != null ? taxEstimate(base, rule.rateBp) : null;
       await prisma.taxObligation.create({
         data: {
           tenantId,
           type: rule.type,
-          name: rule.name,
+          name: rule.note ? `${rule.name} (${rule.note})` : rule.name,
           period,
           dueDate: due,
-          expectedMinMinor: rule.expectedMinMinor,
-          expectedMaxMinor: rule.expectedMaxMinor,
+          baseMinor: base,
+          expectedMinMinor: estimate != null ? (estimate * 90n) / 100n : rule.expectedMinMinor,
+          expectedMaxMinor: estimate != null ? (estimate * 110n) / 100n : rule.expectedMaxMinor,
           ownerId: rule.ownerId,
         },
       });
