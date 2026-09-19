@@ -3,7 +3,7 @@
  * Чистые правила — в core (requirePermission); здесь — оркестрация с Prisma + audit.
  */
 import type { TenantContext } from '@finance-os/core';
-import { NotFoundError, ValidationError, requirePermission } from '@finance-os/core';
+import { NotFoundError, ValidationError, hashPassword, requirePermission } from '@finance-os/core';
 import type { CategoryGroup, Prisma, RoleCode } from '@prisma/client';
 import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
@@ -70,6 +70,33 @@ export async function listTenantUsers(ctx: TenantContext) {
     byUser.set(r.userId, entry);
   }
   return [...byUser.values()];
+}
+
+/**
+ * P-31: создать сотрудника c системным логином (без email) + временный пароль и роль в текущем тенанте.
+ * Для команды Tower без рабочей почты: авторизация по логину, дальше привязка Telegram. Пароль в аудит не пишется.
+ */
+export interface CreateUserInput { fullName: string; username?: string | null; email?: string | null; role: RoleCode; tempPassword: string }
+export async function createUser(ctx: TenantContext, input: CreateUserInput) {
+  requirePermission(ctx, 'user.manage');
+  const fullName = input.fullName.trim();
+  const username = input.username?.trim().toLowerCase().replace(/\s+/g, '') || null;
+  const email = input.email?.trim().toLowerCase() || null;
+  if (!fullName) throw new ValidationError('REQUIRED_FIELDS');
+  if (!username && !email) throw new ValidationError('LOGIN_REQUIRED');
+  if (username && !/^[a-z0-9._-]{3,32}$/.test(username)) throw new ValidationError('USERNAME_INVALID');
+  if (!input.tempPassword || input.tempPassword.length < 8) throw new ValidationError('PASSWORD_TOO_SHORT');
+  if (username && (await prisma.user.findFirst({ where: { username }, select: { id: true } }))) throw new ValidationError('USERNAME_TAKEN');
+  if (email && (await prisma.user.findUnique({ where: { email }, select: { id: true } }))) throw new ValidationError('EMAIL_TAKEN');
+  const passwordHash = await hashPassword(input.tempPassword);
+  return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
+    const user = await tx.user.create({ data: { fullName, username, email, passwordHash, status: 'ACTIVE' } });
+    await tx.userTenantRole.create({ data: { userId: user.id, tenantId: ctx.tenantId, role: input.role } });
+    return {
+      result: { id: user.id, fullName, username, email, role: input.role },
+      audit: { action: 'user.create', objectType: 'user', objectId: user.id, after: { fullName, username, email, role: input.role } },
+    };
+  });
 }
 
 export async function grantRole(ctx: TenantContext, email: string, role: RoleCode) {

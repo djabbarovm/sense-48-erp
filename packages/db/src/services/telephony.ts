@@ -64,7 +64,7 @@ export async function updateTelephonySettings(ctx: TenantContext, input: Telepho
   if (!/^[+-]\d{2}:\d{2}$/.test(input.tzOffset)) throw new ValidationError('TZ_OFFSET_INVALID');
   if (!Number.isInteger(input.internalExtLen) || input.internalExtLen < 1 || input.internalExtLen > 6) throw new ValidationError('INTERNAL_EXT_LEN_INVALID');
   const members = await prisma.userTenantRole.findMany({ where: { tenantId: ctx.tenantId }, select: { userId: true, user: { select: { email: true } } } });
-  const byEmail = new Map(members.map((m) => [m.user.email.toLowerCase(), m.userId]));
+  const byEmail = new Map(members.filter((m) => m.user.email != null).map((m) => [m.user.email!.toLowerCase(), m.userId] as const));
   const ids = new Set(members.map((m) => m.userId));
   const extMap: Record<string, string> = {};
   for (const [extRaw, who] of Object.entries(input.extMap)) {

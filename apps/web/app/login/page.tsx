@@ -40,7 +40,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 autoComplete="username"
                 required
                 className="border-white/10 bg-white/10 text-white placeholder:text-slate-500 hover:border-white/20 focus:border-volt-500 focus:ring-volt-500/30"

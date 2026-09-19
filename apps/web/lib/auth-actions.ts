@@ -23,13 +23,15 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   const limit = checkRateLimit(`login:${ip}:${email}`, 10, 300);
   if (!limit.allowed) return { error: 'rate_limited' };
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  // P-31: вход по email или системному логину (сотрудники без email)
+  const login = email.trim().toLowerCase();
+  const user = await prisma.user.findFirst({ where: { OR: [{ email: login }, { username: login }] } });
   if (!user || user.status !== 'ACTIVE' || !user.passwordHash) return { error: 'invalid_credentials' };
   if (!(await verifyPassword(password, user.passwordHash))) return { error: 'invalid_credentials' };
 
   const secret = process.env.AUTH_JWT_SECRET;
   if (!secret) throw new Error('AUTH_JWT_SECRET is not set');
-  const token = signSessionJwt({ sub: user.id, email: user.email }, secret);
+  const token = signSessionJwt({ sub: user.id, email: user.email ?? user.username ?? user.id }, secret);
 
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {

@@ -28,10 +28,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!claims) return null;
   const user = await prisma.user.findUnique({
     where: { id: claims.sub },
-    select: { id: true, email: true, fullName: true, status: true },
+    select: { id: true, email: true, username: true, fullName: true, status: true },
   });
   if (!user || user.status !== 'ACTIVE') return null;
-  return { id: user.id, email: user.email, fullName: user.fullName };
+  return { id: user.id, email: user.email ?? user.username ?? '', fullName: user.fullName };
 }
 
 export async function requireSessionUser(): Promise<SessionUser> {

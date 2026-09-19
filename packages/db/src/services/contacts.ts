@@ -116,7 +116,7 @@ export async function findDuplicateContacts(ctx: TenantContext) {
 export async function importContactsXlsx(ctx: TenantContext, rows: Record<string, string>[]): Promise<MigrationReport> {
   requirePermission(ctx, 'deal.manage');
   const report: MigrationReport = { total: rows.length, imported: 0, skipped: 0, errors: [] };
-  const users = new Map((await prisma.userTenantRole.findMany({ where: { tenantId: ctx.tenantId }, include: { user: { select: { email: true } } } })).map((r) => [r.user.email.toLowerCase(), r.userId]));
+  const users = new Map((await prisma.userTenantRole.findMany({ where: { tenantId: ctx.tenantId }, include: { user: { select: { email: true } } } })).filter((r) => r.user.email != null).map((r) => [r.user.email!.toLowerCase(), r.userId] as const));
   const SOURCES = ['WEBSITE', 'TELEGRAM', 'INSTAGRAM', 'REFERRAL', 'BROKER', 'WALK_IN', 'OTHER'];
   const prepared: { name: string; phone: string | null; email: string | null; company: string | null; position: string | null; source: DealSource | null; tags: string[]; notes: string | null; managerId: string | null }[] = [];
   rows.forEach((row, i) => {

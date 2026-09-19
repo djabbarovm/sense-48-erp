@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import type { TelephonyProvider } from '@finance-os/adapters';
 import type { CategoryGroup, RoleCode, TelephonySettingsInput } from '@finance-os/db';
 import {
+  createUser,
   grantRole,
   revokeRole,
   updateTelephonySettings,
@@ -83,6 +84,18 @@ export async function saveTelephonySettingsAction(formData: FormData): Promise<v
     internalExtLen: Number(formData.get('internalExtLen') ?? 4),
     extMap,
     fieldMap: fieldMap as TelephonySettingsInput['fieldMap'],
+  });
+  revalidatePath('/admin');
+}
+
+export async function createUserAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await createUser(ctx, {
+    fullName: String(formData.get('fullName') ?? ''),
+    username: String(formData.get('username') ?? '') || null,
+    email: String(formData.get('newEmail') ?? '') || null,
+    role: String(formData.get('newRole')) as RoleCode,
+    tempPassword: String(formData.get('tempPassword') ?? ''),
   });
   revalidatePath('/admin');
 }

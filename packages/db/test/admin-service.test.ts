@@ -59,8 +59,8 @@ describe('A-12 admin service', () => {
 
   it('grant/revoke роли с audit; список пользователей агрегирует роли', async () => {
     const jun = await prisma.user.findUniqueOrThrow({ where: { id: juniorId } });
-    await grantRole(adminCtx(), jun.email, 'JUNIOR_FINANCE');
-    await grantRole(adminCtx(), jun.email, 'REQUESTER');
+    await grantRole(adminCtx(), jun.email!, 'JUNIOR_FINANCE');
+    await grantRole(adminCtx(), jun.email!, 'REQUESTER');
     let users = await listTenantUsers(adminCtx());
     const entry = users.find((u) => u.user.id === juniorId);
     expect(entry?.roles.sort()).toEqual(['JUNIOR_FINANCE', 'REQUESTER']);

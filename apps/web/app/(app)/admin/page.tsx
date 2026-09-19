@@ -8,6 +8,7 @@ import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, Select, Table, Td, Th } from '@/components/ui';
 import {
   grantRoleAction,
+  createUserAction,
   revokeRoleAction,
   saveTelephonySettingsAction,
   saveTenantSettingsAction,
@@ -177,6 +178,36 @@ export default async function AdminPage() {
             </Select>
           </div>
           <Button type="submit">{t('addUser')}</Button>
+        </form>
+      </Card>
+
+      <Card>
+        <h2 className="mb-1 font-medium">{t('createUser.title')}</h2>
+        <p className="mb-3 text-sm text-gray-600">{t('createUser.hint')}</p>
+        <form action={createUserAction} className="grid max-w-2xl grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="cu-name">{t('name')}</Label>
+            <Input id="cu-name" name="fullName" required />
+          </div>
+          <div>
+            <Label htmlFor="cu-username">{t('createUser.username')}</Label>
+            <Input id="cu-username" name="username" placeholder="umar" autoComplete="off" />
+          </div>
+          <div>
+            <Label htmlFor="cu-pass">{t('createUser.tempPassword')}</Label>
+            <Input id="cu-pass" name="tempPassword" required minLength={8} autoComplete="off" />
+          </div>
+          <div>
+            <Label htmlFor="cu-role">{t('role')}</Label>
+            <Select id="cu-role" name="newRole">
+              {ROLE_CODES.map((r) => (<option key={r} value={r}>{r}</option>))}
+            </Select>
+          </div>
+          <div className="col-span-2">
+            <Label htmlFor="cu-email">{t('createUser.emailOptional')}</Label>
+            <Input id="cu-email" name="newEmail" type="text" autoComplete="off" />
+          </div>
+          <div className="col-span-2"><Button type="submit">{t('createUser.submit')}</Button></div>
         </form>
       </Card>
 

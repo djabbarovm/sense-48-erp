@@ -52,7 +52,8 @@ enum UserStatus {
 // Глобальная таблица (без tenant_id)
 model User {
   id             String     @id @default(uuid(7)) @db.Uuid
-  email          String     @unique
+  email          String?    @unique
+  username       String?    @unique // системный логин для сотрудников без email (P-31)
   fullName       String     @map("full_name")
   authProviderId String?    @map("auth_provider_id")
   // bcrypt-хэш только для dev-логина (ADR-002); в prod — Supabase

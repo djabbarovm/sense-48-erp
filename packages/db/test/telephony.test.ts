@@ -69,7 +69,7 @@ describe('Телефония → CRM (docs/21 §7)', () => {
     const admin = ctx(['ADMIN']);
     await expect(updateTelephonySettings(ctx(['COMMERCIAL_MANAGER']), { provider: 'onlinepbx', tzOffset: '+05:00', internalExtLen: 3, extMap: {} })).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(updateTelephonySettings(admin, { provider: 'onlinepbx', tzOffset: '+05:00', internalExtLen: 3, extMap: { '101': 'nobody@else.test' } })).rejects.toBeInstanceOf(ValidationError);
-    const cmEmail = (await prisma.user.findUniqueOrThrow({ where: { id: cmId } })).email;
+    const cmEmail = (await prisma.user.findUniqueOrThrow({ where: { id: cmId } })).email!;
     const saved = await updateTelephonySettings(admin, { provider: 'onlinepbx', tzOffset: '+03:00', internalExtLen: 3, extMap: { '101': cmEmail }, fieldMap: { id: ['callid'] } });
     expect([saved.provider, saved.tzOffset, saved.internalExtLen, saved.extMap['101'], saved.fieldMap?.id]).toEqual(['onlinepbx', '+03:00', 3, cmId, ['callid']]);
     const audit = await prisma.auditLog.findFirst({ where: { tenantId, action: 'telephony.settings.update' }, orderBy: { seq: 'desc' } });
