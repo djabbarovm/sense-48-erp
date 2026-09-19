@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { IllegalTransitionError, NotFoundError, PermissionDeniedError, ValidationError } from '@finance-os/core';
 import type { DealLostReason, ViewingResult } from '@finance-os/db';
-import { ownerQuickCall, quickCall, quickLead, scheduleViewing, taskDone, viewingResult } from '@finance-os/db';
+import { issueTelegramLinkCode, ownerQuickCall, quickCall, quickLead, scheduleViewing, taskDone, unlinkTelegramChat, viewingResult } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
 const str = (fd: FormData, k: string): string | undefined => { const v = fd.get(k); return typeof v === 'string' && v.trim() ? v.trim() : undefined; };
@@ -52,4 +52,16 @@ export async function ownerQuickCallAction(formData: FormData): Promise<void> {
 export async function taskDoneAction(formData: FormData): Promise<void> {
   const ctx = await requireTenantContext();
   await run(str(formData, 'back') ?? '/me', () => taskDone(ctx, str(formData, 'taskId') ?? ''));
+}
+
+/** P-24: код привязки Telegram — показывается один раз в «Мой день», действует до использования. */
+export async function issueTelegramLinkAction(): Promise<void> {
+  const ctx = await requireTenantContext();
+  await issueTelegramLinkCode(ctx.userId);
+  revalidatePath('/me'); redirect('/me?tg=1');
+}
+export async function unlinkTelegramAction(): Promise<void> {
+  const ctx = await requireTenantContext();
+  await unlinkTelegramChat(ctx.userId);
+  revalidatePath('/me'); redirect('/me');
 }

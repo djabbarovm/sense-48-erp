@@ -97,12 +97,12 @@ async function findActiveDeal(tenantId: string, unitId: string) {
   return deals.sort((a, b) => stageIndex(b.stage) - stageIndex(a.stage))[0] ?? null;
 }
 
-export async function createActionDraft(ctx: TenantContext, input: { text: string; source?: ActionSource }, extractor: IntentExtractor = defaultExtractor): Promise<ActionDraft> {
+export async function createActionDraft(ctx: TenantContext, input: { text: string; source?: ActionSource }, extractor: IntentExtractor = defaultExtractor, now = new Date()): Promise<ActionDraft> {
   requirePermission(ctx, 'action.draft');
   const text = input.text.trim();
   if (!text) throw new ValidationError('TEXT_REQUIRED');
   if (text.length > 1000) throw new ValidationError('TEXT_TOO_LONG');
-  const { intent, confidence } = await extractor.extract({ text });
+  const { intent, confidence } = await extractor.extract({ text, now });
   const unitNo = intentUnitNo(intent);
   const unit = unitNo ? await prisma.unit.findFirst({ where: { tenantId: ctx.tenantId, unitNo: { equals: unitNo, mode: 'insensitive' } } }) : null;
   const activeLease = unit ? (await prisma.leaseContract.count({ where: { tenantId: ctx.tenantId, unitId: unit.id, status: { in: ['ACTIVE', 'EXPIRING'] } } })) > 0 : false;

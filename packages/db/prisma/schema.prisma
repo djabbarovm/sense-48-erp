@@ -60,6 +60,8 @@ model User {
   mfaEnabled     Boolean    @default(false) @map("mfa_enabled")
   status         UserStatus @default(ACTIVE)
   telegramChatId String?    @map("telegram_chat_id")
+  telegramLinkCode String?  @unique @map("telegram_link_code") // P-24: одноразовый код привязки /start <code>
+  telegramLinkedAt DateTime? @map("telegram_linked_at")
   lastLoginAt    DateTime?  @map("last_login_at")
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")

@@ -4,7 +4,7 @@
  * (dev/тесты) или `pnpm --filter @finance-os/workers start` после `make dev`.
  */
 import { Queue, Worker } from 'bullmq';
-import type { NotificationAdapter } from '@finance-os/adapters';
+import type { NotificationAdapter, TelegramBotApi } from '@finance-os/adapters';
 import { prisma } from '@finance-os/db';
 import { buildJobs } from './jobs.js';
 
@@ -32,8 +32,8 @@ export async function scheduleAll(): Promise<Queue> {
   return queue;
 }
 
-export function startWorker(notifier?: NotificationAdapter): Worker {
-  const jobs = new Map(buildJobs(notifier).map((j) => [j.name, j]));
+export function startWorker(notifier?: NotificationAdapter, bot?: TelegramBotApi): Worker {
+  const jobs = new Map(buildJobs(notifier, bot).map((j) => [j.name, j]));
   return new Worker(
     QUEUE_NAME,
     async (job) => {

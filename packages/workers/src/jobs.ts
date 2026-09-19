@@ -4,13 +4,15 @@
  * их тестами. BullMQ-обвязка — в queue.ts; без Redis джобы можно гонять напрямую
  * (runTenantJobs) — так работают тесты и dev без docker.
  */
-import type { NotificationAdapter } from '@finance-os/adapters';
+import type { NotificationAdapter, TelegramBotApi } from '@finance-os/adapters';
 import {
   autoFreezeBatches,
   createDealFollowupTasks,
   createExpiryTasksForTenant,
   deliverDomainEvents,
   markOverdueOwnerFollowups,
+  sendCrmDigests,
+  sendCrmReminders,
   escalateOverdueWorkOrders,
   escalateOverdueServiceOrders,
   generateRentCharges,
@@ -40,7 +42,7 @@ export interface JobDef {
   run(tenantId: string, now?: Date): Promise<number>;
 }
 
-export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
+export function buildJobs(notifier?: NotificationAdapter, bot?: TelegramBotApi): JobDef[] {
   return [
     {
       name: 'task-escalation',
@@ -126,6 +128,21 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'house-charges',
       cron: '0 3 1 * *',
       run: async (tenantId, now) => (await generateHouseCharges(tenantId, now)).created,
+    },
+    {
+      name: 'crm-reminders',
+      cron: '*/15 * * * *',
+      run: (tenantId, now) => (bot ? sendCrmReminders(tenantId, now ?? new Date(), bot) : Promise.resolve(0)),
+    },
+    {
+      name: 'crm-digest-morning',
+      cron: '30 3 * * *',
+      run: (tenantId, now) => (bot ? sendCrmDigests(tenantId, now ?? new Date(), bot, 'morning') : Promise.resolve(0)),
+    },
+    {
+      name: 'crm-digest-evening',
+      cron: '0 14 * * *',
+      run: (tenantId, now) => (bot ? sendCrmDigests(tenantId, now ?? new Date(), bot, 'evening') : Promise.resolve(0)),
     },
     {
       name: 'owner-followup',

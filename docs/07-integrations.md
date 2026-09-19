@@ -111,6 +111,9 @@ interface NotificationAdapter {
 
 Бот **не принимает** команд, меняющих финансовые данные. Только `/start`, `/help`, `/mute`.
 
+### 5b. CRM-бот сотрудника (P-24, docs/21 §6)
+`TelegramBotApi` (adapters/telegram/bot): `sendMessage(chatId, text, {keyboard})`, `answerCallback`, `setWebhook(url, secret)`; реализации Http (fetch к api.telegram.org), Mock (тесты), Console (dev). Вход — `POST /api/telegram/webhook` c заголовком `X-Telegram-Bot-Api-Secret-Token` = `TELEGRAM_WEBHOOK_SECRET`; апдейты `message` и `callback_query`. Установка webhook: `setWebhook(\`${APP_URL}/api/telegram/webhook\`, secret)` один раз при деплое. Env: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_BOT_USERNAME`, `APP_URL`. Callback-данные: `d:c:<draft>` / `d:r:<draft>` (подтвердить/отменить черновик), `v:<deal>:<OFFER|THINKING|RESCHEDULE|LOST>`, `vl:<deal>:<причина>`, `t:<task>`.
+
 ## 5a. WorkBot / IntentExtractor (MDS Property, docs/20 §11.4)
 
 ```ts

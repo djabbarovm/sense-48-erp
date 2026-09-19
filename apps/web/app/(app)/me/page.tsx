@@ -1,26 +1,28 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, Building2, CalendarClock, CheckCircle2, Clock, Flame, Phone, Plus, Sparkles, UserPlus } from 'lucide-react';
+import { AlertTriangle, Building2, CalendarClock, CheckCircle2, Clock, Flame, Phone, Plus, Send, Sparkles, UserPlus } from 'lucide-react';
 import { DEAL_LOST_REASONS, DEAL_SOURCES, can } from '@finance-os/core';
-import { getMyDay } from '@finance-os/db';
+import { getMyDay, prisma } from '@finance-os/db';
 import { requireSessionUser, requireTenantContext } from '@/lib/session';
 import { Badge, Button, Input, Select, cn } from '@/components/ui';
 import { fmtDate, fmtRate } from '@/components/property';
 import { OWNER_STAGE_TONE } from '../property/owners/tones';
-import { ownerQuickCallAction, quickCallAction, quickLeadAction, scheduleViewingAction, taskDoneAction, viewingResultAction } from './actions';
+import { issueTelegramLinkAction, ownerQuickCallAction, quickCallAction, quickLeadAction, scheduleViewingAction, taskDoneAction, unlinkTelegramAction, viewingResultAction } from './actions';
 
 /* CRM Tower — «Мой день» (docs/21 §5, P-23): mobile-first экран сотрудника — показы, лиды, просрочки, собственники, задачи, быстрые действия. */
 
 const fmtTime = (d: Date) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' });
 
-export default async function MyDayPage({ searchParams }: { searchParams: Promise<{ error?: string; open?: string }> }) {
+export default async function MyDayPage({ searchParams }: { searchParams: Promise<{ error?: string; open?: string; tg?: string }> }) {
   const ctx = await requireTenantContext();
   if (!can(ctx, 'deal.view')) notFound();
   const user = await requireSessionUser();
   const sp = await searchParams;
   const t = await getTranslations('me'); const tD = await getTranslations('deals'); const tO = await getTranslations('owners');
   const day = await getMyDay(ctx);
+  const tg = await prisma.user.findUnique({ where: { id: user.id }, select: { telegramChatId: true, telegramLinkCode: true, telegramLinkedAt: true } });
+  const botName = process.env.TELEGRAM_BOT_USERNAME ?? null;
   const manage = can(ctx, 'deal.manage');
   const now = new Date();
   const inOneHour = new Date(now.getTime() + 3600_000);
@@ -134,6 +136,21 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           </ul>
         </section>
       ) : null}
+      {/* Telegram (docs/21 §6) */}
+      <section className="rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><Send className="h-4 w-4 text-sky-500" />{t('telegram.title')}</h2>
+        {tg?.telegramChatId ? (
+          <div className="mt-1 flex items-center justify-between gap-2 text-sm"><span className="text-emerald-700">{t('telegram.linked', { d: fmtDate(tg.telegramLinkedAt) })}</span><form action={unlinkTelegramAction}><Button type="submit" size="sm" variant="ghost">{t('telegram.unlink')}</Button></form></div>
+        ) : tg?.telegramLinkCode && sp.tg ? (
+          <div className="mt-1 text-sm">
+            <p className="text-gray-700">{t('telegram.step')}</p>
+            {botName ? <a href={`https://t.me/${botName}?start=${tg.telegramLinkCode}`} className="mt-2 inline-flex items-center gap-1 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-medium text-white" target="_blank" rel="noreferrer"><Send className="h-4 w-4" />{t('telegram.open', { bot: botName })}</a> : <p className="mt-1 text-xs text-amber-700">{t('telegram.noBot')}</p>}
+            <p className="mt-2 font-mono text-xs text-gray-600">/start {tg.telegramLinkCode}</p>
+          </div>
+        ) : (
+          <div className="mt-1 flex items-center justify-between gap-2 text-sm"><span className="text-gray-600">{t('telegram.hint')}</span><form action={issueTelegramLinkAction}><Button type="submit" size="sm" variant="outline">{t('telegram.connect')}</Button></form></div>
+        )}
+      </section>
       <p className="text-center text-[11px] text-gray-400">{t('footer')}</p>
     </div>
   );

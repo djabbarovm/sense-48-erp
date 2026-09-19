@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: Telegram-бот сотрудника (P-24)
+- adapters: `workbot/dates.ts` (`parseRuDateTime`, `extractPhone` — Unicode-границы слов), CRM-намерения в `RuleBasedIntentExtractor` (LEAD_CREATE, ACTIVITY_LOG, VIEWING_SCHEDULE, VIEWING_RESULT, OWNER_ACTIVITY, QUERY_MY_DAY; старые сохранены), `telegram/bot.ts` (`TelegramBotApi`: Http / Mock / Console, inline-кнопки, webhook); тесты.
+- db: `services/telegramBot.ts` — привязка кодом, `contextForChat`, `handleTelegramUpdate` (команды, черновики c кнопками, callback подтверждения/отказа, результат показа кнопками c причиной отказа), `digestText`, `sendCrmDigests`, `sendCrmReminders` (показ −60 мин, результат +2 ч, SLA лида 15/30 мин; дедуп маркерами DomainEvent); `actionDrafts.ts` — исполнение CRM-намерений через `myDay`/`ownerPipeline`, `now` в извлекатель; `User.telegramLinkCode/telegramLinkedAt` (миграция `telegram_link_code`); тест `telegram-bot.test.ts`.
+- workers: джобы `crm-reminders` (*/15), `crm-digest-morning` (08:30), `crm-digest-evening` (19:00); `buildJobs(notifier, bot)`, `main.ts` — Bot API из env или консоль.
+- web: `POST /api/telegram/webhook`, блок «Telegram-бот» в «Мой день» (код, ссылка `t.me/<bot>?start=`, отключить); `.env.example` дополнен.
+
 ## [Phase P] 2026-09-19 — CRM Tower: «Мой день» и мобильная версия (P-23)
 - db: `services/myDay.ts` — `getMyDay` (показы, новые лиды, просрочено/без шага, сегодня по плану, собственники, задачи, итог дня; менеджер видит своё, OWNER/ADMIN — всех), быстрые действия `quickCall`, `scheduleViewing` (BR-P60: показ — событие c датой и временем, сделка → VIEWING), `viewingResult` (оффер / думает / перенос / отказ), `quickLead`, `ownerQuickCall`, `taskDone`; `Deal.nextActionAt` и `UnitActivity.followUpAt` — timestamp (миграция `crm_timestamps`); тест `my-day.test.ts`.
 - web: `/me` mobile-first (одна колонка, крупные действия, tel:-ссылки), нижняя навигация на телефоне (Мой день · Пульт · Сделки · Клиенты · Собственники), PWA (`manifest.webmanifest`, `icon.svg`, standalone, старт `/me`), редирект менеджера/брокера на `/me`; словарь `me`.

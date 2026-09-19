@@ -36,3 +36,10 @@ export class MockTelegramBotApi implements TelegramBotApi {
   async answerCallback(callbackId: string): Promise<void> { this.callbacks.push(callbackId); }
   async setWebhook(): Promise<void> {}
 }
+
+/** Dev: печатает в консоль вместо Telegram (секретов в тексте нет by design). */
+export class ConsoleTelegramBotApi implements TelegramBotApi {
+  async sendMessage(chatId: string, text: string, opts: TgSendOptions = {}): Promise<void> { console.log(`[tg → ${chatId}] ${text}${opts.keyboard ? ` [${opts.keyboard.flat().map((b) => b.text).join(' | ')}]` : ''}`); }
+  async answerCallback(): Promise<void> {}
+  async setWebhook(): Promise<void> {}
+}

@@ -1,9 +1,11 @@
 /** Точка входа prod-воркера: `node --import tsx src/main.ts` (docker-compose). */
-import { ConsoleNotificationAdapter } from '@finance-os/adapters';
+import { ConsoleNotificationAdapter, ConsoleTelegramBotApi, HttpTelegramBotApi } from '@finance-os/adapters';
 import { scheduleAll, startWorker } from './queue.js';
 
 const queue = await scheduleAll();
-const worker = startWorker(new ConsoleNotificationAdapter());
+// P-24: CRM-бот — реальный Bot API при TELEGRAM_BOT_TOKEN, иначе консоль (dev)
+const bot = process.env.TELEGRAM_BOT_TOKEN ? new HttpTelegramBotApi(process.env.TELEGRAM_BOT_TOKEN) : new ConsoleTelegramBotApi();
+const worker = startWorker(new ConsoleNotificationAdapter(), bot);
 console.log('[workers] scheduled repeatable jobs, worker started');
 
 process.on('SIGTERM', async () => {
