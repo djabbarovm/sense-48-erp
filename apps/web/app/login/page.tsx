@@ -26,7 +26,7 @@ export default function LoginPage() {
             ))}
           </div>
           <span className="font-display text-2xl font-bold tracking-tight text-white uppercase">
-            Finance<span className="text-volt-500">OS</span>
+            D<span className="text-volt-500">MS</span>
           </span>
         </div>
 

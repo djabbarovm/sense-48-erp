@@ -132,7 +132,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             ))}
           </div>
           <div className="font-display text-[15px] font-bold tracking-tight text-white uppercase">
-            Finance<span className="text-volt-500">OS</span>
+            D<span className="text-volt-500">MS</span>
           </div>
         </div>
         <nav className="flex-1 space-y-0.5 px-3 pb-4">
