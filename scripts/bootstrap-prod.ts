@@ -12,10 +12,15 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { parseKspWorkbook } from '../packages/adapters/src/index.js';
 import { hashPassword, unsafeCreateTenantContext } from '../packages/core/src/index.js';
 import { prisma, syncPermissions, importKspBook } from '../packages/db/src/index.js';
+import { PROPERTY_TENANT, seedPhaseP } from '../packages/db/seed/phaseP.js';
 
 const TENANT_SLUG = 'rooftop-real';
 const TEMP_PASSWORD = process.env['BOOTSTRAP_TEMP_PASSWORD'] || 'Palym2026!';
 const BOOK = process.env['KSP_BOOK_PATH'] || '/app/data/ksp.xlsx';
+// H-11: демо-тенант MDS Property (башня «Piramit (демо)», синтетические данные) — чтобы
+// владелец и команда Tower кликали CRM на сервере до появления реальных данных.
+const DEMO_PROPERTY = process.env['BOOTSTRAP_DEMO_PROPERTY'] === '1';
+const OWNER_EMAIL = 'murad@palym.test';
 
 // ADR-012: команда пилота (placeholder-email до получения настоящих)
 const TEAM: [string, string, string[]][] = [
@@ -67,6 +72,29 @@ async function main() {
     try { rmSync(BOOK); console.log('Файл книги удалён с диска после импорта'); } catch { /* mounted read-only — ок */ }
   } else {
     console.log(`Книга KSP не найдена (${BOOK}) — пропускаю импорт данных`);
+  }
+
+  if (DEMO_PROPERTY) {
+    // Сидим один раз: повторный seed перезаписал бы telegramChatId сотрудников demo-значениями
+    let demo = await prisma.tenant.findUnique({ where: { slug: PROPERTY_TENANT.slug } });
+    if (demo) console.log(`Демо-тенант «${demo.legalName}» уже есть — seed пропущен`);
+    else {
+      console.log('Демо-тенант MDS Property (синтетика):');
+      await seedPhaseP(prisma);
+      demo = await prisma.tenant.findUniqueOrThrow({ where: { slug: PROPERTY_TENANT.slug } });
+    }
+    const owner = await prisma.user.findUnique({ where: { email: OWNER_EMAIL } });
+    if (owner) {
+      for (const role of ['OWNER', 'ADMIN'] as const) {
+        await prisma.userTenantRole.upsert({
+          where: { userId_tenantId_role: { userId: owner.id, tenantId: demo.id, role } },
+          create: { userId: owner.id, tenantId: demo.id, role },
+          update: {},
+        });
+      }
+      console.log(`  ${OWNER_EMAIL} → OWNER + ADMIN в «${demo.legalName}»`);
+    }
+    console.log('  Учётки *@piramit.test получают пароль ротации (APP_TEMP_PASSWORD), см. rotate-passwords.ts');
   }
 
   console.log('Bootstrap завершён.');

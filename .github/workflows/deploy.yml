@@ -1,6 +1,8 @@
-# H-06: деплой на VPS по кнопке (Actions → Deploy → Run workflow).
+# H-06/H-11: деплой на сервер DigitalOcean по кнопке (Actions → Deploy → Run workflow).
 # Секреты репозитория: DEPLOY_HOST (IP), DEPLOY_PASSWORD (root-пароль SSH),
-# DEPLOY_DATA_KEY (пароль расшифровки книги KSP), опц. TELEGRAM_BOT_TOKEN.
+# DEPLOY_DATA_KEY (пароль расшифровки книги KSP), опц. TELEGRAM_BOT_TOKEN,
+# TELEGRAM_BOT_USERNAME (без @), APP_TEMP_PASSWORD (ротация паролей), PUBLIC_HOST (свой домен).
+# Без домена публичный адрес — https://<ip-через-дефисы>.sslip.io (сертификат Let's Encrypt через Caddy).
 name: Deploy
 on:
   workflow_dispatch: {}
@@ -13,6 +15,17 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - name: Публичный адрес
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          DOMAIN: ${{ secrets.PUBLIC_HOST }}
+        run: |
+          if [ -n "$DOMAIN" ]; then PUBLIC_HOST="$DOMAIN"
+          elif echo "$HOST" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then PUBLIC_HOST="${HOST//./-}.sslip.io"
+          else PUBLIC_HOST="$HOST"; fi
+          echo "PUBLIC_HOST=$PUBLIC_HOST" >> "$GITHUB_ENV"
+          echo "публичный адрес: https://$PUBLIC_HOST"
 
       - name: Расшифровать книгу KSP (если есть)
         env:
@@ -57,49 +70,64 @@ jobs:
             -e "ssh -o StrictHostKeyChecking=no" \
             ./ root@"$HOST":/opt/finance-os/
 
-      - name: Секреты сервера (.env.prod — создаётся один раз)
+      - name: Секреты сервера (.env.prod)
         env:
           SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ secrets.DEPLOY_HOST }}
           TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TGU: ${{ secrets.TELEGRAM_BOT_USERNAME }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" "
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" \
+            "PUBLIC_HOST='$PUBLIC_HOST' TG='$TG' TGU='$TGU' bash -s" <<'REMOTE'
             set -e
             cd /opt/finance-os
             if [ ! -f .env.prod ]; then
               {
                 echo POSTGRES_USER=finance
-                echo POSTGRES_PASSWORD=\$(openssl rand -hex 24)
-                echo AUTH_JWT_SECRET=\$(openssl rand -hex 32)
-                echo BANK_DATA_KEY=\$(openssl rand -base64 32)
+                echo POSTGRES_PASSWORD=$(openssl rand -hex 24)
+                echo AUTH_JWT_SECRET=$(openssl rand -hex 32)
+                echo BANK_DATA_KEY=$(openssl rand -base64 32)
                 echo MINIO_ROOT_USER=finance
-                echo MINIO_ROOT_PASSWORD=\$(openssl rand -hex 24)
-                echo TELEGRAM_BOT_TOKEN=${TG}
+                echo MINIO_ROOT_PASSWORD=$(openssl rand -hex 24)
+                echo TELEGRAM_BOT_TOKEN=
               } > .env.prod
               chmod 600 .env.prod
               echo '.env.prod создан'
-            else
-              echo '.env.prod уже существует — не трогаю'
             fi
-          "
+            # setenv KEY VALUE — заменить или дописать строку (значения в лог не печатаем)
+            setenv() { if grep -q "^$1=" .env.prod; then sed -i "s|^$1=.*|$1=$2|" .env.prod; else echo "$1=$2" >> .env.prod; fi; }
+            setenv PUBLIC_HOST "$PUBLIC_HOST"
+            if ! grep -Eq '^TELEGRAM_WEBHOOK_SECRET=.+' .env.prod; then setenv TELEGRAM_WEBHOOK_SECRET "$(openssl rand -hex 16)"; echo 'TELEGRAM_WEBHOOK_SECRET создан'; fi
+            if [ -n "$TG" ]; then setenv TELEGRAM_BOT_TOKEN "$TG"; echo 'TELEGRAM_BOT_TOKEN обновлён из секрета'; fi
+            if [ -n "$TGU" ]; then setenv TELEGRAM_BOT_USERNAME "$TGU"; fi
+            grep -q '^TELEGRAM_BOT_TOKEN=' .env.prod || echo TELEGRAM_BOT_TOKEN= >> .env.prod
+            echo "ключи .env.prod: $(cut -d= -f1 .env.prod | tr '\n' ' ')"
+          REMOTE
 
-      - name: Собрать и запустить
+      - name: Собрать и запустить (web, workers, caddy)
         env:
           SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
-          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" '
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" "PUBLIC_HOST='$PUBLIC_HOST' bash -s" <<'REMOTE'
             set -e
             cd /opt/finance-os
-            docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --build
+            DC="docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml"
+            $DC up -d --build --remove-orphans
             for i in $(seq 1 60); do
               curl -fsS -o /dev/null http://127.0.0.1:3000/login && break
               sleep 5
             done
-            curl -fsS -o /dev/null http://127.0.0.1:3000/login && echo "web поднялся" || (docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml logs --tail 50 web; exit 1)
-          '
+            curl -fsS -o /dev/null http://127.0.0.1:3000/login && echo "web поднялся" || ($DC logs --tail 50 web; exit 1)
+            # HTTPS через Caddy: сертификат Let's Encrypt выдаётся при первом запуске (обычно < 1 мин)
+            for i in $(seq 1 36); do
+              curl -fsS -o /dev/null "https://$PUBLIC_HOST/login" && break
+              sleep 5
+            done
+            curl -fsS -o /dev/null "https://$PUBLIC_HOST/login" && echo "https://$PUBLIC_HOST — отвечает, сертификат валиден" || ($DC logs --tail 60 caddy; exit 1)
+          REMOTE
 
-      - name: Bootstrap (права, тенант, команда, книга KSP)
+      - name: Bootstrap (права, тенанты, команда, книга KSP, демо Tower)
         env:
           SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ secrets.DEPLOY_HOST }}
@@ -108,7 +136,7 @@ jobs:
             set -e
             cd /opt/finance-os
             docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.deploy.yml \
-              run --rm --no-deps -v /opt/finance-os/data:/app/data web \
+              run --rm --no-deps -e BOOTSTRAP_DEMO_PROPERTY=1 -v /opt/finance-os/data:/app/data web \
               pnpm --filter @finance-os/db exec tsx /app/scripts/bootstrap-prod.ts
             rm -f data/ksp.xlsx
           '
@@ -131,7 +159,22 @@ jobs:
               pnpm --filter @finance-os/db exec tsx /app/scripts/rotate-passwords.ts
           "
 
-      - name: Готово
+      - name: Telegram webhook (если задан токен)
         env:
+          SSHPASS: ${{ secrets.DEPLOY_PASSWORD }}
           HOST: ${{ secrets.DEPLOY_HOST }}
-        run: echo "Finance OS доступна на http://$HOST/"
+        run: |
+          sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" bash -s <<'REMOTE'
+            set -e
+            cd /opt/finance-os
+            set -a; . ./.env.prod; set +a
+            if [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "TELEGRAM_BOT_TOKEN пуст — webhook не регистрируется"; exit 0; fi
+            curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+              -d "url=https://$PUBLIC_HOST/api/telegram/webhook" \
+              -d "secret_token=$TELEGRAM_WEBHOOK_SECRET" \
+              -d 'allowed_updates=["message","callback_query"]' | sed 's/[0-9]\{6,\}:[A-Za-z0-9_-]\{20,\}/<token>/g'
+            echo
+          REMOTE
+
+      - name: Готово
+        run: echo "MDS доступна на https://$PUBLIC_HOST/ (вход — /login)"

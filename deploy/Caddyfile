@@ -1,0 +1,9 @@
+# H-11: HTTPS без своего домена. PUBLIC_HOST = <ip-через-дефисы>.sslip.io
+# (sslip.io резолвит имя в IP; Let's Encrypt выдаёт сертификат по HTTP-01).
+# Когда появится домен — заменить PUBLIC_HOST в .env.prod, Caddy сам получит сертификат.
+{$PUBLIC_HOST} {
+	encode zstd gzip
+	reverse_proxy web:3000 {
+		header_up X-Real-IP {remote_host}
+	}
+}

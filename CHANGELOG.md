@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [Phase H] 2026-09-19 — Сервер DigitalOcean: HTTPS без домена, демо Tower, webhook бота (H-11)
+- deploy: `deploy/Caddyfile` + сервис `caddy` в `docker-compose.deploy.yml` — публичный адрес `https://<ip-через-дефисы>.sslip.io` c сертификатом Let's Encrypt; web остаётся на loopback, `AUTH_COOKIE_SECURE=true`, `APP_URL`/`TELEGRAM_*` прокинуты в web и workers.
+- workflow Deploy: шаг «Публичный адрес» (свой домен через секрет `PUBLIC_HOST`), `.env.prod` дополняется идемпотентно (`setenv`), проверка HTTPS после старта, `--remove-orphans`, регистрация Telegram webhook при наличии токена (токен в логе маскируется).
+- scripts: `bootstrap-prod.ts` — демо-тенант MDS Property «Piramit Tower (демо)» (`BOOTSTRAP_DEMO_PROPERTY=1`, сидится один раз, чтобы не затирать привязанные Telegram-чаты), владелец `murad@palym.test` получает OWNER+ADMIN в нём; `rotate-passwords.ts` — ротация также для `@piramit.test`.
+- docs: README «Сервер DigitalOcean по кнопке», TASKS H-06 закрыт, H-11, ADR-031.
+
 ## [Phase P] 2026-09-19 — CRM Tower: коммерческое предложение клиенту (P-28)
 - db: модель `DealProposal` (миграция `deal_proposals`); `services/proposals.ts` — `createProposal` (активность OFFER, следующий шаг «узнать реакцию»), `listProposals`, `getPublicProposal` (публичные поля, счётчик просмотров, срок), `requestViewingFromProposal` (один запрос, активность, шаг «назначить показ»), уведомления менеджеру через `crm-reminders` («открыл КП», «запросил показ»); тест.
 - web: блок «Коммерческое предложение» в карточке сделки (выбор помещений, комментарий, срок, ссылка и статус), публичная страница `/p/[token]` (mobile-first, печать в PDF, запрос показа); словари `deals.proposal`, `proposal`.

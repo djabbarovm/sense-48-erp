@@ -2,7 +2,7 @@
  * H-09 (security): ротация паролей учёток приложения защищённым каналом.
  * Новый пароль передаётся ТОЛЬКО через GitHub Secret APP_TEMP_PASSWORD →
  * env контейнера; в чатах/логах он не появляется. Ставит новый хэш всем
- * учёткам @palym.test и сбрасывает их активные сессии нельзя (JWT stateless,
+ * учёткам @palym.test и демо-учёткам @piramit.test (H-11); сбросить их активные сессии нельзя (JWT stateless,
  * см. аудит) — поэтому одновременно меняется AUTH_JWT_SECRET на сервере
  * (все старые cookie мгновенно перестают проходить подпись).
  */
@@ -17,10 +17,10 @@ async function main() {
   }
   const hash = await hashPassword(pwd);
   const res = await prisma.user.updateMany({
-    where: { email: { endsWith: '@palym.test' } },
+    where: { OR: [{ email: { endsWith: '@palym.test' } }, { email: { endsWith: '@piramit.test' } }] },
     data: { passwordHash: hash },
   });
-  console.log(`Пароль обновлён у ${res.count} учёток (@palym.test). Значение пароля в логах не печатается.`);
+  console.log(`Пароль обновлён у ${res.count} учёток (@palym.test, @piramit.test). Значение пароля в логах не печатается.`);
   await prisma.$disconnect();
 }
 
