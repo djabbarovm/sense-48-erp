@@ -64,6 +64,7 @@ const NAV: NavItem[] = [
   { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, permission: 'property.view' },
   { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
+  { key: 'contacts', href: '/contacts', icon: <Users className={ICON} />, permission: 'deal.view' },
   { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, permission: 'lease.view' },
   { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, permission: 'workorder.view' },
   { key: 'services', href: '/services', icon: <Sparkles className={ICON} />, permission: 'service.view' },

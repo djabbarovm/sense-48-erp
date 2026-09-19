@@ -18,10 +18,13 @@ import {
   prevStage,
   requirePermission,
   type DealAttention,
+  normalizeEmail,
+  normalizePhone,
 } from '@finance-os/core';
 import type { Deal, DealLostReason, DealSource, Prisma, UnitActivityKind } from '@prisma/client';
 import { Prisma as P } from '@prisma/client';
 import { withAudit } from '../audit.js';
+import { resolveContact } from './contacts.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
 import { nextNumber } from '../sequence.js';
@@ -86,9 +89,11 @@ export async function createDeal(ctx: TenantContext, input: DealInput): Promise<
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     if (input.unitId) await findScopedOr404(tx.unit, ctx, input.unitId);
     const number = await nextNumber(tx, ctx.tenantId, 'DEAL');
+    // P-22a: сделка привязана к контакту (BR-P55) — телефон канонический, повторный клиент не дублируется
+    const contact = await resolveContact(tx, ctx.tenantId, { name: input.contactName, phone: input.contactPhone, email: input.contactEmail, company: input.company, source: input.source ?? 'OTHER', managerId, actorId: ctx.userId });
     const created = await tx.deal.create({
       data: {
-        tenantId: ctx.tenantId, number, contactName: input.contactName.trim(), contactPhone: input.contactPhone ?? null, contactEmail: input.contactEmail ?? null,
+        tenantId: ctx.tenantId, number, contactName: input.contactName.trim(), contactPhone: normalizePhone(input.contactPhone), contactEmail: normalizeEmail(input.contactEmail), contactId: contact.id,
         company: input.company ?? null, source: input.source ?? 'OTHER', utm: input.utm ? (input.utm as P.InputJsonValue) : P.DbNull,
         budgetMinor: input.budgetMinor ?? null, areaMinM2: input.areaMinM2 != null ? new P.Decimal(input.areaMinM2) : null, areaMaxM2: input.areaMaxM2 != null ? new P.Decimal(input.areaMaxM2) : null,
         purpose: input.purpose ?? null, timing: input.timing ?? null, unitId: input.unitId ?? null, managerId,

@@ -9,6 +9,7 @@ import { ValidationError, checkRateLimit } from '@finance-os/core';
 import { prisma } from '../client.js';
 import { nextNumber } from '../sequence.js';
 import { withAudit } from '../audit.js';
+import { resolveContact } from './contacts.js';
 import { emitDomainEvent } from './domainEvents.js';
 import { recomputeUnitCommercialStatus } from './deals.js';
 
@@ -73,9 +74,10 @@ export async function intakeLead(tenantId: string, input: LeadInput, now = new D
 
   return withAudit({ tenantId, userId: managerId }, async (tx) => {
     const number = await nextNumber(tx, tenantId, 'DEAL', now);
+    const contact = await resolveContact(tx, tenantId, { name: input.contactName, phone, email, company: input.company, source: input.source ?? 'WEBSITE', managerId, actorId: managerId }, now);
     const created = await tx.deal.create({
       data: {
-        tenantId, number, contactName: input.contactName.trim(), contactPhone: phone, contactEmail: email, company: input.company?.trim() || null,
+        tenantId, number, contactName: input.contactName.trim(), contactPhone: phone, contactEmail: email, contactId: contact.id, company: input.company?.trim() || null,
         source: input.source ?? 'WEBSITE', utm: input.utm ? (input.utm as Prisma.InputJsonValue) : Prisma.DbNull, purpose: input.purpose?.trim() || null, budgetMinor: input.budgetMinor ?? null,
         unitId: unit?.id ?? null, managerId, stage: unit ? 'PROPERTY_SELECTED' : 'NEW', nextAction: 'Связаться c лидом c сайта', nextActionAt: now,
         expectedRateMinor: unit?.askingRateMinor ?? null, createdBy: managerId,

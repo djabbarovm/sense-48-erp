@@ -79,6 +79,12 @@ const SPECS: TemplateSpec[] = [
     ],
   },
   {
+    fileName: 'contacts.xlsx',
+    headers: ['full_name', 'phone', 'email', 'company', 'position', 'source', 'tags', 'note', 'manager_email'],
+    example: [['Каримов Али', '+998 90 123 45 67', 'ali@example.uz', 'Ali LLC', 'Директор', 'REFERRAL', 'офис; vip', 'ищет офис 120 м²', 'commercial@company.uz']],
+    instructions: ['CRM: клиентская база. Обязательны full_name и телефон или email. Телефон приводится к +998…; дубли по телефону/email пропускаются.', 'source: WEBSITE / TELEGRAM / INSTAGRAM / REFERRAL / BROKER / WALK_IN / OTHER. tags — через «;». manager_email — пользователь компании (иначе — загрузивший).', ...COMMON],
+  },
+  {
     fileName: 'budgets.xlsx',
     headers: ['period', 'cost_center_code', 'category_code', 'planned'],
     example: [['2026-10', 'RH-KITCHEN', 'FNB_FOOD', '95000000']],

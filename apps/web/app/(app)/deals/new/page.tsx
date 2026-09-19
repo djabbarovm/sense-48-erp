@@ -2,15 +2,17 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle } from 'lucide-react';
 import { DEAL_PRODUCTS, DEAL_SOURCES, can } from '@finance-os/core';
-import { listDealManagers, listUnits } from '@finance-os/db';
+import { listDealManagers, listUnits, getContact } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Button, Card, Input, Label, PageHeader, Select } from '@/components/ui';
 import { createDealAction } from '../actions';
 
-export default async function NewDealPage({ searchParams }: { searchParams: Promise<{ unit?: string; error?: string }> }) {
+export default async function NewDealPage({ searchParams }: { searchParams: Promise<{ unit?: string; error?: string; contact?: string }> }) {
   const ctx = await requireTenantContext();
   if (!can(ctx, 'deal.manage')) notFound();
   const sp = await searchParams;
+  // P-22a: сделка из карточки клиента — контакты предзаполнены (PII только по праву)
+  const pre = sp.contact ? await getContact(ctx, sp.contact).then((c) => c.contact).catch(() => null) : null;
   const t = await getTranslations('deals');
   const [managers, units] = await Promise.all([listDealManagers(ctx), listUnits(ctx)]);
   const sellable = units.filter((u) => u.view.isSellable || u.id === sp.unit);
@@ -22,10 +24,10 @@ export default async function NewDealPage({ searchParams }: { searchParams: Prom
       {sp.error ? <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{t.has(`error.${sp.error}`) ? t(`error.${sp.error}`) : t('error.GENERIC')}</div> : null}
       <Card>
         <form action={createDealAction} className="grid gap-3 sm:grid-cols-2">
-          <div><Label htmlFor="d-contact">{t('contactName')} *</Label><Input id="d-contact" name="contactName" required /></div>
-          <div><Label htmlFor="d-company">{t('company')}</Label><Input id="d-company" name="company" /></div>
-          <div><Label htmlFor="d-phone">{t('phone')}</Label><Input id="d-phone" name="contactPhone" type="tel" /></div>
-          <div><Label htmlFor="d-email">{t('email')}</Label><Input id="d-email" name="contactEmail" type="email" /></div>
+          <div><Label htmlFor="d-contact">{t('contactName')} *</Label><Input id="d-contact" name="contactName" defaultValue={pre?.displayName ?? ''} required /></div>
+          <div><Label htmlFor="d-company">{t('company')}</Label><Input id="d-company" name="company" defaultValue={pre?.company ?? ''} /></div>
+          <div><Label htmlFor="d-phone">{t('phone')}</Label><Input id="d-phone" name="contactPhone" type="tel" defaultValue={pre?.phone && !pre.phone.includes('***') ? pre.phone : ''} /></div>
+          <div><Label htmlFor="d-email">{t('email')}</Label><Input id="d-email" name="contactEmail" type="email" defaultValue={pre?.email && !pre.email.includes('***') ? pre.email : ''} /></div>
           <div><Label htmlFor="d-product">{t('productLabel')}</Label><Select id="d-product" name="product" defaultValue="LEASE_LTR">{DEAL_PRODUCTS.map((p) => (<option key={p} value={p}>{t(`product.${p}`)}</option>))}</Select></div>
           <div><Label htmlFor="d-source">{t('sourceLabel')}</Label><Select id="d-source" name="source" defaultValue="OTHER">{DEAL_SOURCES.map((s) => (<option key={s} value={s}>{t(`source.${s}`)}</option>))}</Select></div>
           <div><Label htmlFor="d-manager">{t('manager')}</Label><Select id="d-manager" name="managerId" defaultValue={ctx.userId} disabled={brokerOnly}>{managers.map((m) => (<option key={m.id} value={m.id}>{m.fullName}</option>))}</Select></div>

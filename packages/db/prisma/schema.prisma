@@ -1870,6 +1870,42 @@ enum DealLostReason {
 }
 
 // Сделка CRM (blueprint §6). commercialStatus юнита — производное от активных сделок (BR-P20).
+enum ContactKind {
+  PERSON
+  COMPANY
+}
+
+/// CRM Tower (docs/20 §11.14): клиент — один на много сделок; телефон канонический (+digits). PII — по deal.contact.view.
+model Contact {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  tenantId    String      @map("tenant_id") @db.Uuid
+  kind        ContactKind @default(PERSON)
+  displayName String      @map("display_name")
+  phone       String?
+  phoneAlt    String?     @map("phone_alt")
+  email       String?
+  company     String?
+  position    String?
+  source      DealSource?
+  tags        String[]    @default([])
+  notes       String?
+  ownerId     String?     @map("owner_id") @db.Uuid // тот же человек — собственник помещения
+  managerId   String?     @map("manager_id") @db.Uuid
+  lastTouchAt DateTime?   @map("last_touch_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  createdBy   String?     @map("created_by") @db.Uuid
+  updatedBy   String?     @map("updated_by") @db.Uuid
+
+  deals Deal[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId, displayName])
+  @@index([tenantId, email])
+  @@index([tenantId, ownerId])
+  @@map("contact")
+}
+
 model Deal {
   id                 String          @id @default(uuid(7)) @db.Uuid
   tenantId           String          @map("tenant_id") @db.Uuid
@@ -1877,6 +1913,7 @@ model Deal {
   contactName        String          @map("contact_name") // PII
   contactPhone       String?         @map("contact_phone") // PII
   contactEmail       String?         @map("contact_email") // PII
+  contactId    String?    @map("contact_id") @db.Uuid
   company            String?
   source             DealSource      @default(OTHER)
   utm                Json?
@@ -1912,6 +1949,7 @@ model Deal {
   updatedBy          String?         @map("updated_by") @db.Uuid
 
   unit       Unit?          @relation(fields: [unitId], references: [id])
+  contact    Contact?       @relation(fields: [contactId], references: [id])
   activities UnitActivity[]
   commission Commission?
   bonuses    SalesBonus[]
@@ -1921,6 +1959,7 @@ model Deal {
   @@index([tenantId, stage])
   @@index([tenantId, managerId, stage])
   @@index([tenantId, unitId])
+  @@index([tenantId, contactId])
   @@map("deal")
 }
 

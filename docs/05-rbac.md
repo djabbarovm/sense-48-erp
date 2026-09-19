@@ -157,6 +157,7 @@
 | mall.view | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, COMMERCIAL_MANAGER, BROKER, MARKETING, OPERATIONS_MANAGER |
 | mall.manage (мандаты, ставки, линии актива) | OWNER, COMMERCIAL_MANAGER |
 | mall.fee.view (контролируемая база и вознаграждение) | OWNER, FINANCE_OPS_LEAD, ADMIN, COMMERCIAL_MANAGER |
+| contact.merge (слияние дублей клиентов) | OWNER, COMMERCIAL_MANAGER |
 | house.view (деньги дома: взносы, бюджет, отчёт) | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, OPERATIONS_MANAGER, COMMERCIAL_MANAGER |
 | house.manage (фонд, тариф, бюджет, расходы) | OWNER, OPERATIONS_MANAGER, FINANCE_OPS_LEAD |
 | зачёт взноса на счёт дома | rent.match (OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE) |

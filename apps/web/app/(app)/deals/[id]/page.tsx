@@ -70,7 +70,7 @@ export default async function DealPage({ params, searchParams }: { params: Promi
         <Card>
           <h3 className="font-display text-sm font-semibold">{t('client')}</h3>
           <dl className="mt-3 space-y-1.5">
-            <Row k={t('contactName')} v={deal.contactName} />
+            <Row k={t('contactName')} v={deal.contactId ? <Link href={`/contacts/${deal.contactId}`} className="text-brand-600 hover:underline">{deal.contactName}</Link> : deal.contactName} />
             <Row k={t('company')} v={deal.company ?? '—'} />
             <Row k={t('phone')} v={deal.contactPhone ?? <span className="text-gray-400">{can(ctx, 'deal.contact.view') ? '—' : t('hidden')}</span>} />
             <Row k={t('email')} v={deal.contactEmail ?? '—'} />

@@ -9,15 +9,17 @@ import { NATIVE_TYPES, type MigrationType } from './types';
 
 const FINANCE: MigrationType[] = ['vendors', 'contracts', 'open_ap', 'open_ar', 'employees', 'budgets'];
 const PROPERTY: MigrationType[] = ['inventory', 'floorplan'];
+const CRM: MigrationType[] = ['contacts'];
 
 export default async function MigrationPage() {
   const ctx = await requireTenantContext();
   // видимость = budget.manage (Owner/Lead) + ADMIN; сами импортёры проверяют свои права
   const finance = hasRole(ctx, 'ADMIN') || hasRole(ctx, 'FINANCE_OPS_LEAD', 'OWNER');
   const property = can(ctx, 'property.manage');
-  if (!finance && !property) notFound();
+  const crm = can(ctx, 'deal.manage');
+  if (!finance && !property && !crm) notFound();
   const t = await getTranslations('migration');
-  const order: MigrationType[] = [...(finance ? FINANCE : []), ...(property ? PROPERTY : [])];
+  const order: MigrationType[] = [...(finance ? FINANCE : []), ...(property ? PROPERTY : []), ...(crm ? CRM : [])];
   const categories = finance ? (await prisma.category.findMany({ where: { tenantId: ctx.tenantId }, select: { code: true, name: true }, orderBy: { code: 'asc' } })) : [];
 
   return (

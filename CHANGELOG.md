@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: клиентская база (P-22a)
+- core: `property/contact.ts` — `normalizePhone` (+998 для 9 цифр), `normalizeEmail`, `maskPhone/maskEmail`, `matchContact`; право `contact.merge`; тесты.
+- db: модель `Contact`, `Deal.contactId` (миграция `crm_contacts` c SQL-бэкфиллом: 1 контакт на телефон, привязка сделок, связь c собственниками по телефону); `services/contacts.ts` — `resolveContact` (используется в createDeal и intakeLead), create/update c проверкой дублей, `mergeContacts`, `listContacts`/`getContact` c маскированием PII, `findDuplicateContacts`, `importContactsXlsx`; телефоны в сделках теперь сохраняются в каноническом виде; тест `contacts.test.ts` (5 сценариев).
+- web: `/contacts` (поиск, фильтры, счётчики сделок, давность, форма нового клиента), `/contacts/[id]` (контакты, сделки, история, собственник, правка, слияние), ссылка на клиента в карточке сделки, предзаполнение `/deals/new?contact=`, пункт меню «Клиенты», блок CRM на `/migration` c импортом `contacts.xlsx` (шаблон добавлен).
+- docs: `docs/20` §11.14 (BR-P55/P56), `docs/05`, ADR-028.
+
 ## [Phase H] 2026-09-19 — Налоговый профиль ORDO (H-10)
 - core: `tax/index.ts` — `TAX_BASES`, `UZ_TAX_PRESETS` (`UZ_TURNOVER_4`), `taxPreset`, `taxEstimate`, `splitInps` (ИНПС 0,1% внутри НДФЛ); 3 теста.
 - db: `TaxCalendarRule.rateBp/baseKind/note`, `TaxObligation.baseMinor` (миграция `tax_rule_rate_base`); `upsertTaxRule` c валидацией ставки/базы, `applyTaxPreset` (идемпотентно, tax.approve), `estimateTaxBase` (ФОТ ведомости периода не DRAFT / счета клиентам периода), `generateTaxObligations` — ожидаемый коридор = оценка ±10%, пометка правила в названии обязательства; seed: правила для ORDO; тест `tax-profile.test.ts`.

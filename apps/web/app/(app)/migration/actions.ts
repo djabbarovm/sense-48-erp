@@ -13,6 +13,7 @@ import {
   importOpenApXlsx,
   importOpenArXlsx,
   importVendorsXlsx,
+  importContactsXlsx,
   importDidoxExport,
   importOnecCounterparties,
   importOnecOsv,
@@ -33,6 +34,7 @@ const IMPORTERS: Record<Exclude<MigrationType, 'floorplan' | NativeType>, typeof
   employees: importEmployeesXlsx,
   budgets: importBudgetsXlsx,
   inventory: importInventoryXlsx,
+  contacts: importContactsXlsx,
 };
 
 export interface MigrationState {
