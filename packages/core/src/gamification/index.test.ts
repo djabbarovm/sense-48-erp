@@ -21,17 +21,17 @@ describe('Геймификация — ядро (ТЗ §13–20)', () => {
     expect(levelFor(-100).current.level).toBe(1);
     expect(levelFor(50.7).current.level).toBe(1);
   });
-  it('миссии role-aware, ≤3, у неизвестной роли пусто', () => {
-    expect(missionsForRole(['CALL_CENTER']).map((m) => m.key)).toEqual(['cc_leads', 'cc_followups', 'cc_handoff']);
+  it('миссии role-aware, ≤3, «передать лида» не миссия, у неизвестной роли пусто', () => {
+    expect(missionsForRole(['CALL_CENTER']).map((m) => m.key)).toEqual(['cc_leads', 'cc_followups']);
     expect(missionsForRole(['COMMERCIAL_MANAGER'])[0]!.key).toBe('cm_viewings');
     expect(missionsForRole(['BROKER']).length).toBe(3);
     expect(missionsForRole(['ACCOUNTANT'])).toEqual([]);
     for (const r of [['CALL_CENTER'], ['COMMERCIAL_MANAGER']]) expect(missionsForRole(r).length).toBeLessThanOrEqual(3);
   });
-  it('XP-правила: закрытие сделки дороже звонка; у звонка дневной кап', () => {
-    expect(XP_RULES.DEAL_WON.xp).toBeGreaterThan(XP_RULES.CALL_LOGGED.xp);
-    expect(XP_RULES.CALL_LOGGED.dailyCap).toBeGreaterThan(0);
-    expect(STREAK_MIN_XP).toBeGreaterThan(0);
+  it('XP-правила: закрытие сделки дороже оффера; за звонок XP нет', () => {
+    expect(XP_RULES.DEAL_WON.xp).toBeGreaterThan(XP_RULES.OFFER_SENT.xp);
+    expect((XP_RULES as Record<string, unknown>)['CALL_LOGGED']).toBeUndefined(); // звонок не начисляет XP
+    expect(STREAK_MIN_XP).toBeGreaterThan(XP_RULES.FOLLOW_UP_DONE.xp); // один follow-up streak не даёт
     expect(LEVELS[0]!.minXp).toBe(0);
   });
 });

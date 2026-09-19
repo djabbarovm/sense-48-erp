@@ -23,12 +23,13 @@ beforeAll(async () => {
 afterAll(async () => prisma.$disconnect());
 
 describe('Геймификация — сервис (ТЗ §13-20)', () => {
-  it('XP из фактов; звонок c дневным капом; идемпотентно при повторном чтении', async () => {
-    for (let i = 0; i < 20; i++) await act('CALL', new Date(NOW.getTime() - i * 1000)); // 20 звонков сегодня
+  it('XP из результатов; за звонок XP нет; идемпотентно при повторном чтении', async () => {
+    for (let i = 0; i < 20; i++) await act('CALL', new Date(NOW.getTime() - i * 1000)); // 20 звонков сегодня → 0 XP
+    for (let i = 0; i < 3; i++) await act('FOLLOW_UP', new Date(NOW.getTime() - i * 1000)); // 3 follow-up сегодня
     const s1 = await getGamificationState(ctx(), NOW);
     const s2 = await getGamificationState(ctx(), NOW);
     expect(s1.todayXp).toBe(s2.todayXp); // derived → идемпотентно
-    expect(s1.todayXp).toBe(XP_RULES.CALL_LOGGED.dailyCap! * XP_RULES.CALL_LOGGED.xp); // кап 15*3, не 20*3
+    expect(s1.todayXp).toBe(3 * XP_RULES.FOLLOW_UP_DONE.xp); // только follow-up, звонки не считаются
   });
   it('закрытая сделка даёт XP один раз; XP другого пользователя не течёт', async () => {
     await prisma.deal.update({ where: { id: dealId }, data: { stage: 'WON', stageChangedAt: NOW } });
@@ -39,7 +40,7 @@ describe('Геймификация — сервис (ТЗ §13-20)', () => {
   });
   it('миссии role-aware: у CALL_CENTER свои 3, у COMMERCIAL — свои', async () => {
     const cc = await getGamificationState(ctx(['CALL_CENTER']), NOW);
-    expect(cc.missions.map((m) => m.key)).toEqual(['cc_leads', 'cc_followups', 'cc_handoff']);
+    expect(cc.missions.map((m) => m.key)).toEqual(['cc_leads', 'cc_followups']);
     const cm = await getGamificationState(ctx(['COMMERCIAL_MANAGER']), NOW);
     expect(cm.missions[0]!.key).toBe('cm_viewings');
   });

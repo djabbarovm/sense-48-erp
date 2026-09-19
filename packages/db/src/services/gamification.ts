@@ -36,10 +36,10 @@ function tashkentDayStart(now: Date): Date {
   return new Date(`${key}T00:00:00.000+05:00`);
 }
 
+// Звонок (CALL) намеренно отсутствует: за попытку дозвониться XP не начисляется, только за результат.
 const ACTIVITY_XP: Record<string, GameEvent> = {
-  CALL: 'CALL_LOGGED',
   FOLLOW_UP: 'FOLLOW_UP_DONE',
-  VIEWING: 'VIEWING_SCHEDULED',
+  VIEWING: 'VIEWING_CONDUCTED',
   OFFER: 'OFFER_SENT',
 };
 
@@ -70,7 +70,6 @@ function metricValue(metric: MissionMetric, todayFacts: Fact[]): number {
     case 'viewings_conducted': return todayFacts.filter((f) => f.kind === 'VIEWING').length;
     case 'leads_handled': return distinctDeals((f) => f.kind === 'CALL' || f.kind === 'NOTE');
     case 'deals_touched': return distinctDeals(() => true);
-    case 'handoffs': return distinctDeals((f) => f.kind === 'OFFER' || f.kind === 'FOLLOW_UP');
     default: return 0;
   }
 }
