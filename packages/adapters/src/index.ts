@@ -7,6 +7,8 @@ export * from './telegram/index.js';
 export * from './migration/index.js';
 export * from './pos/index.js';
 export * from './onec/clientBankExchange.js';
+export * from './onec/exports.js';
+export * from './edo/didoxExport.js';
 export * from './reports/monthEndPack.js';
 export * from './ksp/index.js';
 export * from './property/floorplan.js';

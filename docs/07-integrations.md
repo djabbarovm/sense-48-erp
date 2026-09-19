@@ -52,6 +52,9 @@ type EdoStatus = 'DRAFT'|'SENT'|'SIGNED'|'REJECTED'|'CANCELLED'|'CORRECTED';
 | edo_document_id | type | number | date | seller_tax_id | seller_name | buyer_tax_id | amount_net | vat | amount_gross | currency | status | corrective_of |
 Маппинг: seller_tax_id → Vendor (если нет → создаётся PENDING_VERIFICATION + Task), buyer_tax_id должен = tenant.tax_id (иначе строка в errors). `status` → edo_status. `corrective_of` → BR-024.
 
+### Экспорт реестра Didox (родной формат, лист `Registry`) — H-09
+Колонки как в выгрузке Didox: `№ | Вх/Исх | Статус | Документ (тип) | Уровень риска | Договор (№ от) | Наименование контрагента | ИНН контрагента | Номер документа | Дата документа | Сумма без НДС | Сумма НДС | Сумма с НДС | … | ID у роуминга`; вторая строка — подзаголовки табличной части, строка «Итого» — конец. Парсер `parseDidoxRegistryExport` (adapters/edo/didoxExport): статус → `SIGNED / SENT / REJECTED / CANCELLED / DRAFT / CORRECTED`, тип → `CONTRACT / SF / ACT / OTHER`, договор «№… от дд.мм.гггг» → номер + дата, 14-значный ИНН → физлицо (ПИНФЛ не сохраняется). Импорт `importDidoxExport`: подписанные договоры (НК) c юрлицами → реестр договоров (`importContractsXlsx`, all-or-nothing, поставщик по ИНН обязателен), ожидающие подписи и договоры c физлицами — в заметки отчёта.
+
 Mock: `MockEdoAdapter` хранит статусы в таблице `edo_mock_documents`; админ-экран в dev позволяет менять статус, чтобы прогонять сценарии CORRECTED/CANCELLED.
 
 ## 3. POS / iiko
@@ -80,6 +83,15 @@ interface AccountingAdapter {
 
 Export CSV: `payment_request_number;paid_at;vendor_tax_id;vendor_name;amount;vat;currency;account_code;vat_account_code;cost_center;category;purpose;invoice_number;invoice_date;contract_number`.
 Import posted CSV: `payment_request_number;posted_at;onec_document_ref` → PaymentRequest RECONCILED → CLOSED.
+
+### Родные выгрузки 1С:Бухгалтерии (импорт без переформатирования) — H-09
+Парсеры `adapters/onec/exports.ts`, импорт `db/services/onecImport.ts`, экран `/migration` → «Родные выгрузки 1С и Didox»:
+| Выгрузка | Формат | Что делает импорт |
+|---|---|---|
+| Справочник контрагентов | `Контрагент \| ИНН \| ПИНФЛ \| Полное наименование \| Номер счета \| Банк \| МФО` | поставщик по ИНН → добавить недостающий счёт; заглушка `KSP-nnnn` по имени → ИНН + реквизиты + ACTIVE; новый → `importVendorsXlsx` c категорией по умолчанию; второй счёт того же ИНН → `UNVERIFIED` (BR-018); ПИНФЛ не сохраняется, физлица помечаются в заметках |
+| ОСВ по счёту (контрагент → договор) | заголовок «Оборотно-сальдовая ведомость по счету NNNN за …», строка `Дебет \| Кредит` × 3, строки договоров «№… от дд.мм.гггг» | 40xx → открытая дебиторка (`importOpenArXlsx`, срок = дата импорта); 43xx → `Advance VENDOR_PREPAYMENT` + Task `CLOSING_DOCS` на 10 рабочих дней (non-negotiable #7), идемпотентно по назначению; 6xxx → открытая кредиторка (`importOpenApXlsx`); контрагент ищется по имени среди поставщиков — all-or-nothing |
+| Штатные сотрудники | `Сотрудник \| Табельный номер \| Должность \| Дата приема \| Тарифная ставка \| На руки` | только ФИО и должность → `importEmployeesXlsx` (STAFF, ACTIVE, документы MISSING); оклады и табельные номера не читаются |
+Суммы 1С — сумы c дробью → тийины; имена контрагентов нормализуются (`normalizeCounterpartyName`: регистр, кавычки, орг-формы MCHJ/ООО/XK/AJ/…).
 
 ## 5. Telegram
 

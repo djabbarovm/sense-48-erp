@@ -56,3 +56,4 @@ export * from './services/commissions.js';
 export * from './services/mall.js';
 export * from './services/servicesModel.js';
 export * from './services/house.js';
+export * from './services/onecImport.js';

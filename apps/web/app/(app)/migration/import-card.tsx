@@ -3,10 +3,11 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Download } from 'lucide-react';
-import { Badge, Button, Card, Input } from '@/components/ui';
-import { importMigrationAction, type MigrationState, type MigrationType } from './actions';
+import { Badge, Button, Card, Input, Select } from '@/components/ui';
+import { importMigrationAction, type MigrationState } from './actions';
+import type { MigrationType } from './types';
 
-export function ImportCard({ type, order }: { type: MigrationType; order: number }) {
+export function ImportCard({ type, order, categories = [] }: { type: MigrationType; order: number; categories?: { code: string; name: string }[] }) {
   const t = useTranslations('migration');
   const [state, formAction, pending] = useActionState<MigrationState, FormData>(importMigrationAction, {});
   const report = state.report;
@@ -17,7 +18,7 @@ export function ImportCard({ type, order }: { type: MigrationType; order: number
           <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-ink-900 font-mono text-xs text-volt-500">{order}</span>
           {t(`type.${type}`)}
         </h2>
-        {type !== 'floorplan' ? (
+        {type !== 'floorplan' && !type.startsWith('onec_') && !type.startsWith('didox_') ? (
           <a href={`/templates/${type}.xlsx`} download className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline">
             <Download className="h-3.5 w-3.5" /> {t('template')}
           </a>
@@ -31,6 +32,11 @@ export function ImportCard({ type, order }: { type: MigrationType; order: number
             <Input name="buildingCode" placeholder={t('buildingCode')} aria-label={t('buildingCode')} className="w-32" />
             <Input name="floorNo" type="number" placeholder={t('floorNo')} aria-label={t('floorNo')} className="w-24" />
           </>
+        ) : null}
+        {type === 'onec_counterparties' ? (
+          <Select name="categoryCode" aria-label={t('categoryDefault')} className="w-52" required>
+            {categories.map((c) => (<option key={c.code} value={c.code}>{c.code} · {c.name}</option>))}
+          </Select>
         ) : null}
         <Input type="file" name="file" accept={type === 'floorplan' ? '.json,.svg' : '.xlsx'} required className="w-auto flex-1" />
         <Button type="submit" disabled={pending} size="sm">
@@ -72,6 +78,8 @@ export function ImportCard({ type, order }: { type: MigrationType; order: number
               </ul>
             </div>
           )}
+          {state.notes?.length ? <ul className="mt-2 space-y-0.5 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700">{state.notes.map((n, i) => (<li key={i}>{n}</li>))}</ul> : null}
+          {state.warnings?.length ? <ul className="mt-1 space-y-0.5 text-xs text-amber-700">{state.warnings.map((w, i) => (<li key={i}>{w}</li>))}</ul> : null}
         </div>
       ) : null}
     </Card>

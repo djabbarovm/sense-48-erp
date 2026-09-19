@@ -2,8 +2,8 @@
 
 import { createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
-import { createStorageFromEnv, parseFloorPlan, parseMigrationSheet } from '@finance-os/adapters';
-import type { FloorPlanReport, MigrationReport } from '@finance-os/db';
+import { createStorageFromEnv, parseDidoxRegistryExport, parseFloorPlan, parseMigrationSheet, parseOnecCounterparties, parseOnecOsv, parseOnecStaff } from '@finance-os/adapters';
+import type { FloorPlanReport, MigrationReport, NativeImportReport } from '@finance-os/db';
 import {
   importBudgetsXlsx,
   importContractsXlsx,
@@ -13,13 +13,19 @@ import {
   importOpenApXlsx,
   importOpenArXlsx,
   importVendorsXlsx,
+  importDidoxExport,
+  importOnecCounterparties,
+  importOnecOsv,
+  importOnecStaff,
   prisma,
 } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
-export type MigrationType = 'vendors' | 'contracts' | 'open_ap' | 'open_ar' | 'employees' | 'budgets' | 'inventory' | 'floorplan';
+import { NATIVE_TYPES, type MigrationType, type NativeType } from './types';
 
-const IMPORTERS: Record<Exclude<MigrationType, 'floorplan'>, typeof importVendorsXlsx> = {
+export type { MigrationType };
+
+const IMPORTERS: Record<Exclude<MigrationType, 'floorplan' | NativeType>, typeof importVendorsXlsx> = {
   vendors: importVendorsXlsx,
   contracts: importContractsXlsx,
   open_ap: importOpenApXlsx,
@@ -32,6 +38,8 @@ const IMPORTERS: Record<Exclude<MigrationType, 'floorplan'>, typeof importVendor
 export interface MigrationState {
   type?: MigrationType;
   report?: MigrationReport;
+  notes?: string[];
+  warnings?: string[];
   floorPlan?: FloorPlanReport & { warnings: string[] };
   error?: string;
 }
@@ -54,8 +62,29 @@ export async function importMigrationAction(_prev: MigrationState, formData: For
       revalidatePath('/property');
       return { type, floorPlan: { ...fp, warnings } };
     }
-    const sheet = parseMigrationSheet(buffer);
-    const report = await IMPORTERS[type](ctx, sheet.rows);
+    let report: MigrationReport;
+    let notes: string[] = [];
+    let warnings: string[] = [];
+    if ((NATIVE_TYPES as string[]).includes(type)) {
+      // H-09: родные выгрузки 1С / Didox — парсер адаптера → сервис импорта (all-or-nothing внутри)
+      const me = (await prisma.user.findUnique({ where: { id: ctx.userId }, select: { email: true } }))?.email ?? '';
+      let native: NativeImportReport;
+      if (type === 'onec_counterparties') {
+        const parsed = parseOnecCounterparties(buffer);
+        warnings = parsed.warnings;
+        native = await importOnecCounterparties(ctx, parsed.rows, { categoryCode: String(formData.get('categoryCode') ?? '').trim(), businessOwnerEmail: me });
+      } else if (type === 'onec_osv') native = await importOnecOsv(ctx, parseOnecOsv(buffer));
+      else if (type === 'onec_staff') native = await importOnecStaff(ctx, parseOnecStaff(buffer).rows);
+      else {
+        const parsed = parseDidoxRegistryExport(buffer);
+        warnings = parsed.warnings;
+        native = await importDidoxExport(ctx, parsed.rows, { ownerEmail: me });
+      }
+      ({ notes, ...report } = native);
+    } else {
+      const sheet = parseMigrationSheet(buffer);
+      report = await IMPORTERS[type as Exclude<MigrationType, 'floorplan' | NativeType>](ctx, sheet.rows);
+    }
     // файл миграции сохраняется как Document (templates/README.md)
     if (report.errors.length === 0 && report.imported > 0) {
       const fileKey = `${ctx.tenantId}/migration/${type}-${Date.now()}.xlsx`;
@@ -77,7 +106,7 @@ export async function importMigrationAction(_prev: MigrationState, formData: For
       });
     }
     revalidatePath('/migration');
-    return { type, report };
+    return { type, report, notes, warnings };
   } catch (error) {
     return { type, error: error instanceof Error ? error.message : String(error) };
   }
