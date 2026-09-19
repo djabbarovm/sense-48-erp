@@ -69,6 +69,7 @@ const NAV: NavItem[] = [
   { key: 'services', href: '/services', icon: <Sparkles className={ICON} />, permission: 'service.view' },
   { key: 'mall', href: '/mall', icon: <Store className={ICON} />, permission: 'mall.view' },
   { key: 'rent', href: '/rent', icon: <Coins className={ICON} />, permission: 'rent.view' },
+  { key: 'house', href: '/house', icon: <Landmark className={ICON} />, permission: 'house.view' },
   { key: 'commissions', href: '/commissions', icon: <BadgePercent className={ICON} />, permission: 'commission.view' },
   { key: 'bonuses', href: '/bonuses', icon: <Award className={ICON} />, permission: 'bonus.own' },
   { key: 'owners', href: '/property/owners', icon: <Users className={ICON} />, permission: 'property.manage' },

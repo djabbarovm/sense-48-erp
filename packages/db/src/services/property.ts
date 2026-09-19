@@ -179,7 +179,7 @@ export async function getFloor(ctx: TenantContext, floorId: string, filter: Unit
 }
 
 export interface UnitCard {
-  unit: UnitRow & { notes: string | null; salePriceMinor: bigint | null; minApprovedRateMinor: bigint | null; statusEffectiveAt: Date };
+  unit: UnitRow & { notes: string | null; salePriceMinor: bigint | null; minApprovedRateMinor: bigint | null; statusEffectiveAt: Date; cadastralNumber: string | null; cadastralAreaM2: number | null };
   building: Building;
   floor: Floor;
   owner: { id: string; displayName: string; kind: PropertyOwner['kind']; contactPhone: string | null; contactEmail: string | null; managementConsent: boolean } | null;
@@ -210,6 +210,8 @@ export async function getUnitCard(ctx: TenantContext, unitId: string, today = ne
       salePriceMinor: showFinance ? u.salePriceMinor : null,
       minApprovedRateMinor: can(ctx, 'unit.pricing.edit') ? u.minApprovedRateMinor : null,
       statusEffectiveAt: u.statusEffectiveAt,
+      cadastralNumber: u.cadastralNumber,
+      cadastralAreaM2: u.cadastralAreaM2 != null ? Number(u.cadastralAreaM2) : null,
     },
     building,
     floor,

@@ -16,6 +16,8 @@ import {
   markOverdueRentCharges,
   withholdExpiredKpi,
   runServicePackages,
+  generateHouseCharges,
+  markOverdueHouseCharges,
   markExpiringLeases,
   escalateOverdueTasks,
   generateTaxObligations,
@@ -118,6 +120,16 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'service-packages',
       cron: '15 6 * * *',
       run: (tenantId, now) => runServicePackages(tenantId, now),
+    },
+    {
+      name: 'house-charges',
+      cron: '0 3 1 * *',
+      run: async (tenantId, now) => (await generateHouseCharges(tenantId, now)).created,
+    },
+    {
+      name: 'house-overdue',
+      cron: '30 4 * * *',
+      run: (tenantId, now) => markOverdueHouseCharges(tenantId, now),
     },
     {
       name: 'domain-events',

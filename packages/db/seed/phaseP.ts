@@ -5,6 +5,7 @@
  */
 import { encryptSecret, hashPassword, maskAccount } from '@finance-os/core';
 import { generateRentCharges, markOverdueRentCharges } from '../src/services/rent.js';
+import { generateHouseCharges, markOverdueHouseCharges } from '../src/services/house.js';
 import { unsafeCreateTenantContext } from '@finance-os/core';
 import { createDeal, moveDeal } from '../src/services/deals.js';
 import { activateLease, createLease } from '../src/services/leases.js';
@@ -535,4 +536,62 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
     stLines++;
   }
   console.log(`  services model: ${seededOrders.length} orders enriched, ${stLines} referral lines`);
+
+  // ── P-21: деньги дома — фонд содержания Residence Tower, счёт дома (UZS), кадастр части юнитов, договоры управления, бюджет/расходы, взносы за 3 месяца, оплаты банком ──
+  const houseAccountNo = '20208000900000770202';
+  let houseAccount = await prisma.bankAccount.findFirst({ where: { tenantId, accountMasked: maskAccount(houseAccountNo) } });
+  if (!houseAccount) houseAccount = await prisma.bankAccount.create({ data: { tenantId, bankName: 'Капиталбанк', mfo: '01088', accountMasked: maskAccount(houseAccountNo), accountEncrypted: encryptSecret(houseAccountNo, bankKey), currency: 'UZS', openingBalanceMinor: 0n, openingBalanceDate: new Date('2026-06-01') } });
+  let fund = await prisma.houseFund.findFirst({ where: { tenantId, buildingId: tower.id, kind: 'OPERATIONS' } });
+  if (!fund) fund = await prisma.houseFund.create({ data: { tenantId, buildingId: tower.id, kind: 'OPERATIONS', name: 'Фонд содержания Residence Tower', bankAccountId: houseAccount.id, tariffPerM2Minor: 12_000_00n, currency: 'UZS', managementFeeBp: null, dueDay: 15, tariffApprovedAt: new Date('2026-02-05') } });
+  const towerUnits = await prisma.unit.findMany({ where: { tenantId, buildingId: tower.id, type: 'APARTMENT' }, orderBy: { unitNo: 'asc' }, select: { id: true, unitNo: true, areaM2: true, cadastralAreaM2: true, ownerId: true } });
+  let cad = 0;
+  for (let i = 0; i < towerUnits.length; i++) {
+    const u = towerUnits[i]!;
+    if (u.cadastralAreaM2 != null || i % 5 === 4) continue; // каждый пятый — кадастр ещё не внесён (preCadastre)
+    const delta = ((i * 7) % 5) - 2; // −2…+2 м² расхождение c договорной
+    await prisma.unit.update({ where: { id: u.id }, data: { cadastralNumber: `10:01:04:02:11:${u.unitNo.padStart(4, '0')}`, cadastralAreaM2: new Prisma.Decimal((Number(u.areaM2) + delta * 0.5).toFixed(2)) } });
+    cad++;
+  }
+  const towerOwners = await prisma.propertyOwner.findMany({ where: { tenantId, units: { some: { buildingId: tower.id } } }, orderBy: { displayName: 'asc' }, select: { id: true, managementContractStatus: true } });
+  let contracts = 0;
+  for (let i = 0; i < towerOwners.length; i++) {
+    const o = towerOwners[i]!;
+    if (o.managementContractStatus !== 'NONE') continue;
+    const st = i % 10 < 6 ? 'SIGNED' : i % 10 < 9 ? 'SENT' : 'DECLINED';
+    await prisma.propertyOwner.update({ where: { id: o.id }, data: { managementContractStatus: st, managementContractSignedAt: st === 'SIGNED' ? new Date(Date.UTC(2026, 2, 1 + (i % 25))) : null } });
+    contracts++;
+  }
+  const year = new Date().getUTCFullYear();
+  const plan: [string, bigint][] = [['ENGINEERING', 180_000_000_00n], ['LIFTS', 96_000_000_00n], ['FIRE_SAFETY', 48_000_000_00n], ['SECURITY', 240_000_000_00n], ['CLEANING', 216_000_000_00n], ['UTILITIES_COMMON', 264_000_000_00n], ['REPAIRS', 120_000_000_00n], ['MATERIALS', 36_000_000_00n], ['INSURANCE_LICENSES', 24_000_000_00n], ['ADMIN', 60_000_000_00n]];
+  for (const [category, plannedMinor] of plan) await prisma.houseBudgetLine.upsert({ where: { fundId_year_category: { fundId: fund.id, year, category: category as never } }, create: { tenantId, fundId: fund.id, year, category: category as never, plannedMinor }, update: {} });
+  if ((await prisma.houseExpense.count({ where: { fundId: fund.id } })) === 0) {
+    const ex: [number, string, bigint, string, string][] = [
+      [40, 'LIFTS', 8_000_000_00n, 'LiftService LLC', 'ТО лифтов (4 шт.), ежемесячно'], [35, 'SECURITY', 20_000_000_00n, 'Qorgon Security', 'Охрана, пост 24/7'], [33, 'CLEANING', 18_000_000_00n, 'CleanPro', 'Уборка МОП и территории'],
+      [30, 'UTILITIES_COMMON', 21_500_000_00n, 'Тошкент шаҳар электр тармоқлари', 'Электроэнергия МОП'], [20, 'ENGINEERING', 14_200_000_00n, 'Engineering Systems', 'Обслуживание ИТП и вентиляции'], [12, 'REPAIRS', 6_300_000_00n, 'RemStroy', 'Ремонт входной группы'],
+      [10, 'LIFTS', 8_000_000_00n, 'LiftService LLC', 'ТО лифтов (4 шт.), ежемесячно'], [6, 'SECURITY', 20_000_000_00n, 'Qorgon Security', 'Охрана, пост 24/7'], [4, 'CLEANING', 18_000_000_00n, 'CleanPro', 'Уборка МОП и территории'], [2, 'MATERIALS', 1_850_000_00n, 'Hozmag', 'Лампы, расходники'],
+    ];
+    for (const [ago, category, amountMinor, contractorName, description] of ex) await prisma.houseExpense.create({ data: { tenantId, fundId: fund.id, date: daysAgo(ago), category: category as never, amountMinor, currency: 'UZS', contractorName, description, createdBy: opsId ?? null } });
+  }
+  const hc = await generateHouseCharges(tenantId, new Date(), { fromMonth: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 2, 1)) });
+  const houseCharges = await prisma.houseCharge.findMany({ where: { tenantId, fundId: fund.id, status: 'DUE' }, include: { unit: { select: { unitNo: true } } }, orderBy: [{ periodStart: 'asc' }, { unitId: 'asc' }] });
+  const ownerNames = new Map((await prisma.propertyOwner.findMany({ where: { tenantId }, select: { id: true, displayName: true } })).map((o) => [o.id, o.displayName]));
+  let housePaid = 0;
+  for (let i = 0; i < houseCharges.length; i++) {
+    const c = houseCharges[i]!;
+    const past = c.periodStart < monthStart;
+    if (!(past ? i % 4 !== 3 : i % 4 === 0)) continue; // прошлые: 3 из 4 оплачены (≈75%); текущий: 1 из 4
+    const externalId = `HOUSE-${c.number}`;
+    if (await prisma.bankTransaction.findUnique({ where: { bankAccountId_externalId: { bankAccountId: houseAccount.id, externalId } } })) continue;
+    const date = new Date(c.dueAt.getTime() - (i % 6) * 86_400_000);
+    const tx = await prisma.bankTransaction.create({ data: { tenantId, bankAccountId: houseAccount.id, externalId, bookingDate: date, valueDate: date, amountMinor: c.amountMinor, currency: 'UZS', counterpartyName: ownerNames.get(c.ownerId) ?? 'Собственник', purposeText: `Взнос на содержание ${c.unit.unitNo} ${c.periodStart.toISOString().slice(0, 7)}`, matchStatus: 'MANUAL_MATCHED' } });
+    await prisma.reconciliationMatch.create({ data: { tenantId, bankTransactionId: tx.id, objectType: 'HOUSE_CHARGE', objectId: c.id, amountMinor: c.amountMinor, matchedBy: finance, method: 'MANUAL', confidence: 1 } });
+    await prisma.houseCharge.update({ where: { id: c.id }, data: { receivedMinor: c.amountMinor, status: 'PAID', paidAt: date } });
+    housePaid++;
+  }
+  for (const [k, amt, who] of [['HOUSE-UNMATCHED-1', 1_020_000_00n, 'Рустам Каримов'], ['HOUSE-UNMATCHED-2', 780_000_00n, 'Частное лицо']] as const) {
+    if (await prisma.bankTransaction.findUnique({ where: { bankAccountId_externalId: { bankAccountId: houseAccount.id, externalId: k } } })) continue;
+    await prisma.bankTransaction.create({ data: { tenantId, bankAccountId: houseAccount.id, externalId: k, bookingDate: daysAgo(1), valueDate: daysAgo(1), amountMinor: amt, currency: 'UZS', counterpartyName: who, purposeText: 'Взнос на содержание' } });
+  }
+  const houseOverdue = await markOverdueHouseCharges(tenantId);
+  console.log(`  house: ${cad} cadastre set, ${contracts} contracts, ${hc.created} charges (${hc.withoutOwner} units without owner), ${housePaid} paid by bank tx, ${houseOverdue} overdue`);
 }

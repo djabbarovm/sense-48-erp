@@ -13,6 +13,7 @@ import { storeDocument } from './documents.js';
 import { createServiceOrder, listCatalog, listServiceOrders, rateServiceOrder } from './serviceOrders.js';
 import { createWorkOrder } from './workOrders.js';
 import { ownerMallReport } from './mall.js';
+import { ownerHouseReport } from './house.js';
 
 export const DEFAULT_MANAGEMENT_FEE_BP = 1000; // 10% — переопределяется tenant.settings.management_fee_bp
 
@@ -86,7 +87,7 @@ export async function getOwnerPortal(ctx: TenantContext, today = new Date()) {
   const totals = statement.reduce((a, l) => ({ rent: a.rent + l.rentMinor, fee: a.fee + l.feeMinor, payout: a.payout + l.payoutMinor }), { rent: 0n, fee: 0n, payout: 0n });
   const requests = await prisma.workOrder.findMany({ where: { tenantId: ctx.tenantId, unitId: { in: units.map((u) => u.id) } }, orderBy: { createdAt: 'desc' }, take: 20, include: { unit: { select: { unitNo: true } } } });
   const documents = await listOwnerDocuments(ctx);
-  const [catalog, serviceOrders, mall] = await Promise.all([listCatalog(ctx), listServiceOrders(ctx, { ownerId: owner.id }, today), ownerMallReport(ctx, owner.id, today)]);
+  const [catalog, serviceOrders, mall, house] = await Promise.all([listCatalog(ctx), listServiceOrders(ctx, { ownerId: owner.id }, today), ownerMallReport(ctx, owner.id, today), ownerHouseReport(ctx, owner.id, today)]);
   return {
     owner: { id: owner.id, displayName: owner.displayName, kind: owner.kind, managementConsent: owner.managementConsent, listingConsent: owner.listingConsent, marketingConsent: owner.marketingConsent, consentUpdatedAt: owner.consentUpdatedAt },
     company: tenant.legalName,
@@ -98,6 +99,7 @@ export async function getOwnerPortal(ctx: TenantContext, today = new Date()) {
     documents,
     catalog: catalog.map((c) => ({ id: c.id, code: c.code, name: c.name, category: c.category, providerKind: c.providerKind, partnerName: c.partnerName, priceMinor: c.priceMinor, currency: c.currency, slaHours: c.slaHours, description: c.description })),
     mall,
+    house,
     serviceOrders: serviceOrders.slice(0, 20).map((o) => ({ id: o.id, number: o.number, unitNo: o.unitNo, serviceName: o.serviceName, status: o.status, priceMinor: o.priceMinor, currency: o.currency, scheduledAt: o.scheduledAt, doneAt: o.doneAt, rating: o.rating, canRate: ['DONE', 'VERIFIED'].includes(o.status) && o.rating == null })),
   };
 }
@@ -205,7 +207,7 @@ export async function listOwnersAdmin(ctx: TenantContext) {
   requirePermission(ctx, 'property.manage');
   const rows = await prisma.propertyOwner.findMany({ where: whereTenant(ctx), include: { units: { select: { unitNo: true } } }, orderBy: { displayName: 'asc' } });
   const users = new Map((await prisma.user.findMany({ where: { id: { in: rows.map((r) => r.userId).filter((x): x is string => !!x) } }, select: { id: true, email: true } })).map((u) => [u.id, u.email]));
-  return rows.map((o) => ({ id: o.id, displayName: o.displayName, kind: o.kind, contactPhone: o.contactPhone, contactEmail: o.contactEmail, managementConsent: o.managementConsent, listingConsent: o.listingConsent, marketingConsent: o.marketingConsent, units: o.units.map((u) => u.unitNo), userEmail: o.userId ? (users.get(o.userId) ?? null) : null }));
+  return rows.map((o) => ({ id: o.id, displayName: o.displayName, kind: o.kind, contactPhone: o.contactPhone, contactEmail: o.contactEmail, managementConsent: o.managementConsent, listingConsent: o.listingConsent, marketingConsent: o.marketingConsent, managementContractStatus: o.managementContractStatus, managementContractSignedAt: o.managementContractSignedAt, units: o.units.map((u) => u.unitNo), userEmail: o.userId ? (users.get(o.userId) ?? null) : null }));
 }
 
 /** Привязка/отвязка учётки собственника: пользователь получает роль PROPERTY_OWNER в тенанте (одна учётка — один собственник). */

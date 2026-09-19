@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, Building2, Download, FileSignature, FileText, ShieldCheck, Sparkles, Star, Store, Wallet, Wrench } from 'lucide-react';
+import { AlertTriangle, Building2, Download, FileSignature, FileText, Landmark, ShieldCheck, Sparkles, Star, Store, Wallet, Wrench } from 'lucide-react';
 import { NotFoundError, WORK_ORDER_CATEGORIES, can } from '@finance-os/core';
 import { createStorageFromEnv } from '@finance-os/adapters';
 import { getOwnerPortal, getOwnerDocumentUrl } from '@finance-os/db';
@@ -14,6 +14,7 @@ import { createOwnerRequestAction, createOwnerServiceOrderAction, rateOwnerServi
 const WO_TONE = { OPEN: 'red', ASSIGNED: 'yellow', IN_PROGRESS: 'blue', DONE: 'green', VERIFIED: 'green', CANCELLED: 'gray' } as const;
 const SO_TONE = { NEW: 'red', ACCEPTED: 'yellow', IN_PROGRESS: 'blue', DONE: 'green', VERIFIED: 'green', CANCELLED: 'gray' } as const;
 const OWNER_DOC_TYPES = ['CONTRACT', 'ACT', 'POA', 'OTHER'] as const;
+const HOUSE_TONE = { DUE: 'blue', PARTIAL: 'yellow', OVERDUE: 'red', PAID: 'green', WAIVED: 'gray' } as const;
 
 export default async function OwnerPortalPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const ctx = await requireTenantContext();
@@ -24,6 +25,7 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
   const tw = await getTranslations('workorders');
   const ts = await getTranslations('services');
   const tM = await getTranslations('mall');
+  const tH = await getTranslations('house');
   let p: Awaited<ReturnType<typeof getOwnerPortal>>;
   try {
     p = await getOwnerPortal(ctx);
@@ -94,6 +96,25 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
                     </tr>
                   ))}
                 </tbody>
+              </Table>
+            </div>
+          </Card>
+        </section>
+      ) : null}
+
+      {p.house ? (
+        <section>
+          <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><Landmark className="h-3.5 w-3.5" />{t('house')}</h2>
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="max-w-2xl text-xs text-gray-500">{t('houseHint')}</p>
+              <span className="text-right"><span className={cn('font-mono text-base font-bold', p.house.outstandingMinor > 0n ? 'text-gray-900' : 'text-gray-400')}>{fmtRate(p.house.outstandingMinor, p.house.currency)}</span><span className="ml-2 text-[11px] text-gray-500">{t('houseOutstanding')}</span>{p.house.overdue ? <span className="ml-2"><Badge tone="red" dot>{t('houseOverdue', { n: p.house.overdue })}</Badge></span> : null}</span>
+            </div>
+            <p className="mt-1 text-[11px] text-gray-400">{p.house.funds.map((f) => `${f.name} · ${t('houseTariff')} ${fmtRate(f.tariffPerM2Minor, f.currency)}/${tp('sqm')}`).join(' · ')}</p>
+            <div className="mt-2 overflow-x-auto">
+              <Table>
+                <thead><tr><Th>{t('unit')}</Th><Th>{t('housePeriod')}</Th><Th className="text-right">{t('houseAmount')}</Th><Th className="text-right">{t('houseReceived')}</Th><Th>{t('houseStatus')}</Th></tr></thead>
+                <tbody>{p.house.charges.map((c) => (<tr key={c.id}><Td className="font-mono font-semibold">{c.unitNo}</Td><Td className="font-mono text-xs">{c.periodStart.toISOString().slice(0, 7)}</Td><Td className="text-right font-mono">{fmtRate(c.amountMinor, c.currency)}</Td><Td className="text-right font-mono text-emerald-600">{fmtRate(c.receivedMinor, c.currency)}</Td><Td><Badge tone={HOUSE_TONE[c.status]} dot>{tH(`status.${c.status}`)}</Badge></Td></tr>))}</tbody>
               </Table>
             </div>
           </Card>

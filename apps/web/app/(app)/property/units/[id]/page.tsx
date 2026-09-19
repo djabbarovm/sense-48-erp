@@ -7,6 +7,7 @@ import { createStorageFromEnv } from '@finance-os/adapters';
 import { getUnitCard, getUnitFinance, listDeals, listDocumentsFor, listLeases, listMandates, listWorkOrders } from '@finance-os/db';
 import { createMandateAction, transitionMandateAction } from '../../../mall/actions';
 import { MANDATE_TONE } from '../../../mall/tones';
+import { setUnitCadastreAction } from '../../../house/actions';
 import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction, uploadLeaseDocumentAction } from '../../../leases/actions';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
@@ -108,7 +109,17 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
             <Row k={t('unitType')} v={t(`type.${unit.type}`)} />
             <Row k={t('area')} v={`${unit.areaM2} м²`} />
             <Row k={t('statusSince')} v={fmtDate(unit.statusEffectiveAt)} />
+            <Row k={t('cadastre.number')} v={unit.cadastralNumber ? <span className="font-mono">{unit.cadastralNumber}</span> : <span className="text-amber-600">{t('cadastre.none')}</span>} />
+            {unit.cadastralAreaM2 != null ? <Row k={t('cadastre.area')} v={`${Number(unit.cadastralAreaM2)} ${t('sqm')}`} /> : null}
           </dl>
+          {can(ctx, 'property.manage') ? (
+            <form action={setUnitCadastreAction} className="mt-3 grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+              <input type="hidden" name="unitId" value={unit.id} />
+              <div><Label htmlFor="cad-no">{t('cadastre.number')}</Label><Input id="cad-no" name="cadastralNumber" defaultValue={unit.cadastralNumber ?? ''} /></div>
+              <div><Label htmlFor="cad-area">{t('cadastre.area')}</Label><Input id="cad-area" name="cadastralAreaM2" type="number" min="0.01" step="0.01" defaultValue={unit.cadastralAreaM2 != null ? Number(unit.cadastralAreaM2) : ''} /></div>
+              <Button type="submit" size="sm" variant="outline">{t('cadastre.save')}</Button>
+            </form>
+          ) : null}
           <h3 className="mt-5 font-display text-sm font-semibold">{t('statuses')}</h3>
           <dl className="mt-3 space-y-1.5">
             <Row k={t('dim.readiness')} v={t(`readiness.${unit.readiness}`)} />
