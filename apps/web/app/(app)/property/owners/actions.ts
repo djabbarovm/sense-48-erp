@@ -22,7 +22,8 @@ export async function linkOwnerUserAction(formData: FormData): Promise<void> {
 }
 
 const str = (fd: FormData, k: string): string | undefined => { const v = fd.get(k); return typeof v === 'string' && v.trim() ? v.trim() : undefined; };
-const dt = (v: string | undefined): Date | null => (v ? new Date(v.length === 10 ? `${v}T09:00:00Z` : v) : null);
+// datetime-local / date из формы — локальное время Ташкента (+05:00), не UTC
+const dt = (v: string | undefined): Date | null => (v ? new Date(v.length === 10 ? `${v}T09:00:00+05:00` : v.length === 16 ? `${v}:00+05:00` : v) : null);
 
 async function run(back: string, fn: () => Promise<unknown>): Promise<never> {
   let error: string | null = null;

@@ -42,7 +42,8 @@ import {
   BadgePercent,
   Award,
   Home,
-  Users } from 'lucide-react';
+  Users,
+  Sun } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
 import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
@@ -61,6 +62,7 @@ const ICON = 'h-[18px] w-[18px]';
 const NAV: NavItem[] = [
   { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, permission: 'dashboard.owner' },
   { key: 'ownerPortal', href: '/owner', icon: <Home className={ICON} />, permission: 'owner.portal' },
+  { key: 'me', href: '/me', icon: <Sun className={ICON} />, permission: 'deal.view' },
   { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, permission: 'property.view' },
   { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
@@ -184,7 +186,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </form>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 p-5 md:p-7">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 p-4 pb-20 md:p-7">{children}</main>
+        {/* P-23: нижняя навигация на телефоне — путь сотрудника CRM (docs/21 §8) */}
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-gray-200 bg-white/95 backdrop-blur md:hidden" aria-label={t('mobileNav')}>
+          {items.filter((i) => ['me', 'deals', 'contacts', 'owners', 'controlRoom'].includes(i.key)).slice(0, 5).map((item) => (
+            <Link key={item.key} href={item.href} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-600 hover:text-brand-600">{item.icon}<span>{t(item.key)}</span></Link>
+          ))}
+        </nav>
       </div>
     </div>
   );

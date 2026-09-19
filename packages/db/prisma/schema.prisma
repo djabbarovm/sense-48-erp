@@ -1795,7 +1795,7 @@ model UnitActivity {
   kind              UnitActivityKind
   note              String
   expectedRateMinor BigInt?          @map("expected_rate_minor")
-  followUpAt        DateTime?        @map("follow_up_at") @db.Date
+  followUpAt        DateTime?        @map("follow_up_at") // P-23: c временем — показ/напоминание (BR-P60)
   source            ChangeSource     @default(UI)
   actorId           String           @map("actor_id") @db.Uuid
   happenedAt        DateTime         @default(now()) @map("happened_at")
@@ -1954,7 +1954,7 @@ model Deal {
   stage              DealStage       @default(NEW)
   stageChangedAt     DateTime        @default(now()) @map("stage_changed_at")
   nextAction         String?         @map("next_action")
-  nextActionAt       DateTime?       @map("next_action_at") @db.Date
+  nextActionAt       DateTime?       @map("next_action_at") // P-23: c временем (SLA лида 15 минут, BR-P59)
   expectedRateMinor  BigInt?         @map("expected_rate_minor")
   reservedUntil      DateTime?       @map("reserved_until") @db.Date
   depositReceived    Boolean         @default(false) @map("deposit_received")

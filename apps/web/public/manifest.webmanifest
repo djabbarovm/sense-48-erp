@@ -1,0 +1,19 @@
+{
+  "name": "MDS Property",
+  "short_name": "MDS",
+  "description": "CRM и управление зданием: мой день, сделки, клиенты, собственники",
+  "start_url": "/me",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

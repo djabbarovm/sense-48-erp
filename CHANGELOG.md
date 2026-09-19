@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: «Мой день» и мобильная версия (P-23)
+- db: `services/myDay.ts` — `getMyDay` (показы, новые лиды, просрочено/без шага, сегодня по плану, собственники, задачи, итог дня; менеджер видит своё, OWNER/ADMIN — всех), быстрые действия `quickCall`, `scheduleViewing` (BR-P60: показ — событие c датой и временем, сделка → VIEWING), `viewingResult` (оффер / думает / перенос / отказ), `quickLead`, `ownerQuickCall`, `taskDone`; `Deal.nextActionAt` и `UnitActivity.followUpAt` — timestamp (миграция `crm_timestamps`); тест `my-day.test.ts`.
+- web: `/me` mobile-first (одна колонка, крупные действия, tel:-ссылки), нижняя навигация на телефоне (Мой день · Пульт · Сделки · Клиенты · Собственники), PWA (`manifest.webmanifest`, `icon.svg`, standalone, старт `/me`), редирект менеджера/брокера на `/me`; словарь `me`.
+- docs: `docs/21-crm-tower-process.md` (процесс v1), ADR-030, план P-23…P-27.
+
 ## [Phase P] 2026-09-19 — CRM Tower: воронка собственников и расчёт трёх сценариев (P-22b)
 - core: `property/ownerPipeline.ts` — стадии и переходы (`canMoveOwnerStage`), причины отказа, `ownerSegment`, `ownerScenarios` (LTR / MID / STR, OPEN-ставка → provisional), `ownerConversion`; право `owner.pipeline`; тесты.
 - db: `PropertyOwner.pipelineStage/stageChangedAt/nextAction/nextActionAt/managerId/source/lostReason/calcShownAt`, `UnitActivity.ownerId`, TaskType OWNER_FOLLOWUP (миграция `owner_pipeline` c бэкфиллом стадий из договоров/согласий/управления); `services/ownerPipeline.ts` — `moveOwnerStage`, `setOwnerNextAction`, `addOwnerActivity`, `ownerCalc` (настройки `owner_calc`, asking rate юнитов), `markCalcShown`, `getOwnerPipeline`, `getOwnerCard`, `markOverdueOwnerFollowups`; события `owner.stage.changed`, `owner.followup.overdue`; джоб `owner-followup`; тест `owner-pipeline.test.ts`.

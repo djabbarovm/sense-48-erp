@@ -14,6 +14,7 @@ export default async function HomePage() {
   const ctx = await requireTenantContext();
   // Роли недвижимости без финансового дашборда попадают на «Пульт» MDS Property (blueprint §9)
   if (!can(ctx, 'dashboard.ops') && can(ctx, 'owner.portal')) redirect('/owner');
+  if (!can(ctx, 'dashboard.ops') && can(ctx, 'deal.manage')) redirect('/me'); // P-23: путь сотрудника CRM начинается c «Мой день»
   if (!can(ctx, 'dashboard.ops') && can(ctx, 'property.view')) redirect('/property/today');
   const t = await getTranslations('home');
   const tm = await getTranslations('mission');
