@@ -36,6 +36,11 @@ describe('«Мой день» (docs/21 §5; BR-P60/P61)', () => {
     expect(colleague.dueToday).toHaveLength(0);
     const boss = await getMyDay(ctx(['OWNER'], otherCmId), NOW);
     expect([boss.seesAll, boss.dueToday.length, boss.owners.length]).toEqual([true, 1, 1]);
+    // ADR-038: комм. директор и CEO — надзор над всем коммерческим потоком (видят чужие сделки)
+    const director = await getMyDay(ctx(['COMMERCIAL_DIRECTOR'], otherCmId), NOW);
+    expect([director.seesAll, director.dueToday.map((x) => x.id).includes(d.id)]).toEqual([true, true]);
+    const ceo = await getMyDay(ctx(['CEO'], otherCmId), NOW);
+    expect(ceo.seesAll).toBe(true);
   });
 
   it('звонок → активность CALL и следующий шаг; показ → VIEWING c датой (в прошлое нельзя), стадия и «провести показ»', async () => {
