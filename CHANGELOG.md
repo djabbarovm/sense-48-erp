@@ -3,6 +3,7 @@
 Формат: `## [Phase X] YYYY-MM-DD` → список `- TASK-nnn: что сделано`.
 
 ## [Unreleased]
+- security (hardening, защита в глубину): экраны `/pr`, `/vendors`, `/contracts` не имели верхнеуровневой проверки права на чтение — открывались по прямой ссылке в обход фильтра меню (данные при этом tenant-scoped, мутации проверялись в сервисах). Добавлен `notFound()`-guard на право, совпадающее с гейтом меню (`pr.view`/`vendor.view`/`contract.view`), как уже сделано на `/payments`. `/onec` и `/migration` уже были закрыты; `/approvals` и `/portfolio` намеренно открыты и self-scoped.
 - нейминг (добор P-32): логотип-марка в сайдбаре и на экране входа всё ещё выводили «FinanceOS» в обход i18n — заменены на двухцветное «DMS». Пользовательских упоминаний «Finance OS» в apps/web не осталось.
 - gamification (ревизия по обратной связи владельца, ADR-037 уточнён): убран XP за сам звонок (только результат — follow-up/показ/оффер/сделка); убрана миссия «передать N лидов» (у КЦ теперь 2 миссии); STREAK_MIN_XP > одного follow-up (streak = день с реальной отдачей); удалён мёртвый код (события CALL_LOGGED/VIEWING_SCHEDULED/LEAD_QUALIFIED, метрика handoffs). core+db+тесты зелёные, lint/typecheck ок.
 

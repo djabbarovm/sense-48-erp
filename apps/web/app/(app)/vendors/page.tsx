@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 import { can } from '@finance-os/core';
 import { listVendors } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -14,6 +15,7 @@ export default async function VendorsPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const ctx = await requireTenantContext();
+  if (!can(ctx, 'vendor.view')) notFound(); // защита в глубину: экран закрыт и по прямой ссылке, не только фильтром меню
   const { q } = await searchParams;
   const t = await getTranslations('vendors');
   const vendors = await listVendors(ctx, q ? { search: q } : undefined);

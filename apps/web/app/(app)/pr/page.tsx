@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { formatMoney, money } from '@finance-os/core';
+import { notFound } from 'next/navigation';
+import { can, formatMoney, money } from '@finance-os/core';
 import { listPrs } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, PageHeader, Table, Td, Th } from '@/components/ui';
@@ -12,6 +13,7 @@ const TONE = {
 
 export default async function PrListPage() {
   const ctx = await requireTenantContext();
+  if (!can(ctx, 'pr.view')) notFound(); // защита в глубину: экран закрыт и по прямой ссылке, не только фильтром меню
   const t = await getTranslations('pr');
   const prs = await listPrs(ctx);
   return (

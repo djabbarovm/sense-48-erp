@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
+import { notFound } from 'next/navigation';
 import { can, formatMoney, money } from '@finance-os/core';
 import { listContracts, listVendors } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -8,6 +9,7 @@ import { createContractAction } from './actions';
 
 export default async function ContractsPage() {
   const ctx = await requireTenantContext();
+  if (!can(ctx, 'contract.view')) notFound(); // защита в глубину: экран закрыт и по прямой ссылке, не только фильтром меню
   const t = await getTranslations('contracts');
   const contracts = await listContracts(ctx);
   const vendors = can(ctx, 'contract.create') ? await listVendors(ctx) : [];
