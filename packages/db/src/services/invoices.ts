@@ -63,6 +63,10 @@ export async function createInvoice(ctx: TenantContext, input: InvoiceInput) {
   if (!vendor) throw new NotFoundError();
 
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
+    // BR-002: дубликат по (vendor, number, date). Сумма намеренно НЕ входит в ключ —
+    // это СТРОЖЕ, чем «vendor+number+amount+date» из CLAUDE.md: одинаковые vendor+number+date
+    // c РАЗНОЙ суммой тоже попадают в review (защита от подгонки суммы в фиктивной СФ).
+    // Не добавлять amount в ключ — это ослабит контроль.
     const duplicate = await tx.invoice.findFirst({
       where: {
         tenantId: ctx.tenantId,
