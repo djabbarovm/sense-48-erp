@@ -12,6 +12,8 @@ import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
 import { addDealActivity, createDeal, moveDeal } from './deals.js';
+import { quickCall, quickLead, scheduleViewing, viewingResult } from './myDay.js';
+import { addOwnerActivity, markCalcShown } from './ownerPipeline.js';
 import { terminateLease } from './leases.js';
 import { addUnitActivity, changeUnitStatus, setUnitPublished } from './property.js';
 import { createWorkOrder } from './workOrders.js';
@@ -25,7 +27,7 @@ export function setIntentExtractor(x: IntentExtractor): void {
 const serialize = (intent: Intent): Prisma.InputJsonValue => JSON.parse(JSON.stringify(intent, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))) as Prisma.InputJsonValue;
 const parse = (payload: unknown): Intent => {
   const p = payload as Record<string, unknown>;
-  if (p.kind === 'DEAL_VIEWING_NOTE' && typeof p.expectedRateMinor === 'string') return { ...(p as object), expectedRateMinor: BigInt(p.expectedRateMinor) } as Intent;
+  if ((p.kind === 'DEAL_VIEWING_NOTE' || p.kind === 'VIEWING_RESULT') && typeof p.expectedRateMinor === 'string') return { ...(p as object), expectedRateMinor: BigInt(p.expectedRateMinor) } as Intent;
   return p as unknown as Intent;
 };
 
@@ -35,7 +37,19 @@ export const CONFIRM_PERMISSION = {
   DEAL_VIEWING_NOTE: 'deal.manage',
   UNIT_ISSUE: 'workorder.create',
   QUERY_UNITS: 'property.view',
+  // CRM (docs/21 §6)
+  LEAD_CREATE: 'deal.manage',
+  ACTIVITY_LOG: 'deal.manage',
+  VIEWING_SCHEDULE: 'deal.manage',
+  VIEWING_RESULT: 'deal.manage',
+  OWNER_ACTIVITY: 'property.manage',
+  QUERY_MY_DAY: 'deal.view',
 } as const;
+
+/** Номер юнита из намерения (у части намерений его нет). */
+const intentUnitNo = (i: Intent | null): string | null => (i && 'unitNo' in i ? (i.unitNo ?? null) : null);
+const NO_UNIT_KINDS: Intent['kind'][] = ['QUERY_UNITS', 'QUERY_MY_DAY', 'LEAD_CREATE', 'ACTIVITY_LOG', 'OWNER_ACTIVITY'];
+const fmtAt = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() + 5 * 3600_000).toISOString().slice(0, 16).replace('T', ' ') + ' (Ташкент)' : '—');
 
 function queryLink(i: Extract<Intent, { kind: 'QUERY_UNITS' }>): string {
   const q = new URLSearchParams();
@@ -53,8 +67,16 @@ function buildPreview(intent: Intent | null, unit: Unit | null, activeLease: boo
     const parts = [intent.color ? `цвет ${intent.color}` : null, intent.vacantOverDays ? `простой > ${intent.vacantOverDays} дн.` : null, intent.leaseEndsWithinDays ? `договор истекает ≤ ${intent.leaseEndsWithinDays} дн.` : null, intent.rentalMode].filter(Boolean);
     return `Показать юниты: ${parts.join(', ') || 'все'} → ссылка на карту c фильтром. Данные не меняются.`;
   }
-  if (!unit) return `Юнит «${intent.unitNo}» не найден в этом здании. Уточните номер.`;
+  if (intent.kind === 'QUERY_MY_DAY') return 'Показать мой день: показы, лиды, просрочки, собственники, задачи. Данные не меняются.';
+  if (intent.kind === 'LEAD_CREATE') return `Создать лид: ${intent.contactName}${intent.contactPhone ? `, ${intent.contactPhone}` : ', телефон не указан'}${intent.unitNo ? `, юнит ${intent.unitNo}` : ''}${intent.note ? `; потребность: ${intent.note}` : ''}. Следующий шаг — связаться.`;
+  if (intent.kind === 'ACTIVITY_LOG') return `Записать ${intent.activity === 'CALL' ? 'звонок' : 'заметку'} в сделку ${unit ? `по юниту ${unit.unitNo}` : intent.contactName ? `клиента «${intent.contactName}»` : '(не найдена)'}${intent.followUpAt ? `; следующий шаг ${fmtAt(intent.followUpAt)}` : ''}.`;
+  if (intent.kind === 'OWNER_ACTIVITY') return `Собственник ${unit ? `юнита ${unit.unitNo}` : intent.ownerName ? `«${intent.ownerName}»` : '(не найден)'}: записать ${intent.calcShown ? 'показ расчёта STR / mid-term / LTR' : 'звонок'}${intent.followUpAt ? `, напомнить ${fmtAt(intent.followUpAt)}` : ''}.`;
+  if (!unit) return `Юнит «${intentUnitNo(intent)}» не найден в этом здании. Уточните номер.`;
   switch (intent.kind) {
+    case 'VIEWING_SCHEDULE':
+      return `${unit.unitNo}: назначить показ ${fmtAt(intent.at)}${intent.contactName ? ` для «${intent.contactName}»` : ''}${activeDeal ? ` в сделке ${activeDeal.number}` : ' (сделка будет создана)'}; напоминание за час.`;
+    case 'VIEWING_RESULT':
+      return `${unit.unitNo}: результат показа — ${{ OFFER: 'хотят оффер', THINKING: 'думают', RESCHEDULE: 'перенос', LOST: 'отказ' }[intent.result]}${intent.expectedRateMinor != null ? `, ставка ${Number(intent.expectedRateMinor) / 100} $` : ''}${intent.at ? `, ${fmtAt(intent.at)}` : ''}${activeDeal ? ` (сделка ${activeDeal.number})` : ' — активной сделки по юниту нет'}.`;
     case 'UNIT_VACATE':
       return `${unit.unitNo}: ${activeLease ? 'расторгнуть действующий договор аренды (причина: выезд), ' : ''}отметить свободным${intent.publish ? ', выставить на рынок и опубликовать' : ''}. Цвет станет красным.`;
     case 'DEAL_VIEWING_NOTE':
@@ -62,6 +84,12 @@ function buildPreview(intent: Intent | null, unit: Unit | null, activeLease: boo
     case 'UNIT_ISSUE':
       return `${unit.unitNo}: создать заявку (${intent.category}, приоритет ${intent.severity === 'CRITICAL' ? 'КРИТИЧНЫЙ, SLA 4 ч' : 'высокий, SLA 24 ч'}); статус эксплуатации юнита пересчитается из заявки. Ответственный — эксплуатация.`;
   }
+}
+
+/** Активная сделка по имени клиента (основа первого слова, без регистра), самая свежая. */
+async function findDealByContact(tenantId: string, name: string) {
+  const stem = name.trim().split(/\s+/)[0]!.replace(/[уюаяеи]$/i, '');
+  return prisma.deal.findFirst({ where: { tenantId, stage: { notIn: ['WON', 'LOST'] }, contactName: { contains: stem, mode: 'insensitive' } }, orderBy: { updatedAt: 'desc' }, select: { id: true, number: true, stage: true, managerId: true } });
 }
 
 async function findActiveDeal(tenantId: string, unitId: string) {
@@ -75,10 +103,16 @@ export async function createActionDraft(ctx: TenantContext, input: { text: strin
   if (!text) throw new ValidationError('TEXT_REQUIRED');
   if (text.length > 1000) throw new ValidationError('TEXT_TOO_LONG');
   const { intent, confidence } = await extractor.extract({ text });
-  const unit = intent && intent.kind !== 'QUERY_UNITS' ? await prisma.unit.findFirst({ where: { tenantId: ctx.tenantId, unitNo: { equals: intent.unitNo, mode: 'insensitive' } } }) : null;
+  const unitNo = intentUnitNo(intent);
+  const unit = unitNo ? await prisma.unit.findFirst({ where: { tenantId: ctx.tenantId, unitNo: { equals: unitNo, mode: 'insensitive' } } }) : null;
   const activeLease = unit ? (await prisma.leaseContract.count({ where: { tenantId: ctx.tenantId, unitId: unit.id, status: { in: ['ACTIVE', 'EXPIRING'] } } })) > 0 : false;
   const activeDeal = unit ? await findActiveDeal(ctx.tenantId, unit.id) : null;
-  const needsInfo = !intent || (intent.kind !== 'QUERY_UNITS' && !unit);
+  const needsInfo = !intent
+    || (!NO_UNIT_KINDS.includes(intent.kind) && !unit)
+    || (intent.kind === 'LEAD_CREATE' && !intent.contactPhone && intent.contactName === 'Клиент')
+    || (intent.kind === 'ACTIVITY_LOG' && !unit && !intent.contactName)
+    || (intent.kind === 'OWNER_ACTIVITY' && !unit && !intent.ownerName)
+    || (intent.kind === 'VIEWING_RESULT' && !activeDeal);
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const created = await tx.actionDraft.create({
       data: {
@@ -138,6 +172,45 @@ export async function confirmActionDraft(ctx: TenantContext, id: string): Promis
         const wo = await createWorkOrder(ctx, { unitId: unit!.id, category: intent.category === 'CLEANING' ? 'CLEANING' : intent.category === 'DAMAGE' ? 'DAMAGE' : intent.category === 'ELECTRICAL' ? 'ELECTRICAL' : intent.category === 'PLUMBING' ? 'PLUMBING' : 'OTHER', priority: intent.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH', title: draft.rawText.slice(0, 120), description: draft.rawText, source: 'AI' });
         if (can(ctx, 'unit.activity.create')) await addUnitActivity(ctx, unit!.id, { kind: 'NOTE', note: `[${intent.category}] ${draft.rawText} → ${wo.number}`, source: 'AI' });
         resultRef = `/workorders/${wo.id}`;
+        break;
+      }
+      case 'QUERY_MY_DAY':
+        resultRef = '/me';
+        break;
+      case 'LEAD_CREATE': {
+        const d = await quickLead(ctx, { contactName: intent.contactName, contactPhone: intent.contactPhone, note: intent.note || null, unitNo: intent.unitNo, source: 'TELEGRAM' });
+        resultRef = `/deals/${d.id}`;
+        break;
+      }
+      case 'ACTIVITY_LOG': {
+        const deal = (unit ? await findActiveDeal(ctx.tenantId, unit.id) : null) ?? (intent.contactName ? await findDealByContact(ctx.tenantId, intent.contactName) : null);
+        if (!deal) throw new ValidationError('DEAL_NOT_FOUND', 'DEAL_NOT_FOUND: не нашёл активную сделку по юниту/клиенту');
+        const at = intent.followUpAt ? new Date(intent.followUpAt) : null;
+        if (intent.activity === 'CALL') await quickCall(ctx, deal.id, { note: draft.rawText, ...(at ? { nextAction: 'Перезвонить', nextActionAt: at } : {}) });
+        else { await addDealActivity(ctx, deal.id, { kind: 'NOTE', note: draft.rawText, followUpAt: at }); }
+        resultRef = `/deals/${deal.id}`;
+        break;
+      }
+      case 'VIEWING_SCHEDULE': {
+        let deal = await findActiveDeal(ctx.tenantId, unit!.id) ?? (intent.contactName ? await findDealByContact(ctx.tenantId, intent.contactName) : null);
+        if (!deal) { const d = await quickLead(ctx, { contactName: intent.contactName ?? 'Клиент c показа', unitNo: unit!.unitNo, source: 'TELEGRAM' }); deal = { id: d.id, number: d.number, stage: d.stage, managerId: d.managerId }; }
+        await scheduleViewing(ctx, deal.id, { at: new Date(intent.at), unitId: unit!.id, note: draft.rawText });
+        resultRef = `/deals/${deal.id}`;
+        break;
+      }
+      case 'VIEWING_RESULT': {
+        const deal = await findActiveDeal(ctx.tenantId, unit!.id);
+        if (!deal) throw new ValidationError('DEAL_NOT_FOUND');
+        await viewingResult(ctx, deal.id, { result: intent.result, note: draft.rawText, expectedRateMinor: intent.expectedRateMinor, followUpAt: intent.at ? new Date(intent.at) : null, ...(intent.result === 'LOST' ? { lostReason: /дорог|цен/i.test(draft.rawText) ? 'PRICE' : /срок|время/i.test(draft.rawText) ? 'TIMING' : /район|локац|далеко/i.test(draft.rawText) ? 'LOCATION' : 'OTHER' } : {}) });
+        resultRef = `/deals/${deal.id}`;
+        break;
+      }
+      case 'OWNER_ACTIVITY': {
+        const owner = unit?.ownerId ? await prisma.propertyOwner.findFirst({ where: { tenantId: ctx.tenantId, id: unit.ownerId } }) : intent.ownerName ? await prisma.propertyOwner.findFirst({ where: { tenantId: ctx.tenantId, displayName: { contains: intent.ownerName.split(/\s+/)[0]!, mode: 'insensitive' } } }) : null;
+        if (!owner) throw new ValidationError('OWNER_NOT_FOUND', 'OWNER_NOT_FOUND: не нашёл собственника по юниту/имени');
+        if (intent.calcShown) await markCalcShown(ctx, owner.id, draft.rawText);
+        await addOwnerActivity(ctx, owner.id, { kind: intent.calcShown ? 'NOTE' : 'CALL', note: draft.rawText, followUpAt: intent.followUpAt ? new Date(intent.followUpAt) : null, unitId: unit?.id ?? null });
+        resultRef = `/property/owners/${owner.id}`;
         break;
       }
     }

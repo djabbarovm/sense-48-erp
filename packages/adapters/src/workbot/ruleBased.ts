@@ -3,6 +3,7 @@
  * Без сети и моделей — работает в тестах и оффлайн. Возвращает confidence по числу совпавших признаков.
  */
 import type { Intent, IntentExtraction, IntentExtractor } from './types.js';
+import { extractPhone, parseRuDateTime } from './dates.js';
 
 const UNIT_RE = /\b([A-Za-zА-Яа-я]{1,2}\d{1,2}-\d{1,3}|\d{3,4})\b/;
 const MONEY_RE = /(\d+(?:[.,]\d{1,2})?)\s*(?:долл(?:ар(?:ов|а)?)?|\$|usd|у\.?е\.?)/i;
@@ -25,6 +26,7 @@ const ISSUE_CATEGORY: [RegExp, 'PLUMBING' | 'ELECTRICAL' | 'CLEANING' | 'DAMAGE'
 ];
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
+const PHONE_STRIP = /\+?\d[\d\s()-]{6,}\d/g;
 
 function findUnit(text: string): string | null {
   const m = text.match(UNIT_RE);
@@ -38,11 +40,56 @@ function money(text: string): bigint | null {
   return BigInt(whole!) * 100n + BigInt(frac.padEnd(2, '0').slice(0, 2));
 }
 
+const NAME_RE = /(?<![\p{L}])([А-ЯA-Z][а-яa-zё'-]+(?:\s+[А-ЯA-Z][а-яa-zё'-]+){0,2})(?![\p{L}])/u;
+const nameFrom = (t: string): string | null => { const m = t.replace(/^(лид|новый лид|заявка|позвонил[а]?|звонил[а]?|созвонил(?:ся|ась)?|написал[а]?|встретил(?:ся|ась)?|собственник[у]?|показ|перезвонить)\s*/i, '').match(NAME_RE); return m ? m[1]! : null; };
+
 export class RuleBasedIntentExtractor implements IntentExtractor {
-  async extract({ text }: { text: string }): Promise<IntentExtraction> {
+  async extract({ text, now = new Date() }: { text: string; now?: Date }): Promise<IntentExtraction> {
     const t = norm(text);
-    const unitNo = findUnit(t);
+    const unitNo = findUnit(t.replace(PHONE_STRIP, ' '));
     const entities: IntentExtraction['entities'] = { unitNo };
+
+    // 0. CRM (docs/21 §6): «мой день», лид, показ (назначить / результат), звонок, собственник
+    if (/^\/?(?:today|мой день|что сегодня|мои показы|мои дела|план на день)(?![\p{L}])/iu.test(t)) return { intent: { kind: 'QUERY_MY_DAY' }, confidence: 0.95, entities };
+    if (/^(?:лид|новый лид|заявка|клиент)(?![\p{L}])/iu.test(t) || (/(?<![\p{L}])лид(?![\p{L}])/iu.test(t) && /\+?\d[\d\s()-]{6,}/.test(t))) {
+      const { phone, rest } = extractPhone(t);
+      // юнит — только явный («юнит 1204», «кв 1204», «офис 312») или число не после «до/от/за/$» (бюджет)
+      const explicitUnit = rest.match(/(?:юнит|кв\.?|квартир[а-яё]*|офис)\s*№?\s*(\d{3,4})/iu)?.[1] ?? null;
+      const looseUnit = explicitUnit ?? (rest.match(/(?<!(?:до|от|за|\$)\s?)(?<![\d$])(\d{3,4})(?![\d$])/)?.[1] ?? null);
+      const leadUnit = explicitUnit ?? (looseUnit && !/(?:до|от|за|\$)\s*\d{3,4}/.test(rest) ? looseUnit : null);
+      const name = nameFrom(rest.replace(/(?<!\d)\d{3,4}(?!\d)/g, ' ')) ?? 'Клиент';
+      const note = rest.replace(/^(лид|новый лид|заявка|клиент)\s*[:,-]?\s*/i, '').replace(name, '').replace(/^[\s,.-]+|[\s,.-]+$/g, '');
+      Object.assign(entities, { phone, name, unitNo: leadUnit });
+      return { intent: { kind: 'LEAD_CREATE', contactName: name, contactPhone: phone, unitNo: leadUnit, note }, confidence: phone ? 0.9 : 0.6, entities };
+    }
+    if (/(?<![\p{L}])собственник/iu.test(t)) {
+      const { at } = parseRuDateTime(t, now);
+      const calcShown = /расч[её]т/i.test(t);
+      const ownerName = nameFrom(t.replace(/(?<![\p{L}])собственник[а-яё]*(?![\p{L}])/iu, ' ').replace(/(?<!\d)\d{3,4}(?!\d)/, ' '));
+      Object.assign(entities, { ownerName, calcShown, followUpAt: at?.toISOString() ?? null });
+      return { intent: { kind: 'OWNER_ACTIVITY', unitNo, ownerName, calcShown, note: t, followUpAt: at?.toISOString() ?? null }, confidence: unitNo || ownerName ? 0.85 : 0.5, entities };
+    }
+    if (/(?<![\p{L}])показ/iu.test(t) && unitNo) {
+      const { at, hasTime } = parseRuDateTime(t, now);
+      const resultWord = /прош[её]л|был|состоялся|отказ|не понравил|думают|подума|перенос|перенести|хотят оффер|берут|готовы/i.test(t);
+      if (at && at > now && !resultWord) {
+        const contactName = nameFrom(t.replace(/(?<![\p{L}])показ[а-яё]*(?![\p{L}])/iu, ' ').replace(/(?<!\d)\d{3,4}(?!\d)/, ' '));
+        Object.assign(entities, { at: at.toISOString(), hasTime, contactName });
+        return { intent: { kind: 'VIEWING_SCHEDULE', unitNo, at: at.toISOString(), contactName, note: t }, confidence: hasTime ? 0.9 : 0.7, entities };
+      }
+      if (resultWord) {
+        const result = /отказ|не понравил|не берут|мимо/i.test(t) ? 'LOST' : /перенос|перенести/i.test(t) ? 'RESCHEDULE' : /оффер|берут|готовы|хотят/i.test(t) ? 'OFFER' : 'THINKING';
+        const rate = money(t);
+        Object.assign(entities, { result, expectedRate: rate != null ? Number(rate) / 100 : null, at: at?.toISOString() ?? null });
+        return { intent: { kind: 'VIEWING_RESULT', unitNo, result, expectedRateMinor: rate, at: at?.toISOString() ?? null, note: t }, confidence: 0.85, entities };
+      }
+    }
+    if (/^(позвонил|звонил|созвонил|написал|встретил|перезвонить|договорил|обсудил)/i.test(t)) {
+      const { at } = parseRuDateTime(t, now);
+      const contactName = nameFrom(t.replace(/(?<!\d)\d{3,4}(?!\d)/, ' '));
+      Object.assign(entities, { contactName, followUpAt: at?.toISOString() ?? null });
+      return { intent: { kind: 'ACTIVITY_LOG', activity: /написал|встретил|обсудил/i.test(t) ? 'NOTE' : 'CALL', unitNo, contactName, note: t, followUpAt: at?.toISOString() ?? null }, confidence: unitNo || contactName ? 0.85 : 0.5, entities };
+    }
 
     // 1. Запрос списка: «покажи все красные больше 90 дней»
     if (/^(покажи|выведи|список|найди|какие|сколько)/i.test(t) || /покажи|выведи/i.test(t)) {

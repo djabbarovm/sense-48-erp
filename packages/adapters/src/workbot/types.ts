@@ -4,7 +4,7 @@
  * Извлекатель НИКОГДА не меняет данные: он только предлагает structured draft; commit — после подтверждения человеком.
  */
 
-export type IntentKind = 'UNIT_VACATE' | 'DEAL_VIEWING_NOTE' | 'UNIT_ISSUE' | 'QUERY_UNITS';
+export type IntentKind = 'UNIT_VACATE' | 'DEAL_VIEWING_NOTE' | 'UNIT_ISSUE' | 'QUERY_UNITS' | 'LEAD_CREATE' | 'ACTIVITY_LOG' | 'VIEWING_SCHEDULE' | 'VIEWING_RESULT' | 'OWNER_ACTIVITY' | 'QUERY_MY_DAY';
 
 export interface UnitVacateIntent {
   kind: 'UNIT_VACATE';
@@ -39,7 +39,19 @@ export interface QueryUnitsIntent {
   rentalMode: 'LTR' | 'STR' | null;
 }
 
-export type Intent = UnitVacateIntent | DealViewingNoteIntent | UnitIssueIntent | QueryUnitsIntent;
+/** CRM Tower (docs/21 §6): лид c телефона/имени/потребности. */
+export interface LeadCreateIntent { kind: 'LEAD_CREATE'; contactName: string; contactPhone: string | null; unitNo: string | null; note: string }
+/** Звонок/заметка по сделке (по юниту или имени клиента) c датой следующего шага. */
+export interface ActivityLogIntent { kind: 'ACTIVITY_LOG'; activity: 'CALL' | 'NOTE'; unitNo: string | null; contactName: string | null; note: string; followUpAt: string | null }
+/** Назначить показ: юнит + дата/время (+ клиент). */
+export interface ViewingScheduleIntent { kind: 'VIEWING_SCHEDULE'; unitNo: string; at: string; contactName: string | null; note: string }
+/** Результат показа по юниту. */
+export interface ViewingResultIntent { kind: 'VIEWING_RESULT'; unitNo: string; result: 'OFFER' | 'THINKING' | 'RESCHEDULE' | 'LOST'; expectedRateMinor: bigint | null; at: string | null; note: string }
+/** Активность по собственнику (юнит или имя): звонок / расчёт показан / follow-up. */
+export interface OwnerActivityIntent { kind: 'OWNER_ACTIVITY'; unitNo: string | null; ownerName: string | null; calcShown: boolean; note: string; followUpAt: string | null }
+export interface QueryMyDayIntent { kind: 'QUERY_MY_DAY' }
+
+export type Intent = UnitVacateIntent | DealViewingNoteIntent | UnitIssueIntent | QueryUnitsIntent | LeadCreateIntent | ActivityLogIntent | ViewingScheduleIntent | ViewingResultIntent | OwnerActivityIntent | QueryMyDayIntent;
 
 export interface IntentExtraction {
   intent: Intent | null;
@@ -50,5 +62,5 @@ export interface IntentExtraction {
 }
 
 export interface IntentExtractor {
-  extract(input: { text: string }): Promise<IntentExtraction>;
+  extract(input: { text: string; now?: Date }): Promise<IntentExtraction>;
 }
