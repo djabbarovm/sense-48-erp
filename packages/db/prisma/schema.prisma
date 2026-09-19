@@ -2765,3 +2765,30 @@ model HouseCharge {
   @@index([tenantId, ownerId, status])
   @@map("house_charge")
 }
+
+// Геймификация (этап DMS): заявка сотрудника на награду. XP/уровни/миссии/streak
+// вычисляются из бизнес-фактов на лету (см. db/services/gamification), таблиц не требуют.
+enum RewardStatus {
+  REQUESTED
+  APPROVED
+  FULFILLED
+  DECLINED
+}
+
+model RewardRedemption {
+  id          String       @id @default(uuid(7)) @db.Uuid
+  tenantId    String       @map("tenant_id") @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  rewardKey   String       @map("reward_key") // ключ из каталога tenant.settings.rewards
+  rewardName  String       @map("reward_name") // снимок названия на момент заявки
+  costXp      Int          @map("cost_xp") // снимок порога
+  status      RewardStatus @default(REQUESTED)
+  note        String?
+  decidedById String?      @map("decided_by_id") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, status])
+  @@map("reward_redemption")
+}
