@@ -41,6 +41,26 @@ describe('A-06 RBAC matrix (docs/05)', () => {
     expect(can(ctx, 'batch.approve')).toBe(false);
   });
 
+  it('ADR-038: COMMERCIAL_DIRECTOR = права COMMERCIAL_MANAGER (надзор; область видимости — в домене)', () => {
+    for (const code of PERMISSION_CODES) {
+      expect(can(ctxWith('COMMERCIAL_DIRECTOR'), code), code).toBe(can(ctxWith('COMMERCIAL_MANAGER'), code));
+    }
+  });
+
+  it('ADR-038: CEO — только видимость, ни одного права на изменение/согласование (four-eyes цел)', () => {
+    const ceo = ctxWith('CEO');
+    // Разрешено CEO может быть только из набора «чтение/дашборд/аудит»
+    const READ_OK = new Set(PERMISSION_CODES.filter((c) => c.endsWith('.view')));
+    for (const c of ['dashboard.owner', 'dashboard.ops', 'audit.view', 'owner.pipeline'] as const) READ_OK.add(c);
+    for (const code of PERMISSION_CODES) {
+      if (can(ceo, code)) expect(READ_OK.has(code), `CEO не должен иметь ${code}`).toBe(true);
+    }
+    // Явные контроли — CEO закрыт (нельзя нарушить four-eyes / контроли)
+    for (const code of ['payment.create', 'batch.approve', 'batch.create', 'contract.approve', 'pr.approve.owner', 'tax.approve', 'payroll.approve', 'user.manage', 'tenant.settings', 'advance.write_off'] as const) {
+      expect(can(ceo, code), `CEO → ${code}`).toBe(false);
+    }
+  });
+
   it('инварианты docs/05: Admin вне финансового workflow, Owner не готовит платежи', () => {
     const admin = ctxWith('ADMIN');
     for (const code of PERMISSION_CODES.filter((c) => c.startsWith('payment.') && c !== 'payment.view')) {

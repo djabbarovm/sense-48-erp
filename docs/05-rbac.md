@@ -21,6 +21,8 @@
 | REQUESTER | Инициатор закупок / sales | — |
 | ADMIN | Настройка tenant | обязателен |
 | COMMERCIAL_MANAGER | MDS Property: коммерция, сделки, цены, статусы занятости (docs/20 §6) | рекомендован |
+| COMMERCIAL_DIRECTOR | DMS operating profile (ADR-038): надзор над коммерцией. Права = COMMERCIAL_MANAGER; «видит всю команду» — область видимости (домен), не матрица | — |
+| CEO | DMS operating profile (ADR-038): exception-first профиль руководителя бизнеса. Только видимость (все `*.view` + дашборды + аудит), без прав на изменение/согласование — four-eyes неизменен | — |
 | BROKER | MDS Property: назначенный inventory, показы, стадии до договора | — |
 | CALL_CENTER | CRM Tower (docs/21): входящие лиды, квалификация, показы, обзвон собственников; сделка не дальше показа (BR-P62), лид назначается дежурному менеджеру | — |
 | OPERATIONS_MANAGER | MDS Property: готовность, эксплуатация, заявки | — |
