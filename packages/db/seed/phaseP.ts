@@ -3,7 +3,8 @@
  * Детерминирован (LCG по индексу юнита), идемпотентен (upsert по стабильным ключам).
  * Никаких реальных собственников/арендаторов — все имена вымышлены.
  */
-import { hashPassword } from '@finance-os/core';
+import { encryptSecret, hashPassword, maskAccount } from '@finance-os/core';
+import { generateRentCharges, markOverdueRentCharges } from '../src/services/rent.js';
 import type { CommercialStatus, DealSource, DealStage, LeaseStatus, OccupancyStatus, PrismaClient, ReadinessStatus, RentalMode, RoleCode, UnitType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { DEV_PASSWORD } from './phaseA.js';
@@ -392,4 +393,36 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
     else if (seq.nextValue < want) await prisma.sequence.update({ where: { id: seq.id }, data: { nextValue: want } });
   }
   console.log(`  services: ${items.size} catalog items, ${soCreated} orders created`);
+
+  // ── P-18: аренда и дебиторка — счёт УК, начисления по действующим договорам, часть оплачена по выписке, часть просрочена ──
+  const bankKey = process.env.BANK_DATA_KEY ?? 'DHqPbmDW3nUOytHplLmVMkP2mSVJlRlXWLh2GYYx4hg='; // только dev
+  const accountNo = '20208840900000770101';
+  let account = await prisma.bankAccount.findFirst({ where: { tenantId, accountMasked: maskAccount(accountNo) } });
+  if (!account) account = await prisma.bankAccount.create({ data: { tenantId, bankName: 'Капиталбанк', mfo: '01088', accountMasked: maskAccount(accountNo), accountEncrypted: encryptSecret(accountNo, bankKey), currency: 'USD', openingBalanceMinor: 25_000_000n, openingBalanceDate: new Date('2026-06-01') } });
+  const generated = await generateRentCharges(tenantId);
+  // Оплаты: детерминированно — по каждому третьему начислению прошлых месяцев приходит поступление и зачитывается (PAID только через транзакцию)
+  const charges = await prisma.rentCharge.findMany({ where: { tenantId, status: 'DUE' }, include: { lease: { select: { occupantName: true } }, unit: { select: { unitNo: true } } }, orderBy: [{ periodStart: 'asc' }, { unitId: 'asc' }] });
+  const finance = (await prisma.userTenantRole.findFirst({ where: { tenantId, role: 'FINANCE_OPS_LEAD' }, select: { userId: true } }))?.userId ?? reporter ?? null;
+  let paid = 0;
+  const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+  for (let i = 0; i < charges.length; i++) {
+    const c = charges[i]!;
+    const past = c.periodStart < monthStart;
+    // прошлые месяцы: 2 из 3 оплачены; текущий: 1 из 3
+    if (!(past ? i % 3 !== 2 : i % 3 === 0)) continue;
+    const externalId = `RENT-${c.number}`;
+    if (await prisma.bankTransaction.findUnique({ where: { bankAccountId_externalId: { bankAccountId: account.id, externalId } } })) continue;
+    const date = new Date(c.dueAt.getTime() - (i % 4) * 86_400_000);
+    const tx = await prisma.bankTransaction.create({ data: { tenantId, bankAccountId: account.id, externalId, bookingDate: date, valueDate: date, amountMinor: c.amountMinor, currency: c.currency, counterpartyName: c.lease.occupantName, purposeText: `Аренда ${c.unit.unitNo} ${c.periodStart.toISOString().slice(0, 7)}`, matchStatus: 'MANUAL_MATCHED' } });
+    await prisma.reconciliationMatch.create({ data: { tenantId, bankTransactionId: tx.id, objectType: 'RENT_CHARGE', objectId: c.id, amountMinor: c.amountMinor, matchedBy: finance, method: 'MANUAL', confidence: 1 } });
+    await prisma.rentCharge.update({ where: { id: c.id }, data: { receivedMinor: c.amountMinor, status: 'PAID', paidAt: date } });
+    paid++;
+  }
+  // Нераспределённые поступления для формы зачёта
+  for (const [k, amt] of [['RENT-UNMATCHED-1', 180_000n], ['RENT-UNMATCHED-2', 250_000n], ['RENT-UNMATCHED-3', 95_000n]] as const) {
+    if (await prisma.bankTransaction.findUnique({ where: { bankAccountId_externalId: { bankAccountId: account.id, externalId: k } } })) continue;
+    await prisma.bankTransaction.create({ data: { tenantId, bankAccountId: account.id, externalId: k, bookingDate: daysAgo(2), valueDate: daysAgo(2), amountMinor: amt, currency: 'USD', counterpartyName: k === 'RENT-UNMATCHED-1' ? 'Uzbek Textile Group' : k === 'RENT-UNMATCHED-2' ? 'Nova Law' : 'Частное лицо', purposeText: 'Оплата аренды' } });
+  }
+  const overdue = await markOverdueRentCharges(tenantId);
+  console.log(`  rent: ${generated} charges generated, ${paid} paid by bank tx, ${overdue} marked overdue`);
 }
