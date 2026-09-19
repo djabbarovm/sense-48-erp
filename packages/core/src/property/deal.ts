@@ -23,11 +23,14 @@ export const isActiveStage = (s: DealStage) => ACTIVE_DEAL_STAGES.includes(s);
 
 /** Стадии, до которых брокер двигает сделку сам (BR-P11/P21): договорные — коммерческий менеджер. */
 export const BROKER_MAX_STAGE: DealStage = 'LOI';
+/** BR-P62: колл-центр ведёт сделку до показа включительно, дальше — менеджер. */
+export const CALL_CENTER_MAX_STAGE: DealStage = 'VIEWING';
 
 export type DealTrigger = 'advance' | 'back' | 'lose' | 'reopen' | 'win';
 
 export interface DealPayload {
   brokerOnly: boolean;
+  callCenterOnly?: boolean;
   target?: DealStage;
   hasUnit: boolean;
   hasLease?: boolean;
@@ -49,6 +52,7 @@ export const dealMachine = new StateMachine<DealStage, DealTrigger, DealPayload>
       const next = nextStage(from);
       if (!next) throw new ValidationError('DEAL_LAST_STAGE');
       if (stageIndex(next) >= stageIndex('PROPERTY_SELECTED') + 1 && !payload.hasUnit) throw new ValidationError('DEAL_UNIT_REQUIRED', 'DEAL_UNIT_REQUIRED: c этапа «Показ» у сделки должен быть выбран юнит');
+      if (payload.callCenterOnly && stageIndex(next) > stageIndex(CALL_CENTER_MAX_STAGE)) throw new ValidationError('CALL_CENTER_STAGE_LIMIT', 'CALL_CENTER_STAGE_LIMIT: после показа сделку ведёт менеджер (BR-P62)');
       if (payload.brokerOnly && stageIndex(next) > stageIndex(BROKER_MAX_STAGE)) throw new ValidationError('BROKER_STAGE_LIMIT', 'BROKER_STAGE_LIMIT: договорные стадии выставляет коммерческий менеджер');
     },
   },

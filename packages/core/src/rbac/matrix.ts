@@ -92,7 +92,7 @@ export const PERMISSION_MATRIX = {
   'user.manage': ['ADMIN'],
   'audit.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ACCOUNTANT', 'ADMIN'],
   // ── MDS Property (docs/20 §6) ──
-  'property.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING'],
+  'property.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'DOCUMENT_CONTROLLER', 'ACCOUNTANT', 'REQUESTER', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING', 'CALL_CENTER'],
   'property.manage': ['OWNER', 'ADMIN', 'COMMERCIAL_MANAGER'],
   'unit.status.readiness': ['OWNER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER'],
   'unit.status.occupancy': ['OWNER', 'COMMERCIAL_MANAGER'],
@@ -101,17 +101,18 @@ export const PERMISSION_MATRIX = {
   'unit.status.override': ['OWNER', 'COMMERCIAL_MANAGER'],
   'unit.publish': ['OWNER', 'COMMERCIAL_MANAGER', 'MARKETING'],
   'unit.pricing.edit': ['OWNER', 'COMMERCIAL_MANAGER'],
-  'unit.owner.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  'unit.owner.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'CALL_CENTER'],
   'unit.finance.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'COMMERCIAL_MANAGER'],
   'unit.activity.create': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER'],
   // ── MDS Property Wave 2 (docs/20 §11) ──
   'lease.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'OPERATIONS_MANAGER'],
   'lease.manage': ['OWNER', 'COMMERCIAL_MANAGER'],
-  'deal.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING'],
-  'deal.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
-  'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
+  'deal.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING', 'CALL_CENTER'],
+  'deal.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'CALL_CENTER'],
+  'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'CALL_CENTER'],
   'contact.merge': ['OWNER', 'COMMERCIAL_MANAGER'],
-  'owner.pipeline': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'],
+  'owner.activity': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'CALL_CENTER', 'OPERATIONS_MANAGER'],
+  'owner.pipeline': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN', 'CALL_CENTER'],
   'apikey.manage': ['OWNER', 'ADMIN'],
   // WorkBot (docs/20 §11.4): черновик может создать любой c property.view; подтверждение — по праву самого действия
   // Заявки и инциденты (docs/20 §11.5)
@@ -146,7 +147,7 @@ export const PERMISSION_MATRIX = {
   // Owner Portal (docs/20 §11.6): у собственника нет property.view — только свой портал и заявки по своим юнитам
   'owner.portal': ['PROPERTY_OWNER'],
   'owner.request': ['PROPERTY_OWNER'],
-  'action.draft': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'],
+  'action.draft': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN', 'CALL_CENTER'],
 } as const satisfies Record<string, readonly RoleCode[]>;
 
 export type PermissionCode = keyof typeof PERMISSION_MATRIX;

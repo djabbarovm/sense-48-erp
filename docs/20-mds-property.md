@@ -277,6 +277,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 |---|---|---|---|
 | BR-P59 | SLA первого касания лида | NEW без активности сотрудника 15 мин → напоминание менеджеру, 30 мин → эскалация OWNER; вне рабочего времени — тихо; повторно не шлётся | telegram-bot.test |
 | BR-P60 | Показ — событие c датой и результатом | назначение → VIEWING c followUpAt; за час напоминание; через 2 ч запрос результата; результат меняет стадию/следующий шаг; отказ — только c причиной | my-day.test, telegram-bot.test |
+| BR-P62 | Колл-центр ведёт до показа | роль CALL_CENTER: создаёт лид (менеджер — дежурный из `lead_default_manager` или первый COMMERCIAL_MANAGER), назначает показ, видит всю входящую очередь в «Мой день»; advance дальше VIEWING → CALL_CENTER_STAGE_LIMIT; по собственникам — только активности и follow-up (`owner.activity`) | call-center.test |
 | BR-P61 | Нет сделки без следующего шага | каждое быстрое действие проставляет nextAction/nextActionAt; сделки без шага — в «Мой день» и дайджесте | my-day.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)

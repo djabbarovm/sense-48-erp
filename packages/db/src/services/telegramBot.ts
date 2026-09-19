@@ -15,7 +15,7 @@ import { buildTenantContext } from '../context.js';
 import { confirmActionDraft, createActionDraft, rejectActionDraft } from './actionDrafts.js';
 import { getMyDay, taskDone, viewingResult, type MyDay, type ViewingResult } from './myDay.js';
 
-const CRM_ROLES: RoleCode[] = ['COMMERCIAL_MANAGER', 'BROKER', 'OWNER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'];
+const CRM_ROLES: RoleCode[] = ['COMMERCIAL_MANAGER', 'BROKER', 'CALL_CENTER', 'OWNER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'];
 const appUrl = () => (process.env.APP_URL ?? '').replace(/\/$/, '');
 const link = (path: string | null) => (path ? `${appUrl()}${path}` : '');
 const tz = (d: Date) => new Date(d.getTime() + 5 * 3600_000);
@@ -216,11 +216,12 @@ export async function sendCrmReminders(tenantId: string, now: Date, api: Telegra
   if (workingHours(now)) {
     const fresh = await prisma.deal.findMany({ where: { tenantId, stage: 'NEW', createdAt: { lt: new Date(now.getTime() - 15 * 60_000), gt: new Date(now.getTime() - 2 * 86_400_000) } }, select: { id: true, managerId: true, contactName: true, source: true, createdAt: true } });
     const owners = await crmRecipients(tenantId, ['OWNER']);
+    const callCenter = await crmRecipients(tenantId, ['CALL_CENTER']);
     for (const d of fresh) {
       const touched = await prisma.unitActivity.count({ where: { dealId: d.id, source: { not: 'API' } } });
       if (touched) continue;
       const mins = Math.floor((now.getTime() - d.createdAt.getTime()) / 60_000);
-      if (!(await marked(tenantId, 'lead.sla.warn', d.id))) { await mark(tenantId, 'lead.sla.warn', 'deal', d.id, now); await send(d.managerId, `🔔 Лид без ответа ${mins} мин: ${d.contactName} (${d.source}). Свяжитесь и напишите мне «позвонил ${d.contactName.split(/\s+/)[0]}…».\n${link(`/deals/${d.id}`)}`); }
+      if (!(await marked(tenantId, 'lead.sla.warn', d.id))) { await mark(tenantId, 'lead.sla.warn', 'deal', d.id, now); const warn = `🔔 Лид без ответа ${mins} мин: ${d.contactName} (${d.source}). Свяжитесь и напишите мне «позвонил ${d.contactName.split(/\s+/)[0]}…».\n${link(`/deals/${d.id}`)}`; await send(d.managerId, warn); for (const c of callCenter) if (c.userId !== d.managerId) await send(c.userId, warn); }
       if (mins >= 30 && !(await marked(tenantId, 'lead.sla.escalate', d.id))) { await mark(tenantId, 'lead.sla.escalate', 'deal', d.id, now); for (const o of owners) if (o.userId !== d.managerId) await send(o.userId, `🚨 Лид ${d.contactName} без касания ${mins} мин (менеджер не ответил). ${link(`/deals/${d.id}`)}`); }
     }
   }

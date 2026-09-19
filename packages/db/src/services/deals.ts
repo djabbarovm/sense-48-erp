@@ -59,6 +59,15 @@ export interface DealInput {
 }
 
 const brokerOnly = (ctx: TenantContext) => hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
+/** BR-P62: колл-центр без роли менеджера/владельца/брокера. */
+const callCenterOnly = (ctx: TenantContext) => hasRole(ctx, 'CALL_CENTER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER', 'BROKER');
+/** Дежурный менеджер для лидов КЦ: tenant.settings.lead_default_manager или первый COMMERCIAL_MANAGER. */
+async function defaultManager(tenantId: string): Promise<string | null> {
+  const t = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } });
+  const s = (t?.settings ?? {}) as Record<string, unknown>;
+  if (typeof s.lead_default_manager === 'string') return s.lead_default_manager;
+  return (await prisma.userTenantRole.findFirst({ where: { tenantId, role: 'COMMERCIAL_MANAGER' }, orderBy: { createdAt: 'asc' }, select: { userId: true } }))?.userId ?? null;
+}
 const pick = (d: Deal) => ({ stage: d.stage, product: d.product, unitId: d.unitId, managerId: d.managerId, expectedRateMinor: d.expectedRateMinor?.toString() ?? null, reservedUntil: d.reservedUntil, nextActionAt: d.nextActionAt, depositReceived: d.depositReceived });
 
 const validShare = (bp?: number): number => { if (bp == null) return 0; if (!Number.isInteger(bp) || bp < 0 || bp > 10_000) throw new ValidationError('SHARE_INVALID', 'SHARE_INVALID: доля внешнего брокера 0–100%'); return bp; };
@@ -85,7 +94,7 @@ export async function recomputeUnitCommercialStatus(tx: Prisma.TransactionClient
 export async function createDeal(ctx: TenantContext, input: DealInput): Promise<Deal> {
   requirePermission(ctx, 'deal.manage');
   if (!input.contactName.trim()) throw new ValidationError('CONTACT_REQUIRED');
-  const managerId = brokerOnly(ctx) ? ctx.userId : (input.managerId ?? ctx.userId);
+  const managerId = brokerOnly(ctx) ? ctx.userId : (input.managerId ?? (callCenterOnly(ctx) ? (await defaultManager(ctx.tenantId)) ?? ctx.userId : ctx.userId));
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     if (input.unitId) await findScopedOr404(tx.unit, ctx, input.unitId);
     const number = await nextNumber(tx, ctx.tenantId, 'DEAL');
@@ -154,7 +163,7 @@ export async function moveDeal(ctx: TenantContext, id: string, trigger: Exclude<
   requirePermission(ctx, 'deal.manage');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const before = await loadOwnDeal(tx, ctx, id);
-    dealMachine.assert(ctx, before.stage, trigger, { brokerOnly: brokerOnly(ctx), hasUnit: !!before.unitId });
+    dealMachine.assert(ctx, before.stage, trigger, { brokerOnly: brokerOnly(ctx), callCenterOnly: callCenterOnly(ctx), hasUnit: !!before.unitId });
     let stage: DealStage;
     if (trigger === 'advance') stage = nextStage(before.stage)!;
     else if (trigger === 'back') stage = prevStage(before.stage)!;

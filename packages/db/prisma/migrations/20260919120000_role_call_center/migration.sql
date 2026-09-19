@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "RoleCode" ADD VALUE 'CALL_CENTER';
+

@@ -13,7 +13,8 @@ import { setTaskStatus } from './tasks.js';
 
 const ACTIVE = ['NEW', 'QUALIFIED', 'PROPERTY_SELECTED', 'VIEWING', 'OFFER', 'NEGOTIATION', 'LOI', 'CONTRACT', 'MOVE_IN'];
 
-export function seesAll(ctx: TenantContext): boolean { return hasRole(ctx, 'OWNER', 'ADMIN', 'FINANCE_OPS_LEAD'); }
+/** OWNER/ADMIN/лид финансов — вся команда; колл-центр — вся входящая очередь (лиды и собственники без менеджера — его работа). */
+export function seesAll(ctx: TenantContext): boolean { return hasRole(ctx, 'OWNER', 'ADMIN', 'FINANCE_OPS_LEAD', 'CALL_CENTER'); }
 
 export interface MyDay {
   userId: string; seesAll: boolean; dayStart: Date; dayEnd: Date;

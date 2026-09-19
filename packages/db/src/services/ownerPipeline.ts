@@ -38,7 +38,7 @@ export async function moveOwnerStage(ctx: TenantContext, ownerId: string, to: Ow
 }
 
 export async function setOwnerNextAction(ctx: TenantContext, ownerId: string, input: { nextAction: string | null; nextActionAt: Date | null; managerId?: string | null }): Promise<PropertyOwner> {
-  requirePermission(ctx, 'property.manage');
+  if (!can(ctx, 'property.manage')) requirePermission(ctx, 'owner.activity');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const before = await findScopedOr404(tx.propertyOwner, ctx, ownerId);
     const after = await tx.propertyOwner.update({ where: { id: ownerId }, data: { nextAction: input.nextAction?.trim() || null, nextActionAt: input.nextActionAt, ...(input.managerId !== undefined ? { managerId: input.managerId } : {}) } });
@@ -47,7 +47,7 @@ export async function setOwnerNextAction(ctx: TenantContext, ownerId: string, in
 }
 
 export async function addOwnerActivity(ctx: TenantContext, ownerId: string, input: { kind: UnitActivityKind; note: string; followUpAt?: Date | null; unitId?: string | null }, now = new Date()) {
-  requirePermission(ctx, 'property.manage');
+  if (!can(ctx, 'property.manage')) requirePermission(ctx, 'owner.activity'); // КЦ: звонки и follow-up без права менять реестр
   if (!input.note.trim()) throw new ValidationError('NOTE_REQUIRED');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const owner = await findScopedOr404(tx.propertyOwner, ctx, ownerId);

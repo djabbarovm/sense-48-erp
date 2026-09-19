@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: роль колл-центра (P-25)
+- core: роль `CALL_CENTER` (context/ROLE_CODES), права deal.view/manage/contact.view, owner.pipeline, action.draft, property.view, unit.owner.view + новое `owner.activity`; `CALL_CENTER_MAX_STAGE = VIEWING` и guard `CALL_CENTER_STAGE_LIMIT` в dealMachine (BR-P62).
+- db: `createDeal` — лид от КЦ назначается дежурному менеджеру (`tenant.settings.lead_default_manager` или первый COMMERCIAL_MANAGER); `moveDeal` передаёт `callCenterOnly`; `addOwnerActivity`/`setOwnerNextAction` принимают `owner.activity`; «Мой день» для КЦ — вся очередь; SLA-предупреждения по лидам дублируются КЦ; enum RoleCode + миграция `role_call_center`; seed `callcenter@piramit.test`; тест `call-center.test.ts`.
+- docs: `docs/05` роль и права, `docs/20` BR-P62.
+
 ## [Phase P] 2026-09-19 — CRM Tower: Telegram-бот сотрудника (P-24)
 - adapters: `workbot/dates.ts` (`parseRuDateTime`, `extractPhone` — Unicode-границы слов), CRM-намерения в `RuleBasedIntentExtractor` (LEAD_CREATE, ACTIVITY_LOG, VIEWING_SCHEDULE, VIEWING_RESULT, OWNER_ACTIVITY, QUERY_MY_DAY; старые сохранены), `telegram/bot.ts` (`TelegramBotApi`: Http / Mock / Console, inline-кнопки, webhook); тесты.
 - db: `services/telegramBot.ts` — привязка кодом, `contextForChat`, `handleTelegramUpdate` (команды, черновики c кнопками, callback подтверждения/отказа, результат показа кнопками c причиной отказа), `digestText`, `sendCrmDigests`, `sendCrmReminders` (показ −60 мин, результат +2 ч, SLA лида 15/30 мин; дедуп маркерами DomainEvent); `actionDrafts.ts` — исполнение CRM-намерений через `myDay`/`ownerPipeline`, `now` в извлекатель; `User.telegramLinkCode/telegramLinkedAt` (миграция `telegram_link_code`); тест `telegram-bot.test.ts`.

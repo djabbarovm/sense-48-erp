@@ -17,6 +17,8 @@ export const ROLE_CODES = [
   'BROKER',
   'OPERATIONS_MANAGER',
   'MARKETING',
+  // CRM Tower (docs/21 §1): колл-центр — заводит и квалифицирует лиды, назначает показы, обзвон собственников; сделку ведёт не дальше показа (BR-P62)
+  'CALL_CENTER',
   // Owner Portal (docs/20 §11.6): собственник видит только свои юниты
   'PROPERTY_OWNER',
 ] as const;
