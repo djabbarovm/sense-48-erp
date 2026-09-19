@@ -519,6 +519,7 @@ enum TaskType {
   WORKORDER_OVERDUE
   SERVICE_ORDER_OVERDUE
   RENT_OVERDUE
+  HOUSE_CHARGE_OVERDUE
 }
 
 enum TaskStatus {
@@ -1130,6 +1131,7 @@ enum ReconObjectType {
   AR_INVOICE
   RENT_CHARGE
   COMMISSION
+  HOUSE_CHARGE
   ADVANCE
   TAX
   PAYROLL
@@ -1681,6 +1683,9 @@ model PropertyOwner {
   marketingConsent  Boolean           @default(false) @map("marketing_consent") // согласен на публикацию фото/объявлений
   consentUpdatedAt  DateTime?         @map("consent_updated_at")
   userId            String?           @map("user_id") @db.Uuid // Owner Portal: учётка собственника (роль PROPERTY_OWNER)
+  // ст. 28 ЗРУ-581: договор управления письменно c КАЖДЫМ собственником
+  managementContractStatus   ManagementContractStatus @default(NONE) @map("management_contract_status")
+  managementContractSignedAt DateTime?                @map("management_contract_signed_at") @db.Date
   notes             String?
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
@@ -1701,6 +1706,8 @@ model Unit {
   unitNo               String            @map("unit_no") // immutable Unit ID (blueprint §5)
   type                 UnitType
   areaM2               Decimal           @map("area_m2") @db.Decimal(10, 2)
+  cadastralNumber      String?           @map("cadastral_number") // blueprint §1.7 identity; взносы по кадастру (BR-P51)
+  cadastralAreaM2      Decimal?          @map("cadastral_area_m2") @db.Decimal(10, 2)
   geometry             Json? // {points: [[x,y],...]} в planViewBox этажа
   ownerId              String?           @map("owner_id") @db.Uuid
   occupantName         String?           @map("occupant_name") // арендатор/гость (PII-light, без контактов)
@@ -1736,6 +1743,7 @@ model Unit {
   serviceOrders ServiceOrder[]
   rentCharges RentCharge[]
   mandates MallMandate[]
+  houseCharges HouseCharge[]
 
   @@unique([buildingId, unitNo])
   @@index([tenantId, buildingId])
@@ -2519,4 +2527,130 @@ model PartnerStatementLine {
   @@unique([tenantId, partnerName, period, customerRef])
   @@index([tenantId, period])
   @@map("partner_statement_line")
+}
+
+// ── §P10 Operations — деньги дома (docs/20 §11.13) ──
+
+enum ManagementContractStatus {
+  NONE
+  SENT
+  SIGNED
+  DECLINED
+}
+
+enum HouseFundKind {
+  OPERATIONS // контур 1: содержание общего имущества
+  MARKETING // маркетинг-фонд ТРЦ
+  CAPEX // капитальные работы (контур 3) — после юридического подтверждения
+}
+
+enum HouseBudgetCategory {
+  ENGINEERING
+  LIFTS
+  FIRE_SAFETY
+  SECURITY
+  CLEANING
+  UTILITIES_COMMON
+  REPAIRS
+  MATERIALS
+  INSURANCE_LICENSES
+  ADMIN
+  OTHER
+}
+
+/** Целевой фонд дома: отдельный счёт, тариф за м², вознаграждение ORDO отдельной строкой (OPEN). */
+model HouseFund {
+  id                String        @id @default(uuid(7)) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  buildingId        String?       @map("building_id") @db.Uuid
+  kind              HouseFundKind @default(OPERATIONS)
+  name              String
+  bankAccountId     String?       @map("bank_account_id") @db.Uuid
+  tariffPerM2Minor  BigInt        @map("tariff_per_m2_minor") // в месяц
+  currency          String        @default("UZS") @db.Char(3)
+  managementFeeBp   Int?          @map("management_fee_bp") // OPEN до Quantum Law
+  dueDay            Int           @default(15) @map("due_day")
+  active            Boolean       @default(true)
+  tariffApprovedAt  DateTime?     @map("tariff_approved_at") @db.Date // решение общего собрания
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  budgetLines HouseBudgetLine[]
+  expenses    HouseExpense[]
+  charges     HouseCharge[]
+
+  @@index([tenantId, active])
+  @@map("house_fund")
+}
+
+model HouseBudgetLine {
+  id           String              @id @default(uuid(7)) @db.Uuid
+  tenantId     String              @map("tenant_id") @db.Uuid
+  fundId       String              @map("fund_id") @db.Uuid
+  year         Int
+  category     HouseBudgetCategory
+  plannedMinor BigInt              @map("planned_minor") // на год
+  note         String?
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  fund HouseFund @relation(fields: [fundId], references: [id])
+
+  @@unique([fundId, year, category])
+  @@map("house_budget_line")
+}
+
+/** Фактический расход из денег дома: подрядчик, статья, документ-основание (прозрачность §5). */
+model HouseExpense {
+  id             String              @id @default(uuid(7)) @db.Uuid
+  tenantId       String              @map("tenant_id") @db.Uuid
+  fundId         String              @map("fund_id") @db.Uuid
+  date           DateTime            @db.Date
+  category       HouseBudgetCategory
+  amountMinor    BigInt              @map("amount_minor")
+  currency       String              @default("UZS") @db.Char(3)
+  contractorName String              @map("contractor_name")
+  description    String
+  documentId     String?             @map("document_id") @db.Uuid
+  paymentRequestId String?           @map("payment_request_id") @db.Uuid
+  workOrderId    String?             @map("work_order_id") @db.Uuid
+  createdBy      String?             @map("created_by") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  fund HouseFund @relation(fields: [fundId], references: [id])
+
+  @@index([tenantId, fundId, date])
+  @@map("house_expense")
+}
+
+/** Взнос собственника за месяц: площадь × тариф; PAID только по банку (BR-P53). */
+model HouseCharge {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  number            String // HC-2026-000001
+  fundId            String           @map("fund_id") @db.Uuid
+  unitId            String           @map("unit_id") @db.Uuid
+  ownerId           String           @map("owner_id") @db.Uuid
+  periodStart       DateTime         @map("period_start") @db.Date
+  dueAt             DateTime         @map("due_at") @db.Date
+  areaM2            Decimal          @map("area_m2") @db.Decimal(10, 2)
+  preCadastre       Boolean          @default(false) @map("pre_cadastre")
+  tariffMinor       BigInt           @map("tariff_minor")
+  amountMinor       BigInt           @map("amount_minor")
+  receivedMinor     BigInt           @default(0) @map("received_minor")
+  currency          String           @db.Char(3)
+  status            RentChargeStatus @default(DUE)
+  paidAt            DateTime?        @map("paid_at")
+  overdueNotifiedAt DateTime?        @map("overdue_notified_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  fund HouseFund @relation(fields: [fundId], references: [id])
+  unit Unit      @relation(fields: [unitId], references: [id])
+
+  @@unique([tenantId, number])
+  @@unique([fundId, unitId, periodStart])
+  @@index([tenantId, status, dueAt])
+  @@index([tenantId, ownerId, status])
+  @@map("house_charge")
 }

@@ -138,6 +138,9 @@ export const PERMISSION_MATRIX = {
   'mall.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING', 'OPERATIONS_MANAGER'],
   'mall.manage': ['OWNER', 'COMMERCIAL_MANAGER'],
   'mall.fee.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  // Operations — деньги дома (docs/20 §11.13): фонд, взносы, бюджет, отчёт
+  'house.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER'],
+  'house.manage': ['OWNER', 'OPERATIONS_MANAGER', 'FINANCE_OPS_LEAD'],
   // Owner Portal (docs/20 §11.6): у собственника нет property.view — только свой портал и заявки по своим юнитам
   'owner.portal': ['PROPERTY_OWNER'],
   'owner.request': ['PROPERTY_OWNER'],
