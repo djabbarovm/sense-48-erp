@@ -10,6 +10,7 @@ import {
   createDealFollowupTasks,
   createExpiryTasksForTenant,
   deliverDomainEvents,
+  markOverdueOwnerFollowups,
   escalateOverdueWorkOrders,
   escalateOverdueServiceOrders,
   generateRentCharges,
@@ -125,6 +126,11 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'house-charges',
       cron: '0 3 1 * *',
       run: async (tenantId, now) => (await generateHouseCharges(tenantId, now)).created,
+    },
+    {
+      name: 'owner-followup',
+      cron: '0 5 * * *',
+      run: (tenantId, now) => markOverdueOwnerFollowups(tenantId, now),
     },
     {
       name: 'house-overdue',

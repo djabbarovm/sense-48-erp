@@ -32,6 +32,7 @@ describe('D-05 workers: реестр джобов', () => {
       'bonus-kpi-deadline',
       'service-packages',
       'house-charges',
+      'owner-followup',
       'house-overdue',
       'domain-events',
       'event-progress',

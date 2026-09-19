@@ -3,7 +3,9 @@ import type { Prisma } from '@prisma/client';
 import type { NotificationAdapter } from '@finance-os/adapters';
 import { prisma } from '../client.js';
 
-export type DomainEventType = 'unit.status.changed' | 'lease.activated' | 'lease.expiring' | 'lease.terminated' | 'deal.stage.changed' | 'work_order.created' | 'work_order.status.changed' | 'work_order.overdue' | 'service_order.created' | 'service_order.status.changed' | 'service_order.overdue' | 'rent.overdue' | 'rent.paid' | 'commission.accrued' | 'commission.paid' | 'mall.mandate.changed' | 'house.charge.overdue';
+export type DomainEventType = 'unit.status.changed' | 'lease.activated' | 'lease.expiring' | 'lease.terminated' | 'deal.stage.changed' | 'work_order.created' | 'work_order.status.changed' | 'work_order.overdue' | 'service_order.created' | 'service_order.status.changed' | 'service_order.overdue' | 'rent.overdue' | 'rent.paid' | 'commission.accrued' | 'commission.paid' | 'mall.mandate.changed' | 'house.charge.overdue'
+  | 'owner.stage.changed'
+  | 'owner.followup.overdue';
 
 export async function emitDomainEvent(
   tx: Prisma.TransactionClient,

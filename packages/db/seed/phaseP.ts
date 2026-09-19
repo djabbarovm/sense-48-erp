@@ -594,4 +594,20 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   }
   const houseOverdue = await markOverdueHouseCharges(tenantId);
   console.log(`  house: ${cad} cadastre set, ${contracts} contracts, ${hc.created} charges (${hc.withoutOwner} units without owner), ${housePaid} paid by bank tx, ${houseOverdue} overdue`);
+
+  // ── P-22b: воронка собственников — менеджер, источник, следующее действие, расчёт показан у части; настройки расчёта (STR fee OPEN) ──
+  await prisma.tenant.update({ where: { id: tenantId }, data: { settings: { ...((await prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } })).settings as Record<string, unknown>), owner_calc: { str_fee_bp: null, str_occupancy_pct: 65, str_opex_pct: 20, str_adr_multiplier: 2.0, mid_multiplier: 1.25, ltr_vacancy_months: 1, mid_vacancy_months: 1.5, assumed_str_fee_bp: 2000 } } } });
+  const pipelineOwners = await prisma.propertyOwner.findMany({ where: { tenantId }, orderBy: { displayName: 'asc' }, select: { id: true, pipelineStage: true, managerId: true, nextAction: true } });
+  const sources = ['REFERRAL', 'WALK_IN', 'TELEGRAM', 'WEBSITE', 'BROKER', 'OTHER'] as const;
+  const nextActions = ['Позвонить и предложить встречу', 'Отправить расчёт STR / LTR', 'Согласовать договор управления', 'Забрать подписанный договор', 'Передать ключи и акт'];
+  let pipelined = 0;
+  for (let i = 0; i < pipelineOwners.length; i++) {
+    const o = pipelineOwners[i]!;
+    if (o.managerId) continue;
+    const active = !['HANDED_OVER', 'LOST'].includes(o.pipelineStage);
+    const stageIdx = ['LEAD', 'CONTACTED', 'CALC_SHOWN', 'CONSENT', 'CONTRACT_SENT', 'SIGNED'].indexOf(o.pipelineStage);
+    await prisma.propertyOwner.update({ where: { id: o.id }, data: { managerId: i % 3 === 0 ? (reporter ?? cmUser ?? null) : (cmUser ?? null), source: sources[i % sources.length]!, stageChangedAt: daysAgo(3 + (i * 7) % 40), ...(active ? { nextAction: nextActions[Math.max(0, Math.min(4, stageIdx))], nextActionAt: i % 4 === 0 ? daysAgo(2 + (i % 5)) : daysAhead(1 + (i % 9)) } : {}), ...(stageIdx >= 2 || (active && i % 2 === 0) ? { calcShownAt: daysAgo(5 + (i % 20)) } : {}) } });
+    pipelined++;
+  }
+  console.log(`  owner pipeline: ${pipelined} owners enriched (manager, source, next action)`);
 }

@@ -111,6 +111,7 @@ export const PERMISSION_MATRIX = {
   'deal.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
   'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER'],
   'contact.merge': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'owner.pipeline': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'],
   'apikey.manage': ['OWNER', 'ADMIN'],
   // WorkBot (docs/20 §11.4): черновик может создать любой c property.view; подтверждение — по праву самого действия
   // Заявки и инциденты (docs/20 §11.5)

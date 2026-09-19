@@ -142,6 +142,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 4b Mall | ORDO Mall — коммерция: мандаты ДДУ, tenant mix, линии актива, экономика собственника ✓ P-19; фонды OPEX/маркетинг и отчёт собственнику ТРЦ — c Operations | частично |
 | 4c Services | Services v1.0: условия направлений, одно окно, cost-to-serve, пакеты, referral, аналитика валидации ✓ P-20 | ✓ |
 | 5a CRM | Клиентская база: контакты, автопривязка сделок и лидов, PII по праву, слияние дублей, импорт ✓ P-22a | ✓ |
+| 5b CRM | Воронка собственников (H4): стадии, сегменты, расчёт STR / mid-term / LTR, follow-up, аналитика конверсии ✓ P-22b | ✓ |
 | 4d Operations | Деньги дома: фонд и счёт дома, взносы по кадастру, зачёт банком, бюджет/расходы, перерасчёт, отчёт собственникам, договоры управления ✓ P-21 | ✓ |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
@@ -255,6 +256,14 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 |---|---|---|---|
 | BR-P55 | Один клиент — один контакт | телефон нормализуется (9 цифр → +998…), сделка/лид ищут контакт по телефону, доп. телефону, затем email; нет — создаётся; email/компания дозаполняются; повторное имя не создаёт дубль | contacts.test, contact (core) |
 | BR-P56 | Слияние дублей — только contact.merge, c аудитом | сделки переносятся, второй телефон → phoneAlt, теги объединяются, дубль удаляется; новая сделка по любому из телефонов попадает в объединённый контакт | contacts.test |
+
+### 11.15 CRM Tower — воронка собственников и расчёт трёх сценариев (P-22b; бизнес-модель Tower H4)
+`PropertyOwner.pipelineStage`: LEAD → CONTACTED → CALC_SHOWN → CONSENT → CONTRACT_SENT → SIGNED → HANDED_OVER, LOST из любой незавершённой (причина: SELF_MANAGES / OTHER_OPERATOR / FEE / TRUST / SELLING / NO_RESPONSE / OTHER), reopen LOST → CONTACTED. Поля: stageChangedAt, nextAction/nextActionAt, managerId, source, lostReason, calcShownAt; активности собственника — `UnitActivity.ownerId`. Сегмент (H4) по помещениям: STUDIO < 45 м² · ONE_BED < 70 · TWO_BED < 100 · LARGE · OFFICE · RETAIL · MIXED. Расчёт трёх сценариев (`ownerScenarios`): LTR = аренда × (12 − простой), комиссию ORDO платит арендатор; mid-term = LTR × 1,25 × (12 − 1,5); STR = ADR × 365 × загрузка − opex 20% − вознаграждение ORDO (ставка `owner_calc.str_fee_bp` в настройках тенанта, пока OPEN → иллюстративно 20% c пометкой); рекомендация — по чистому доходу собственника, при OPEN-ставке и рекомендации STR — `provisional`. Экраны: `/property/owners?view=pipeline` (колонки по стадиям, просрочка, «расчёт не показан», отказы c возвратом), `?view=analytics` (конверсия по сегментам до подписанного договора, причины отказов), `/property/owners/[id]` (контакты, помещения, следующее действие, переход стадии, договор управления, калькулятор c переопределениями и кнопкой «Показал собственнику расчёт», активности, история, ссылка на карточку клиента). Джоб `owner-followup` (05:00): просроченное следующее действие → Task OWNER_FOLLOWUP менеджеру + событие `owner.followup.overdue`. События: `owner.stage.changed`.
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P57 | Стадии собственника синхронизируют факты | CONSENT ставит managementConsent; CONTRACT_SENT → статус договора SENT; SIGNED/HANDED_OVER → SIGNED c датой; HANDED_OVER требует юнит `managedByPlatform`; LOST требует причину; первая активность переводит LEAD → CONTACTED и назначает менеджера | owner-pipeline.test, ownerPipeline (core) |
+| BR-P58 | Расчёт трёх сценариев показывается всегда, рекомендация — по доходу собственника | все три сценария c допущениями; STR c OPEN-ставкой помечен; «показал расчёт» фиксирует calcShownAt и стадию CALC_SHOWN; воронка подсвечивает собственников без показанного расчёта | owner-pipeline.test, ownerPipeline (core) |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

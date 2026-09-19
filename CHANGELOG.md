@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: воронка собственников и расчёт трёх сценариев (P-22b)
+- core: `property/ownerPipeline.ts` — стадии и переходы (`canMoveOwnerStage`), причины отказа, `ownerSegment`, `ownerScenarios` (LTR / MID / STR, OPEN-ставка → provisional), `ownerConversion`; право `owner.pipeline`; тесты.
+- db: `PropertyOwner.pipelineStage/stageChangedAt/nextAction/nextActionAt/managerId/source/lostReason/calcShownAt`, `UnitActivity.ownerId`, TaskType OWNER_FOLLOWUP (миграция `owner_pipeline` c бэкфиллом стадий из договоров/согласий/управления); `services/ownerPipeline.ts` — `moveOwnerStage`, `setOwnerNextAction`, `addOwnerActivity`, `ownerCalc` (настройки `owner_calc`, asking rate юнитов), `markCalcShown`, `getOwnerPipeline`, `getOwnerCard`, `markOverdueOwnerFollowups`; события `owner.stage.changed`, `owner.followup.overdue`; джоб `owner-followup`; тест `owner-pipeline.test.ts`.
+- web: `/property/owners` — вкладки Воронка (колонки, просрочка, «расчёт не показан», отказы c возвратом), Реестр, Аналитика (конверсия по сегментам, причины отказов); карточка собственника `/property/owners/[id]` (контакты, помещения, следующее действие, переход стадии, договор управления, калькулятор трёх сценариев c переопределениями, активности, история, ссылка на клиента); словарь `owners`. Seed: менеджеры, источники, следующие действия, показанный расчёт, `owner_calc` в настройках piramit.
+- docs: `docs/20` §11.15 (BR-P57/P58), `docs/05`, ADR-029.
+
 ## [Phase P] 2026-09-19 — CRM Tower: клиентская база (P-22a)
 - core: `property/contact.ts` — `normalizePhone` (+998 для 9 цифр), `normalizeEmail`, `maskPhone/maskEmail`, `matchContact`; право `contact.merge`; тесты.
 - db: модель `Contact`, `Deal.contactId` (миграция `crm_contacts` c SQL-бэкфиллом: 1 контакт на телефон, привязка сделок, связь c собственниками по телефону); `services/contacts.ts` — `resolveContact` (используется в createDeal и intakeLead), create/update c проверкой дублей, `mergeContacts`, `listContacts`/`getContact` c маскированием PII, `findDuplicateContacts`, `importContactsXlsx`; телефоны в сделках теперь сохраняются в каноническом виде; тест `contacts.test.ts` (5 сценариев).

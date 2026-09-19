@@ -58,3 +58,4 @@ export * from './services/servicesModel.js';
 export * from './services/house.js';
 export * from './services/onecImport.js';
 export * from './services/contacts.js';
+export * from './services/ownerPipeline.js';
