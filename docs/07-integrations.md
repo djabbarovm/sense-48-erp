@@ -126,6 +126,14 @@ Mock: `RuleBasedIntentExtractor` (регулярные выражения, де�
 ## 6. Email (fallback)
 Тот же `NotificationAdapter`, реализация через SMTP (nodemailer), те же шаблоны.
 
+## 8. Telephony (P-26, docs/21 §7)
+
+```ts
+interface TelephonyAdapter { parseWebhook(body: unknown): TelephonyEvent | null }
+interface TelephonyEvent { kind: 'CALL_FINISHED' | 'CALL_MISSED'; externalId; direction: 'IN' | 'OUT'; clientPhone; employeeExt: string | null; startedAt: ISO; durationSec; recordingUrl: string | null }
+```
+`GenericTelephonyAdapter` принимает нормализованный JSON `{event: hangup|finished|missed, id|call_id, phone|client_phone, direction, ext, started_at, duration, recording_url}` — так провайдер (Sipuni / OnlinePBX / Zadarma / оператор) подключается либо своим адаптером, либо настройкой webhook под этот формат. Вход: `POST /api/telephony/webhook`, auth `X-Api-Key` scope `TELEPHONY`. `ingestCallEvent`: телефон → контакт → активная сделка (активность CALL, source PHONE, длительность, ссылка на запись, направление; пропущенный → следующий шаг «перезвонить»); иначе собственник по телефону; неизвестный входящий → лид «Входящий …»; исходящий на незнакомый номер игнорируется; дедупликация по `externalRef`. Сопоставление сотрудника — `tenant.settings.telephony_ext_map {ext: userId}`, иначе менеджер сделки / дежурный. Записи хранятся у провайдера; ссылка видна только c `deal.contact.view`. Чужие чаты и записи без согласия не собираются.
+
 ## 7. FX
 `FxRateImporter`: CSV `date;currency;rate` (курс ЦБ РУз). Job раз в день проверяет наличие курса на сегодня, если нет — Task Lead.
 

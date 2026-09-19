@@ -6,7 +6,7 @@ import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
 
-export const API_SCOPES = ['PUBLIC_INVENTORY', 'WORKBOT', 'LEADS'] as const;
+export const API_SCOPES = ['PUBLIC_INVENTORY', 'WORKBOT', 'LEADS', 'TELEPHONY'] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 const hash = (raw: string) => createHash('sha256').update(raw).digest('hex');

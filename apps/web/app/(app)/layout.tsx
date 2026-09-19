@@ -43,7 +43,8 @@ import {
   Award,
   Home,
   Users,
-  Sun } from 'lucide-react';
+  Sun,
+  BarChart3 } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
 import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
@@ -67,6 +68,7 @@ const NAV: NavItem[] = [
   { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
   { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
   { key: 'contacts', href: '/contacts', icon: <Users className={ICON} />, permission: 'deal.view' },
+  { key: 'crmAnalytics', href: '/crm/analytics', icon: <BarChart3 className={ICON} />, permission: 'deal.view' },
   { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, permission: 'lease.view' },
   { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, permission: 'workorder.view' },
   { key: 'services', href: '/services', icon: <Sparkles className={ICON} />, permission: 'service.view' },

@@ -13,3 +13,4 @@ export * from './reports/monthEndPack.js';
 export * from './ksp/index.js';
 export * from './property/floorplan.js';
 export * from './workbot/index.js';
+export * from './telephony/index.js';

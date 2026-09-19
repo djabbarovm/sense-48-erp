@@ -1643,6 +1643,7 @@ enum ChangeSource {
   API
   IMPORT
   AI
+  PHONE // P-26: телефония (TelephonyAdapter)
 }
 
 model Building {
@@ -1798,6 +1799,11 @@ model UnitActivity {
   kind              UnitActivityKind
   note              String
   expectedRateMinor BigInt?          @map("expected_rate_minor")
+  // P-26: звонок из телефонии — длительность, запись (ссылка у провайдера), направление, внешний id для дедупликации
+  durationSec       Int?             @map("duration_sec")
+  recordingUrl      String?          @map("recording_url")
+  callDirection     String?          @map("call_direction")
+  externalRef       String?          @map("external_ref")
   followUpAt        DateTime?        @map("follow_up_at") // P-23: c временем — показ/напоминание (BR-P60)
   source            ChangeSource     @default(UI)
   actorId           String           @map("actor_id") @db.Uuid

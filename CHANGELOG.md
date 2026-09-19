@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: аналитика и телефония (P-26)
+- adapters: `telephony/` — `TelephonyAdapter`, `TelephonyEvent`, `GenericTelephonyAdapter` (нормализованный webhook).
+- db: `UnitActivity.durationSec/recordingUrl/callDirection/externalRef`, `ChangeSource.PHONE`, scope `TELEPHONY` (миграция `crm_calls`); `services/telephony.ts` — `ingestCallEvent`; `services/crmAnalytics.ts` — `getCrmAnalytics` (скорость, сотрудники, конверсия, качество, звонки, собственники); тесты.
+- web: `/crm/analytics` + пункт меню, `POST /api/telephony/webhook`; словарь `crmAnalytics`, scope в админке ключей.
+- docs: `docs/07` §8, `docs/20` §11.18.
+
 ## [Phase P] 2026-09-19 — CRM Tower: роль колл-центра (P-25)
 - core: роль `CALL_CENTER` (context/ROLE_CODES), права deal.view/manage/contact.view, owner.pipeline, action.draft, property.view, unit.owner.view + новое `owner.activity`; `CALL_CENTER_MAX_STAGE = VIEWING` и guard `CALL_CENTER_STAGE_LIMIT` в dealMachine (BR-P62).
 - db: `createDeal` — лид от КЦ назначается дежурному менеджеру (`tenant.settings.lead_default_manager` или первый COMMERCIAL_MANAGER); `moveDeal` передаёт `callCenterOnly`; `addOwnerActivity`/`setOwnerNextAction` принимают `owner.activity`; «Мой день» для КЦ — вся очередь; SLA-предупреждения по лидам дублируются КЦ; enum RoleCode + миграция `role_call_center`; seed `callcenter@piramit.test`; тест `call-center.test.ts`.
