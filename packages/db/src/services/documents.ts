@@ -25,6 +25,14 @@ export interface UploadInput {
 
 export async function uploadDocument(ctx: TenantContext, storage: StorageAdapter, input: UploadInput) {
   requirePermission(ctx, 'document.upload');
+  return storeDocument(ctx, storage, input);
+}
+
+/**
+ * Сохранение файла без проверки права document.upload — для сервисов, которые сами проверили принадлежность объекта
+ * (Owner Portal: собственник загружает документы только по своим договорам/юнитам, BR-P33). Не экспортируется в UI напрямую.
+ */
+export async function storeDocument(ctx: TenantContext, storage: StorageAdapter, input: UploadInput) {
   if (input.body.length === 0) throw new ValidationError('FILE_EMPTY');
   if (input.body.length > MAX_FILE_SIZE) throw new ValidationError('FILE_TOO_LARGE', 'Максимум 25 МБ');
   const sha256 = createHash('sha256').update(input.body).digest('hex');

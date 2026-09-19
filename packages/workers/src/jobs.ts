@@ -11,6 +11,7 @@ import {
   createExpiryTasksForTenant,
   deliverDomainEvents,
   escalateOverdueWorkOrders,
+  escalateOverdueServiceOrders,
   markExpiringLeases,
   escalateOverdueTasks,
   generateTaxObligations,
@@ -88,6 +89,11 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'workorder-sla',
       cron: '*/30 * * * *',
       run: (tenantId, now) => escalateOverdueWorkOrders(tenantId, now),
+    },
+    {
+      name: 'service-sla',
+      cron: '*/30 * * * *',
+      run: (tenantId, now) => escalateOverdueServiceOrders(tenantId, now),
     },
     {
       name: 'domain-events',

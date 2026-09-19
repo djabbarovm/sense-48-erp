@@ -24,7 +24,7 @@
 | BROKER | MDS Property: назначенный inventory, показы, стадии до договора | — |
 | OPERATIONS_MANAGER | MDS Property: готовность, эксплуатация, заявки | — |
 | MARKETING | MDS Property: публикация approved inventory, без PII собственников | — |
-| PROPERTY_OWNER | MDS Property: кабинет собственника — только свои помещения, договоры, выплаты, заявки, согласия (docs/20 §11.6) | рекомендован |
+| PROPERTY_OWNER | MDS Property: кабинет собственника — только свои помещения, договоры, документы, выплаты, заявки, услуги, согласия (docs/20 §11.6, §11.8) | рекомендован |
 
 ## Матрица прав
 
@@ -119,3 +119,14 @@
 ## Permission tests (обязательные)
 
 Для каждой строки матрицы — параметризованный тест: роль × действие → ожидаемый код (200/403). Плюс для каждого endpoint: user tenant A запрашивает объект tenant B → 404. Генерируется из этого файла (парсер таблицы или ручной fixture) — покрытие 100% permission-кодов.
+
+### Услуги (MDS Property, docs/20 §11.8)
+
+| Право | Роли |
+|---|---|
+| service.view | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, COMMERCIAL_MANAGER, BROKER, OPERATIONS_MANAGER, MARKETING |
+| service.order | OWNER, COMMERCIAL_MANAGER, BROKER, OPERATIONS_MANAGER, MARKETING |
+| service.manage | OWNER, OPERATIONS_MANAGER |
+| service.verify | OWNER, OPERATIONS_MANAGER, COMMERCIAL_MANAGER |
+| service.catalog | OWNER, ADMIN, OPERATIONS_MANAGER |
+| owner.request (заказ услуг и заявки собственника по своим юнитам) | PROPERTY_OWNER |

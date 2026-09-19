@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { IllegalTransitionError, PermissionDeniedError, ValidationError } from '@finance-os/core';
-import { activateLease, createLease, terminateLease, updateLease } from '@finance-os/db';
+import type { DocType } from '@finance-os/db';
+import { createStorageFromEnv } from '@finance-os/adapters';
+import { activateLease, createLease, terminateLease, updateLease, uploadDocument } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
 const str = (fd: FormData, k: string): string | undefined => {
@@ -64,4 +66,16 @@ export async function terminateLeaseAction(formData: FormData): Promise<void> {
 export async function markDepositReceivedAction(formData: FormData): Promise<void> {
   const ctx = await requireTenantContext();
   await run(String(formData.get('unitId')), () => updateLease(ctx, String(formData.get('leaseId')), { depositReceived: true }).then(() => undefined));
+}
+
+/** Документ к договору аренды (blueprint §13): договор/акт/доп. соглашение; виден собственнику в кабинете. */
+export async function uploadLeaseDocumentAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const unitId = String(formData.get('unitId'));
+  const leaseId = String(formData.get('leaseId'));
+  const file = formData.get('file');
+  await run(unitId, async () => {
+    if (!(file instanceof File) || file.size === 0) throw new ValidationError('FILE_EMPTY');
+    await uploadDocument(ctx, createStorageFromEnv(), { objectType: 'lease_contract', objectId: leaseId, docType: String(formData.get('docType') ?? 'CONTRACT') as DocType, fileName: file.name, mime: file.type, body: Buffer.from(await file.arrayBuffer()) });
+  });
 }

@@ -1,16 +1,19 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, Building2, FileSignature, ShieldCheck, Wallet, Wrench } from 'lucide-react';
+import { AlertTriangle, Building2, Download, FileSignature, FileText, ShieldCheck, Sparkles, Star, Wallet, Wrench } from 'lucide-react';
 import { NotFoundError, WORK_ORDER_CATEGORIES, can } from '@finance-os/core';
-import { getOwnerPortal } from '@finance-os/db';
+import { createStorageFromEnv } from '@finance-os/adapters';
+import { getOwnerPortal, getOwnerDocumentUrl } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, EmptyState, Input, Label, PageHeader, Select, Table, Td, Th, cn } from '@/components/ui';
 import { COLOR_BG, fmtDate, fmtRate } from '@/components/property';
-import { createOwnerRequestAction, updateOwnerConsentsAction } from './actions';
+import { createOwnerRequestAction, createOwnerServiceOrderAction, rateOwnerServiceOrderAction, updateOwnerConsentsAction, uploadOwnerDocumentAction } from './actions';
 
 /* Wave 4b — Owner Portal (blueprint §10): только свои юниты, договоры, выплаты, заявки, согласия. */
 
 const WO_TONE = { OPEN: 'red', ASSIGNED: 'yellow', IN_PROGRESS: 'blue', DONE: 'green', VERIFIED: 'green', CANCELLED: 'gray' } as const;
+const SO_TONE = { NEW: 'red', ACCEPTED: 'yellow', IN_PROGRESS: 'blue', DONE: 'green', VERIFIED: 'green', CANCELLED: 'gray' } as const;
+const OWNER_DOC_TYPES = ['CONTRACT', 'ACT', 'POA', 'OTHER'] as const;
 
 export default async function OwnerPortalPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const ctx = await requireTenantContext();
@@ -19,6 +22,7 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
   const t = await getTranslations('ownerPortal');
   const tp = await getTranslations('property');
   const tw = await getTranslations('workorders');
+  const ts = await getTranslations('services');
   let p: Awaited<ReturnType<typeof getOwnerPortal>>;
   try {
     p = await getOwnerPortal(ctx);
@@ -26,6 +30,9 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
     if (e instanceof NotFoundError) return <div className="space-y-4"><PageHeader title={t('title')} /><EmptyState icon={<ShieldCheck />} text={t('notLinked')} /></div>;
     throw e;
   }
+  const storage = createStorageFromEnv();
+  const docs = await Promise.all(p.documents.map(async (d) => ({ ...d, url: await getOwnerDocumentUrl(ctx, storage, d.id).catch(() => null) })));
+  const docObjects = [...p.units.map((u) => ({ key: `unit:${u.id}`, label: t('unitOf', { unit: u.unitNo }) })), ...p.units.filter((u) => u.lease).map((u) => ({ key: `lease_contract:${u.lease!.id}`, label: t('leaseOf', { unit: u.unitNo }) }))];
 
   return (
     <div className="space-y-6">
@@ -82,7 +89,7 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
                 </Table>
               </div>
             )}
-            <p className="mt-2 text-[11px] text-gray-400">{t('documentsCount', { n: p.documents })}</p>
+            <p className="mt-2 text-[11px] text-gray-400">{t('documentsCount', { n: p.documents.length })}</p>
           </Card>
         </section>
 
@@ -97,6 +104,63 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
               <div className="flex items-center gap-3 pt-1"><Button type="submit" size="sm">{t('saveConsents')}</Button>{p.owner.consentUpdatedAt ? <span className="text-xs text-gray-400">{t('consentUpdated', { d: fmtDate(p.owner.consentUpdatedAt) })}</span> : null}</div>
               <p className="text-[11px] text-gray-400">{t('consentAudit')}</p>
             </form>
+          </Card>
+        </section>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Документы (blueprint §13) */}
+        <section>
+          <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><FileText className="h-3.5 w-3.5" />{t('documents')}</h2>
+          <Card>
+            <p className="text-xs text-gray-500">{t('documentsHint')}</p>
+            {docObjects.length ? (
+              <form action={uploadOwnerDocumentAction} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.6fr_auto]">
+                <div><Label htmlFor="d-obj">{t('docObject')}</Label><Select id="d-obj" name="object" required>{docObjects.map((o) => (<option key={o.key} value={o.key}>{o.label}</option>))}</Select></div>
+                <div><Label htmlFor="d-type">{t('docType')}</Label><Select id="d-type" name="docType" defaultValue="OTHER">{OWNER_DOC_TYPES.map((x) => (<option key={x} value={x}>{t(`docTypes.${x}`)}</option>))}</Select></div>
+                <div><Label htmlFor="d-file">{t('docFile')}</Label><Input id="d-file" type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/webp,.doc,.docx" required /></div>
+                <div className="self-end"><Button type="submit" size="sm" variant="outline">{t('uploadDoc')}</Button></div>
+              </form>
+            ) : null}
+            <ul className="mt-3 divide-y divide-gray-100">
+              {docs.length === 0 ? <li className="py-2 text-sm text-gray-400">{t('noDocuments')}</li> : null}
+              {docs.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <div className="min-w-0"><span className="font-mono text-xs font-semibold">{d.unitNo}</span><span className="ml-2 inline-block"><Badge tone="gray">{t.has(`docTypes.${d.docType}`) ? t(`docTypes.${d.docType as never}`) : d.docType}</Badge></span><span className="ml-2 truncate text-gray-900">{d.fileName}</span><span className="ml-2 text-xs text-gray-400">v{d.version} · {d.mine ? t('byYou') : t('byCompany')} · {fmtDate(d.createdAt)}</span></div>
+                  {d.url ? <a href={d.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"><Download className="h-3.5 w-3.5" />{t('download')}</a> : null}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+
+        {/* Услуги (blueprint §10/§12) */}
+        <section>
+          <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><Sparkles className="h-3.5 w-3.5" />{t('services')}</h2>
+          <Card>
+            <p className="text-xs text-gray-500">{t('servicesHint')}</p>
+            {p.catalog.length === 0 ? <p className="mt-2 text-sm text-gray-400">{t('noServices')}</p> : p.units.length ? (
+              <form action={createOwnerServiceOrderAction} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1.2fr_auto]">
+                <div><Label htmlFor="s-item">{t('service')}</Label><Select id="s-item" name="catalogItemId" required>{p.catalog.map((c) => (<option key={c.id} value={c.id}>{c.name} · {fmtRate(c.priceMinor, c.currency)} · {c.partnerName ? t('partner', { name: c.partnerName }) : t('ownOps')} · {t('slaHours', { h: c.slaHours })}</option>))}</Select></div>
+                <div><Label htmlFor="s-unit">{t('unit')}</Label><Select id="s-unit" name="unitId" required>{p.units.map((u) => (<option key={u.id} value={u.id}>{u.unitNo}</option>))}</Select></div>
+                <div><Label htmlFor="s-when">{t('when')}</Label><Input id="s-when" name="scheduledAt" type="datetime-local" /></div>
+                <div className="self-end"><Button type="submit" size="sm">{t('orderService')}</Button></div>
+              </form>
+            ) : null}
+            <ul className="mt-3 divide-y divide-gray-100">
+              {p.serviceOrders.length === 0 ? <li className="py-2 text-sm text-gray-400">{t('noOrders')}</li> : null}
+              {p.serviceOrders.map((o) => (
+                <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <div><span className="font-mono text-xs text-gray-400">{o.number}</span><span className="ml-2 font-mono font-semibold">{o.unitNo}</span><span className="ml-2 text-gray-900">{o.serviceName}</span><span className="ml-2 font-mono text-xs text-gray-500">{fmtRate(o.priceMinor, o.currency)}</span></div>
+                  <div className="flex items-center gap-2">
+                    <Badge tone={SO_TONE[o.status]} dot>{ts(`status.${o.status}`)}</Badge>
+                    {o.rating != null ? <span className="inline-flex items-center gap-0.5 text-xs text-amber-600"><Star className="h-3 w-3" />{t('rated', { r: o.rating })}</span> : null}
+                    {o.canRate ? <form action={rateOwnerServiceOrderAction} className="flex items-center gap-1"><input type="hidden" name="id" value={o.id} /><Select name="rating" defaultValue="5" aria-label={t('rate')} className="h-8 py-0 text-xs">{[5, 4, 3, 2, 1].map((n) => (<option key={n} value={n}>{'★'.repeat(n)}</option>))}</Select><Button type="submit" size="sm" variant="outline">{t('rate')}</Button></form> : null}
+                    <span className="font-mono text-xs text-gray-400">{fmtDate(o.scheduledAt)}{o.doneAt ? ` → ${fmtDate(o.doneAt)}` : ''}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </Card>
         </section>
       </div>

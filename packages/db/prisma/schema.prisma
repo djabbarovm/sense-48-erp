@@ -517,6 +517,7 @@ enum TaskType {
   LEASE_EXPIRY
   DEAL_FOLLOWUP
   WORKORDER_OVERDUE
+  SERVICE_ORDER_OVERDUE
 }
 
 enum TaskStatus {
@@ -1728,6 +1729,7 @@ model Unit {
   leases     LeaseContract[]
   deals      Deal[]
   workOrders WorkOrder[]
+  serviceOrders ServiceOrder[]
 
   @@unique([buildingId, unitNo])
   @@index([tenantId, buildingId])
@@ -2020,4 +2022,102 @@ model WorkOrder {
   @@index([tenantId, unitId, status])
   @@index([tenantId, assigneeId, status])
   @@map("work_order")
+}
+
+// ── §P5 Services marketplace (blueprint §12, docs/20 §11.8) ──
+
+enum ServiceCategory {
+  CLEANING
+  LAUNDRY
+  REPAIR
+  CONCIERGE
+  MOVING
+  DESIGN
+  IT
+  OTHER
+}
+
+enum ServiceProviderKind {
+  OWN_OPS // собственная эксплуатация — вся сумма = выручка Operations
+  PARTNER // партнёр — платформе комиссия commissionBp
+}
+
+enum ServiceOrderStatus {
+  NEW
+  ACCEPTED
+  IN_PROGRESS
+  DONE
+  VERIFIED
+  CANCELLED
+}
+
+model ServiceCatalogItem {
+  id           String              @id @default(uuid(7)) @db.Uuid
+  tenantId     String              @map("tenant_id") @db.Uuid
+  code         String // CLEAN-STD
+  name         String
+  category     ServiceCategory
+  providerKind ServiceProviderKind @map("provider_kind")
+  partnerName  String?             @map("partner_name")
+  priceMinor   BigInt              @map("price_minor")
+  currency     String              @default("UZS") @db.Char(3)
+  commissionBp Int                 @default(0) @map("commission_bp") // доля платформы для PARTNER, б.п.
+  slaHours     Int                 @default(48) @map("sla_hours")
+  description  String?
+  active       Boolean             @default(true)
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  orders ServiceOrder[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active, category])
+  @@map("service_catalog_item")
+}
+
+model ServiceOrder {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  number            String // SO-2026-000001
+  catalogItemId     String              @map("catalog_item_id") @db.Uuid
+  unitId            String?             @map("unit_id") @db.Uuid
+  buildingId        String?             @map("building_id") @db.Uuid
+  status            ServiceOrderStatus  @default(NEW)
+  // снимок каталога на момент заказа (BR-P35): смена цены/комиссии не меняет существующие заказы
+  providerKind      ServiceProviderKind @map("provider_kind")
+  partnerName       String?             @map("partner_name")
+  priceMinor        BigInt              @map("price_minor")
+  currency          String              @db.Char(3)
+  commissionBp      Int                 @map("commission_bp")
+  quantity          Int                 @default(1)
+  customerName      String?             @map("customer_name") // арендатор/собственник — отображаемое имя
+  ordererId         String              @map("orderer_id") @db.Uuid
+  ownerId           String?             @map("owner_id") @db.Uuid // заказ собственника (Owner Portal)
+  assigneeId        String?             @map("assignee_id") @db.Uuid
+  notes             String?
+  source            ChangeSource        @default(UI)
+  scheduledAt       DateTime            @map("scheduled_at")
+  dueAt             DateTime            @map("due_at") // scheduledAt + slaHours
+  acceptedAt        DateTime?           @map("accepted_at")
+  startedAt         DateTime?           @map("started_at")
+  doneAt            DateTime?           @map("done_at")
+  verifiedAt        DateTime?           @map("verified_at")
+  verifiedBy        String?             @map("verified_by") @db.Uuid
+  rating            Int?
+  ratingComment     String?             @map("rating_comment")
+  cancelReason      String?             @map("cancel_reason")
+  overdueNotifiedAt DateTime?           @map("overdue_notified_at")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  updatedBy         String?             @map("updated_by") @db.Uuid
+
+  catalogItem ServiceCatalogItem @relation(fields: [catalogItemId], references: [id])
+  unit        Unit?              @relation(fields: [unitId], references: [id])
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, dueAt])
+  @@index([tenantId, unitId, status])
+  @@index([tenantId, ownerId, status])
+  @@index([tenantId, catalogItemId])
+  @@map("service_order")
 }

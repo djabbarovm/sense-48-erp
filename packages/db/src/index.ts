@@ -50,3 +50,4 @@ export * from './services/workOrders.js';
 export * from './services/ownerPortal.js';
 export * from './services/leadIntake.js';
 export * from './services/dealAnalytics.js';
+export * from './services/serviceOrders.js';

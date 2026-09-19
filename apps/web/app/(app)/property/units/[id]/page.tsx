@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare, Wrench } from 'lucide-react';
 import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, can, hasRole } from '@finance-os/core';
-import { getUnitCard, listDeals, listLeases, listWorkOrders } from '@finance-os/db';
-import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction } from '../../../leases/actions';
+import { createStorageFromEnv } from '@finance-os/adapters';
+import { getUnitCard, listDeals, listDocumentsFor, listLeases, listWorkOrders } from '@finance-os/db';
+import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction, uploadLeaseDocumentAction } from '../../../leases/actions';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
 import { COLOR_BG, fmtDate, fmtRate } from '@/components/property';
@@ -42,6 +43,10 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
   const openWo = workOrders.filter((w) => w.status !== 'VERIFIED' && w.status !== 'CANCELLED');
   const activeDeals = deals.filter((d) => d.stage !== 'WON' && d.stage !== 'LOST');
   const liveLease = leases.find((l) => l.status === 'ACTIVE' || l.status === 'EXPIRING') ?? null;
+  const leaseDocs = liveLease && can(ctx, 'lease.view') ? await listDocumentsFor(ctx, 'lease_contract', liveLease.id) : [];
+  const leaseStorage = createStorageFromEnv();
+  const leaseDocUrls = await Promise.all(leaseDocs.map(async (d) => ({ ...d, url: await leaseStorage.getSignedUrl(d.fileKey).catch(() => null) })));
+  const LEASE_DOC_TYPES = ['CONTRACT', 'AMENDMENT', 'ACT', 'POA', 'OTHER'] as const;
   const draftLeases = leases.filter((l) => l.status === 'DRAFT');
   const tD = await getTranslations('deals');
   const tL = await getTranslations('leases');
@@ -221,6 +226,24 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
                   {liveLease.depositMinor != null ? <Row k={tL('deposit')} v={<span className={liveLease.depositReceived ? 'text-emerald-600' : 'text-red-600'}>{fmtRate(liveLease.depositMinor, liveLease.currency)} · {liveLease.depositReceived ? tL('received') : tL('notReceived')}</span>} /> : null}
                 </dl>
               ) : <p className="mt-2 text-sm text-gray-400">{tL('none')}</p>}
+              {liveLease ? (
+                <div className="mt-3 border-t border-gray-100 pt-3">
+                  <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">{tL('documents')}</p>
+                  <ul className="mt-1 divide-y divide-gray-100">
+                    {leaseDocUrls.length === 0 ? <li className="py-1.5 text-xs text-gray-400">{tL('noDocuments')}</li> : null}
+                    {leaseDocUrls.map((d) => (<li key={d.id} className="flex items-center justify-between gap-2 py-1.5 text-xs"><span><Badge tone="gray">{tL(`docTypes.${d.docType as never}`)}</Badge><span className="ml-2 text-gray-800">{d.url ? <a href={d.url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">{d.fileName}</a> : d.fileName}</span></span><span className="font-mono text-[10px] text-gray-400">v{d.version} · {fmtDate(d.createdAt)}</span></li>))}
+                  </ul>
+                  {can(ctx, 'lease.manage') && can(ctx, 'document.upload') ? (
+                    <form action={uploadLeaseDocumentAction} className="mt-2 flex items-end gap-2">
+                      <input type="hidden" name="unitId" value={unit.id} /><input type="hidden" name="leaseId" value={liveLease.id} />
+                      <div><Label htmlFor="ld-type">{tL('docType')}</Label><Select id="ld-type" name="docType" defaultValue="CONTRACT">{LEASE_DOC_TYPES.map((x) => (<option key={x} value={x}>{tL(`docTypes.${x}`)}</option>))}</Select></div>
+                      <div className="flex-1"><Label htmlFor="ld-file">{tL('docFile')}</Label><Input id="ld-file" type="file" name="file" accept="application/pdf,image/*,.doc,.docx" required /></div>
+                      <Button type="submit" size="sm" variant="outline">{tL('uploadDoc')}</Button>
+                    </form>
+                  ) : null}
+                  <p className="mt-1 text-[11px] text-gray-400">{tL('docsHint')}</p>
+                </div>
+              ) : null}
               {can(ctx, 'lease.manage') && liveLease ? (
                 <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-3">
                   {liveLease.depositMinor != null && !liveLease.depositReceived ? <form action={markDepositReceivedAction}><input type="hidden" name="unitId" value={unit.id} /><input type="hidden" name="leaseId" value={liveLease.id} /><Button type="submit" variant="outline" size="sm">{tL('markDeposit')}</Button></form> : null}

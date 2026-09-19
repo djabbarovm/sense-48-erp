@@ -9,6 +9,7 @@ import { whereTenant } from '../repository.js';
 import { getPipelineSummary, listDeals, type DealRow, type PipelineSummary } from './deals.js';
 import { listLeases, type LeaseRow } from './leases.js';
 import { maskOwnerName, type UnitRow, listUnits } from './property.js';
+import { getServicesSummary, type ServicesSummary } from './serviceOrders.js';
 
 export interface ControlRoom {
   today: {
@@ -41,6 +42,8 @@ export interface ControlRoom {
     blocked: number;
     issueUnits: UnitRow[];
   };
+  /** Services marketplace (blueprint §9): заказы, GMV, монетизация, SLA партнёров за 30 дней; null — нет права service.view. */
+  services: ServicesSummary | null;
   lists: {
     attentionDeals: DealRow[];
     expiringLeases: LeaseRow[];
@@ -52,12 +55,13 @@ export interface ControlRoom {
 export async function getControlRoom(ctx: TenantContext, today = new Date()): Promise<ControlRoom> {
   requirePermission(ctx, 'property.view');
   const dayStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
-  const [units, buildings, dealsRaw, tasksOverdue, viewingsPlanned] = await Promise.all([
+  const [units, buildings, dealsRaw, tasksOverdue, viewingsPlanned, services] = await Promise.all([
     listUnits(ctx, {}, today),
     prisma.building.findMany({ where: whereTenant(ctx), orderBy: { sortOrder: 'asc' } }),
     can(ctx, 'deal.view') ? prisma.deal.findMany({ where: whereTenant(ctx), select: { stage: true, createdAt: true, stageChangedAt: true, nextAction: true, nextActionAt: true, reservedUntil: true } }) : Promise.resolve([]),
     prisma.task.count({ where: { tenantId: ctx.tenantId, status: 'OVERDUE', type: { in: ['DEAL_FOLLOWUP', 'LEASE_EXPIRY'] } } }),
     can(ctx, 'deal.view') ? prisma.unitActivity.count({ where: { tenantId: ctx.tenantId, kind: 'VIEWING', followUpAt: { gte: dayStart, lt: new Date(dayStart.getTime() + 86_400_000) } } }) : Promise.resolve(0),
+    can(ctx, 'service.view') ? getServicesSummary(ctx, { days: 30 }, today) : Promise.resolve(null),
   ]);
   const kpiInput = (rows: UnitRow[]) => rows.map((u) => ({ ...u, areaM2: u.areaM2 }));
   const kpi = computeUnitKpi(kpiInput(units), today);
@@ -102,6 +106,7 @@ export async function getControlRoom(ctx: TenantContext, today = new Date()): Pr
       blocked: units.filter((u) => u.operationalStatus === 'BLOCKED').length,
       issueUnits: issueUnits.slice(0, 8),
     },
+    services,
     lists: { attentionDeals: attentionDeals.slice(0, 6), expiringLeases: expiring90.slice(0, 6), alertUnits: alertUnits.slice(0, 6), idleUnits: idleUnits.slice(0, 6) },
   };
 }

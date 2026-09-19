@@ -323,4 +323,73 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
     else if (seq.nextValue < want) await prisma.sequence.update({ where: { id: seq.id }, data: { nextValue: want } });
   }
   console.log(`  work orders: ${woCreated} created`);
+
+  // ── Wave 5: services marketplace (blueprint §12) — каталог (партнёры + своя эксплуатация) и заказы ──
+  const CATALOG: { code: string; name: string; category: 'CLEANING' | 'LAUNDRY' | 'REPAIR' | 'CONCIERGE' | 'MOVING' | 'DESIGN' | 'IT' | 'OTHER'; kind: 'OWN_OPS' | 'PARTNER'; partner?: string; price: bigint; commissionBp?: number; sla: number; desc: string }[] = [
+    { code: 'CLEAN-STD', name: 'Уборка стандарт', category: 'CLEANING', kind: 'OWN_OPS', price: 250_000_00n, sla: 24, desc: 'Поддерживающая уборка апартаментов до 80 м²' },
+    { code: 'CLEAN-DEEP', name: 'Генеральная уборка', category: 'CLEANING', kind: 'OWN_OPS', price: 600_000_00n, sla: 48, desc: 'После выезда арендатора или ремонта' },
+    { code: 'LAUNDRY', name: 'Стирка и глажка', category: 'LAUNDRY', kind: 'PARTNER', partner: 'CleanPro', price: 120_000_00n, commissionBp: 1500, sla: 48, desc: 'Забор и доставка в течение 2 дней' },
+    { code: 'REPAIR-MINOR', name: 'Мелкий ремонт (час мастера)', category: 'REPAIR', kind: 'OWN_OPS', price: 150_000_00n, sla: 72, desc: 'Замена смесителя, розетки, петель' },
+    { code: 'MOVING', name: 'Переезд и подъём мебели', category: 'MOVING', kind: 'PARTNER', partner: 'MoveIt Tashkent', price: 900_000_00n, commissionBp: 1000, sla: 72, desc: 'Бригада 3 человека + газель' },
+    { code: 'DESIGN-FURN', name: 'Меблировка под ключ (консультация)', category: 'DESIGN', kind: 'PARTNER', partner: 'Loft Studio', price: 1_500_000_00n, commissionBp: 2000, sla: 168, desc: 'Выезд дизайнера, смета, подбор' },
+    { code: 'IT-SETUP', name: 'Интернет и Wi-Fi: подключение', category: 'IT', kind: 'PARTNER', partner: 'CityNet', price: 200_000_00n, commissionBp: 1200, sla: 48, desc: 'Роутер, настройка, тест скорости' },
+    { code: 'CONCIERGE', name: 'Консьерж: встреча гостей', category: 'CONCIERGE', kind: 'OWN_OPS', price: 100_000_00n, sla: 12, desc: 'Заселение STR-гостей, ключи, инструктаж' },
+  ];
+  const items = new Map<string, { id: string; kind: 'OWN_OPS' | 'PARTNER'; partner: string | null; price: bigint; commissionBp: number; sla: number }>();
+  for (const c of CATALOG) {
+    const row = await prisma.serviceCatalogItem.upsert({
+      where: { tenantId_code: { tenantId, code: c.code } },
+      create: { tenantId, code: c.code, name: c.name, category: c.category, providerKind: c.kind, partnerName: c.partner ?? null, priceMinor: c.price, currency: 'UZS', commissionBp: c.commissionBp ?? 0, slaHours: c.sla, description: c.desc },
+      update: { name: c.name, description: c.desc },
+    });
+    items.set(c.code, { id: row.id, kind: c.kind, partner: c.partner ?? null, price: c.price, commissionBp: c.commissionBp ?? 0, sla: c.sla });
+  }
+  const SO: { code: string; status: 'NEW' | 'ACCEPTED' | 'IN_PROGRESS' | 'DONE' | 'VERIFIED' | 'CANCELLED'; ageH: number; qty?: number; late?: boolean; rating?: number; customer?: string }[] = [
+    { code: 'CLEAN-STD', status: 'VERIFIED', ageH: 300, rating: 5, customer: 'Гость STR 1203' },
+    { code: 'LAUNDRY', status: 'VERIFIED', ageH: 250, rating: 4, customer: 'CityNet' },
+    { code: 'MOVING', status: 'DONE', ageH: 120, late: true, customer: 'Sardor Trade' },
+    { code: 'CLEAN-DEEP', status: 'DONE', ageH: 96, rating: 5 },
+    { code: 'IT-SETUP', status: 'VERIFIED', ageH: 200, rating: 3, customer: 'Nova Law' },
+    { code: 'DESIGN-FURN', status: 'IN_PROGRESS', ageH: 60 },
+    { code: 'REPAIR-MINOR', status: 'ACCEPTED', ageH: 10, qty: 2 },
+    { code: 'CLEAN-STD', status: 'NEW', ageH: 2, customer: 'Гость STR 1405' },
+    { code: 'LAUNDRY', status: 'NEW', ageH: 70, late: true },
+    { code: 'CONCIERGE', status: 'CANCELLED', ageH: 40 },
+    { code: 'CLEAN-STD', status: 'VERIFIED', ageH: 400, rating: 4 },
+    { code: 'MOVING', status: 'VERIFIED', ageH: 500, rating: 5, customer: 'Barakat Group' },
+  ];
+  let soCreated = 0;
+  if (reporter && opsId) {
+    const year = new Date().getFullYear();
+    for (let i = 0; i < SO.length; i++) {
+      const number = `SO-${year}-${String(i + 1).padStart(6, '0')}`;
+      if (await prisma.serviceOrder.findUnique({ where: { tenantId_number: { tenantId, number } } })) continue;
+      const o = SO[i]!;
+      const item = items.get(o.code)!;
+      const unit = allUnits[(i * 17 + 3) % allUnits.length]!;
+      const createdAt = daysAgo(o.ageH / 24);
+      const scheduledAt = new Date(createdAt.getTime() + 3_600_000);
+      const dueAt = new Date(scheduledAt.getTime() + item.sla * 3_600_000);
+      const qty = o.qty ?? 1;
+      const assigned = o.status !== 'NEW' && o.status !== 'CANCELLED' ? opsUsers[i % Math.max(1, opsUsers.length)]!.userId : null;
+      const doneAt = ['DONE', 'VERIFIED'].includes(o.status) ? new Date(dueAt.getTime() + (o.late ? 6 : -6) * 3_600_000) : null;
+      await prisma.serviceOrder.create({
+        data: {
+          tenantId, number, catalogItemId: item.id, unitId: unit.id, buildingId: unit.buildingId, status: o.status, providerKind: item.kind, partnerName: item.partner, priceMinor: item.price * BigInt(qty), currency: 'UZS', commissionBp: item.commissionBp, quantity: qty,
+          customerName: o.customer ?? null, ordererId: reporter, assigneeId: assigned, scheduledAt, dueAt, createdAt,
+          acceptedAt: assigned ? new Date(createdAt.getTime() + 1_800_000) : null,
+          startedAt: ['IN_PROGRESS', 'DONE', 'VERIFIED'].includes(o.status) ? scheduledAt : null,
+          doneAt, verifiedAt: o.status === 'VERIFIED' && doneAt ? new Date(doneAt.getTime() + 3_600_000) : null, verifiedBy: o.status === 'VERIFIED' ? reporter : null,
+          rating: o.rating ?? null, cancelReason: o.status === 'CANCELLED' ? 'гость отменил бронь' : null,
+          overdueNotifiedAt: o.late && !doneAt ? new Date() : null,
+        },
+      });
+      soCreated++;
+    }
+    const want = SO.length + 1;
+    const seq = await prisma.sequence.findUnique({ where: { tenantId_key_year: { tenantId, key: 'SO', year } } });
+    if (!seq) await prisma.sequence.create({ data: { tenantId, key: 'SO', year, nextValue: want } });
+    else if (seq.nextValue < want) await prisma.sequence.update({ where: { id: seq.id }, data: { nextValue: want } });
+  }
+  console.log(`  services: ${items.size} catalog items, ${soCreated} orders created`);
 }

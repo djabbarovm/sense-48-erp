@@ -108,7 +108,7 @@ Identity · статусы (6 измерений + дней простоя) · �
 ### 7.4 Пульт управления `/property/today` (blueprint §9)
 Сегодня · Коммерция (KPI, по зданиям, воронка, истекающие договоры) · Сделки, требующие внимания · Истекающие договоры · Собственники (согласны без аренды) · Эксплуатация (противоречия, простой > 60 дн). Только чтение, композиция сервисов; стартовая страница ролей недвижимости.
 
-### 7.5 Сделки `/deals`, `/deals/[id]`, `/deals/new`; договоры `/leases`; ключи `/admin/api-keys` — см. §11.
+### 7.5 Сделки `/deals`, `/deals/[id]`, `/deals/new`; договоры `/leases`; ключи `/admin/api-keys`; заявки `/workorders`; услуги `/services`, `/services/[id]`; кабинет собственника `/owner` — см. §11.
 
 ## 8. API (внутренний, сервисный слой `packages/db/src/services/property.ts`)
 
@@ -138,7 +138,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
 | 2b | WorkBot ✓ P-12, realtime ✓ P-13, лиды c сайта + аналитика ✓ P-17, бонусы — заблокировано (P-14) | ✓ |
 | 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
-| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services — P-16 | частично |
+| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services marketplace + документы ✓ P-16 | ✓ |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
 ## 11. Wave 2 — договоры аренды, сделки, события, публичный API (ADR-018)
@@ -181,6 +181,18 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | ID | Правило | Поведение | Тест |
 |---|---|---|---|
 | BR-P34 | Повторное обращение — не дубликат | тот же телефон/email c активной сделкой ≤ 30 дней → активность и следующее действие в существующей сделке | lead-intake.test |
+
+### 11.8 Services marketplace и документы по договорам (blueprint §12, §13, §10)
+`ServiceCatalogItem`: код, категория (CLEANING/LAUNDRY/REPAIR/CONCIERGE/MOVING/DESIGN/IT/OTHER), вид исполнителя (OWN_OPS — собственная эксплуатация, PARTNER — партнёр c комиссией платформы в б.п.), цена, валюта, SLA в часах, активность. `ServiceOrder` (SO-номера): снимок цены/комиссии/партнёра на момент заказа, количество, юнит/здание, заказчик, собственник (если заказ из Owner Portal), ответственный, срок = scheduledAt + SLA; статусы NEW → ACCEPTED → IN_PROGRESS → DONE → VERIFIED, cancel/reopen c причиной; подтверждение выполнения — `Document(objectType=service_order)` (фото или акт); оценка заказчика 1–5 после выполнения. Джоб `service-sla` → Task SERVICE_ORDER_OVERDUE + событие. Сводка (пульт, `/services`): GMV, выручка платформы, выплаты партнёрам, SLA в срок, средняя оценка, разрез по исполнителям и категориям за 30 дней. Права: `service.view / order / manage / verify / catalog`; собственник заказывает через `owner.request` только по своим юнитам.
+
+Документы (blueprint §13): договор аренды получает файлы через `Document(objectType=lease_contract)` c карточки юнита (`lease.manage` + `document.upload`; типы CONTRACT/AMENDMENT/ACT/POA/OTHER); собственник видит в кабинете документы по своим договорам и юнитам, скачивает по проверке принадлежности и загружает свои (POA/CONTRACT/ACT/OTHER, PDF/изображения/DOCX) без права `document.upload` — проверяется владение. Исходный файл неизменен (sha256, версии).
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P35 | Цена и комиссия фиксируются в заказе | изменение каталога после оформления не меняет priceMinor/commissionBp заказа; неактивная услуга → SERVICE_INACTIVE | service-orders.test |
+| BR-P36 | GMV и выручка — только по DONE/VERIFIED и по виду исполнителя | PARTNER: платформе комиссия, партнёру остаток; OWN_OPS: вся сумма — выручка Operations; NEW/CANCELLED не считаются | service.test, service-orders.test |
+| BR-P32 (услуги) | QA не исполнителем и c подтверждением | verify: actor ≠ assignee и ≥1 Document; иначе QA_SELF_VERIFY / PROOF_REQUIRED | service.test, service-orders.test |
+| BR-P33 (документы/услуги) | Собственник — только своё | документ по чужому договору → 404 на скачивание/загрузку; заказ по чужому юниту → 404; оценка чужого заказа → 404 | owner-documents.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

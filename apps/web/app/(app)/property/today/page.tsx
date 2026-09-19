@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Activity, AlertTriangle, Building2, FileSignature, Handshake, Users, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, Building2, FileSignature, Handshake, Sparkles, Users, Wrench } from 'lucide-react';
 import { can } from '@finance-os/core';
 import { getControlRoom } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -135,6 +135,30 @@ export default async function ControlRoomPage() {
             </ul>
           </Card>
         </Section>
+        {cr.services ? (
+          <Section icon={<Sparkles className="h-3.5 w-3.5" />} title={t('services')} href="/services" linkLabel={t('allServices')}>
+            <Card>
+              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-3">
+                <div><p className="font-mono text-base font-bold whitespace-nowrap text-gray-900">{fmtRate(cr.services.gmvMinor, cr.services.currency)}</p><p className="text-[11px] text-gray-500">{t('servicesGmv')}</p></div>
+                <div><p className="font-mono text-base font-bold whitespace-nowrap text-emerald-600">{fmtRate(cr.services.platformRevenueMinor, cr.services.currency)}</p><p className="text-[11px] text-gray-500">{t('servicesRevenue')}</p></div>
+                <div><p className="font-mono text-xl font-bold text-gray-900">{cr.services.done}</p><p className="text-[11px] text-gray-500">{t('servicesDone')}</p></div>
+                <div><p className="font-mono text-xl font-bold text-amber-600">{cr.services.open}</p><p className="text-[11px] text-gray-500">{t('servicesOpen')}</p></div>
+                <div><p className={cn('font-mono text-xl font-bold', cr.services.overdue ? 'text-red-600' : 'text-gray-400')}>{cr.services.overdue}</p><p className="text-[11px] text-gray-500">{t('servicesOverdue')}</p></div>
+                <div><p className={cn('font-mono text-xl font-bold', cr.services.slaPct != null && cr.services.slaPct < 80 ? 'text-red-600' : 'text-gray-900')}>{cr.services.slaPct == null ? '—' : `${cr.services.slaPct}%`}</p><p className="text-[11px] text-gray-500">{t('servicesSla')}{cr.services.avgRating != null ? ` · ★ ${cr.services.avgRating}` : ''}</p></div>
+              </div>
+              {cr.services.byProvider.filter((p) => p.providerKind === 'PARTNER').length ? (
+                <>
+                  <p className="mt-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase">{t('partnerSla')}</p>
+                  <ul className="mt-1 divide-y divide-gray-100">
+                    {cr.services.byProvider.filter((p) => p.providerKind === 'PARTNER').map((p) => (
+                      <li key={p.partnerName ?? ''} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span className="font-medium text-gray-900">{p.partnerName}</span><span className={cn('font-mono text-xs', p.slaPct != null && p.slaPct < 80 ? 'text-red-600' : 'text-gray-600')}>{p.orders} · {fmtRate(p.gmvMinor, cr.services!.currency)} · SLA {p.slaPct == null ? '—' : `${p.slaPct}%`}{p.avgRating != null ? ` · ★ ${p.avgRating}` : ''}</span></li>
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+            </Card>
+          </Section>
+        ) : null}
         {/* Operations + alerts */}
         <Section icon={<Wrench className="h-3.5 w-3.5" />} title={t('operations')} href="/property?alerts=1" linkLabel={t('showAlerts')}>
           <Card>
