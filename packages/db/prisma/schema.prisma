@@ -1888,6 +1888,7 @@ enum DealStage {
 enum DealSource {
   WEBSITE
   TELEGRAM
+  WHATSAPP // ADR-032: редкий канал, без интеграции — пересылкой боту
   INSTAGRAM
   REFERRAL
   BROKER

@@ -7,7 +7,7 @@ import { intakeLead, verifyApiKey } from '@finance-os/db';
  * P-17 (blueprint §3/§8/§14): лид c сайта/бота → Deal c source и UTM. Auth — X-Api-Key (scope LEADS).
  * Ответ не раскрывает ничего, кроме номера сделки (для «спасибо, ваш номер обращения»).
  */
-const SOURCES: DealSource[] = ['WEBSITE', 'TELEGRAM', 'INSTAGRAM', 'REFERRAL', 'BROKER', 'WALK_IN', 'OTHER'];
+const SOURCES: DealSource[] = ['WEBSITE', 'TELEGRAM', 'WHATSAPP', 'INSTAGRAM', 'REFERRAL', 'BROKER', 'WALK_IN', 'OTHER'];
 
 export async function POST(request: Request): Promise<Response> {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';

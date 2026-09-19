@@ -1,10 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { CategoryGroup, RoleCode } from '@finance-os/db';
+import type { TelephonyProvider } from '@finance-os/adapters';
+import type { CategoryGroup, RoleCode, TelephonySettingsInput } from '@finance-os/db';
 import {
   grantRole,
   revokeRole,
+  updateTelephonySettings,
   updateTenantSettings,
   upsertCategory,
   upsertCostCenter,
@@ -57,6 +59,30 @@ export async function upsertCategoryAction(formData: FormData): Promise<void> {
     group: String(formData.get('group')) as CategoryGroup,
     closingDocSlaDays: Number(formData.get('closingDocSlaDays') ?? 10),
     accountCode: String(formData.get('accountCode') ?? '') || null,
+  });
+  revalidatePath('/admin');
+}
+
+/** P-29: телефония тенанта — провайдер, зона АТС, внутренние номера (строки «101 = email»), карта полей (JSON). */
+export async function saveTelephonySettingsAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const extMap: Record<string, string> = {};
+  for (const line of String(formData.get('extMap') ?? '').split(/\r?\n/)) {
+    const m = line.match(/^\s*([\d\s-]+?)\s*[=:→]\s*(\S+)\s*$/);
+    if (m) extMap[m[1]!.replace(/\D/g, '')] = m[2]!;
+  }
+  const fieldMapRaw = String(formData.get('fieldMap') ?? '').trim();
+  let fieldMap: Record<string, string[]> | null = null;
+  if (fieldMapRaw) {
+    const parsed = JSON.parse(fieldMapRaw) as Record<string, unknown>;
+    fieldMap = Object.fromEntries(Object.entries(parsed).map(([k, v]) => [k, Array.isArray(v) ? v.map(String) : [String(v)]]));
+  }
+  await updateTelephonySettings(ctx, {
+    provider: String(formData.get('provider') ?? 'generic') as TelephonyProvider,
+    tzOffset: String(formData.get('tzOffset') ?? '+05:00').trim(),
+    internalExtLen: Number(formData.get('internalExtLen') ?? 4),
+    extMap,
+    fieldMap: fieldMap as TelephonySettingsInput['fieldMap'],
   });
   revalidatePath('/admin');
 }

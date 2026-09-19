@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { unsafeCreateTenantContext, type RoleCode } from '@finance-os/core';
-import { GenericTelephonyAdapter } from '@finance-os/adapters';
+import { GenericTelephonyAdapter, buildTelephonyAdapter } from '@finance-os/adapters';
+import { PermissionDeniedError, ValidationError } from '@finance-os/core';
 import { prisma } from '../src/client.js';
-import { ingestCallEvent } from '../src/services/telephony.js';
+import { getTelephonySettings, ingestCallEvent, noteTelephonyWebhook, updateTelephonySettings } from '../src/services/telephony.js';
 import { getCrmAnalytics } from '../src/services/crmAnalytics.js';
 import { createDeal } from '../src/services/deals.js';
 import { createPropertyOwner } from '../src/services/property.js';
@@ -62,5 +63,28 @@ describe('Телефония → CRM (docs/21 §7)', () => {
     const me = a.staff.find((s) => s.userId === cmId)!;
     expect(me.calls).toBeGreaterThanOrEqual(3);
     expect(a.funnel.leads).toBe(a.speed.leads);
+  });
+
+  it('P-29: настройки телефонии — только tenant.settings (ADMIN); email внутреннего номера → userId; чужой email → EXT_USER_NOT_FOUND; аудит', async () => {
+    const admin = ctx(['ADMIN']);
+    await expect(updateTelephonySettings(ctx(['COMMERCIAL_MANAGER']), { provider: 'onlinepbx', tzOffset: '+05:00', internalExtLen: 3, extMap: {} })).rejects.toBeInstanceOf(PermissionDeniedError);
+    await expect(updateTelephonySettings(admin, { provider: 'onlinepbx', tzOffset: '+05:00', internalExtLen: 3, extMap: { '101': 'nobody@else.test' } })).rejects.toBeInstanceOf(ValidationError);
+    const cmEmail = (await prisma.user.findUniqueOrThrow({ where: { id: cmId } })).email;
+    const saved = await updateTelephonySettings(admin, { provider: 'onlinepbx', tzOffset: '+03:00', internalExtLen: 3, extMap: { '101': cmEmail }, fieldMap: { id: ['callid'] } });
+    expect([saved.provider, saved.tzOffset, saved.internalExtLen, saved.extMap['101'], saved.fieldMap?.id]).toEqual(['onlinepbx', '+03:00', 3, cmId, ['callid']]);
+    const audit = await prisma.auditLog.findFirst({ where: { tenantId, action: 'telephony.settings.update' }, orderBy: { seq: 'desc' } });
+    expect(audit).not.toBeNull();
+    // адаптер собирается по настройкам и понимает тело OnlinePBX c переопределённым id; звонок c ext 101 — от менеджера
+    const settings = await getTelephonySettings(tenantId);
+    const ev = buildTelephonyAdapter(settings).parseWebhook({ event: 'call_end', callid: 'opbx-1', caller_id_number: '998905559999', destination_number: '101', billsec: '30', start_stamp: '2026-09-21 11:00:00' });
+    expect(ev).toMatchObject({ kind: 'CALL_FINISHED', externalId: 'opbx-1', employeeExt: '101' });
+    expect(ev?.startedAt).toBe('2026-09-21T08:00:00.000Z');
+    const r = await ingestCallEvent(tenantId, ev!, NOW);
+    expect(r.status).toBe('NEW_LEAD');
+    expect((await prisma.unitActivity.findFirstOrThrow({ where: { tenantId, externalRef: 'opbx-1' } })).actorId).toBe(cmId);
+    // диагностика: непонятое тело сохраняет только ключи
+    await noteTelephonyWebhook(tenantId, false, ['foo', 'bar'], NOW);
+    const diag = await getTelephonySettings(tenantId);
+    expect([diag.lastWebhookAt, diag.lastUnparsed?.keys]).toEqual([NOW.toISOString(), ['foo', 'bar']]);
   });
 });

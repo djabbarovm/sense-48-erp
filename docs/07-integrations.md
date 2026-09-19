@@ -126,13 +126,34 @@ Mock: `RuleBasedIntentExtractor` (регулярные выражения, де�
 ## 6. Email (fallback)
 Тот же `NotificationAdapter`, реализация через SMTP (nodemailer), те же шаблоны.
 
-## 8. Telephony (P-26, docs/21 §7)
+## 8. Telephony (P-26/P-29, docs/21 §7, ADR-032)
 
 ```ts
 interface TelephonyAdapter { parseWebhook(body: unknown): TelephonyEvent | null }
 interface TelephonyEvent { kind: 'CALL_FINISHED' | 'CALL_MISSED'; externalId; direction: 'IN' | 'OUT'; clientPhone; employeeExt: string | null; startedAt: ISO; durationSec; recordingUrl: string | null }
+type TelephonyProvider = 'generic' | 'onlinepbx';           // buildTelephonyAdapter(tenant.settings.telephony)
+parseWebhookRawBody(contentType, raw): Record<string, unknown> // JSON или application/x-www-form-urlencoded
 ```
-`GenericTelephonyAdapter` принимает нормализованный JSON `{event: hangup|finished|missed, id|call_id, phone|client_phone, direction, ext, started_at, duration, recording_url}` — так провайдер (Sipuni / OnlinePBX / Zadarma / оператор) подключается либо своим адаптером, либо настройкой webhook под этот формат. Вход: `POST /api/telephony/webhook`, auth `X-Api-Key` scope `TELEPHONY`. `ingestCallEvent`: телефон → контакт → активная сделка (активность CALL, source PHONE, длительность, ссылка на запись, направление; пропущенный → следующий шаг «перезвонить»); иначе собственник по телефону; неизвестный входящий → лид «Входящий …»; исходящий на незнакомый номер игнорируется; дедупликация по `externalRef`. Сопоставление сотрудника — `tenant.settings.telephony_ext_map {ext: userId}`, иначе менеджер сделки / дежурный. Записи хранятся у провайдера; ссылка видна только c `deal.contact.view`. Чужие чаты и записи без согласия не собираются.
+Вход: `POST /api/telephony/webhook`, auth `X-Api-Key` scope `TELEPHONY` (или `?key=` для АТС без заголовков). Провайдер и карта полей — из `tenant.settings.telephony` (экран «Администрирование → Телефония»). Каждый webhook отмечается (`last_webhook_at`); непонятое тело сохраняет **только ключи** (`last_unparsed.keys`) — по ним админ уточняет карту полей после первого реального звонка.
+
+**GenericTelephonyAdapter** — наш нормализованный JSON `{event: hangup|finished|missed, id|call_id, phone|client_phone, direction, ext, started_at, duration, recording_url}`.
+
+**OnlinePbxAdapter** (провайдер владельца). Кабинет: Сервисы → Интеграция → Webhooks, события «Завершили» и «Пропущенный» («Ответили» — промежуточное, игнорируется). Официальная спецификация полей из среды разработки недоступна, поэтому по умолчанию — CDR-имена FreeSWITCH, на котором построен OnlinePBX, c альтернативами; каждое поле переопределяется `field_map`:
+
+| Поле | Кандидаты по умолчанию |
+|---|---|
+| id | `uuid`, `call_uuid`, `call_id`, `id` |
+| event | `event`, `type`, `status`, `call_status`, `action` |
+| from | `caller_id_number`, `caller_number`, `caller`, `from`, `src`, `from_number`, `phone` |
+| to | `destination_number`, `callee_number`, `callee`, `to`, `dst`, `to_number`, `did` |
+| direction | `direction`, `call_direction` (нет → по длине номера: внутренний ≤ `internal_ext_len` цифр) |
+| ext | `user`, `extension`, `ext`, `accountcode`, `user_number`, `internal`, `sip_user` (нет → внутренняя сторона звонка) |
+| start | `start_stamp` («YYYY-MM-DD HH:MM:SS» в зоне АТС `tz_offset`), `start`, `started_at`, `timestamp` (unix) |
+| duration | `billsec`, `user_talk_time`, `talk_time`, `duration` |
+| recording | `download_url`, `record_url`, `recording_url`, `recording`, `download`, `record`, `link` |
+| hangupCause | `hangup_cause`, `cause`, `reason` — NO_ANSWER / ORIGINATOR_CANCEL / USER_BUSY / … при нулевой длительности = пропущенный |
+
+`ingestCallEvent`: телефон → контакт → активная сделка (активность CALL, source PHONE, длительность, ссылка на запись, направление; пропущенный → следующий шаг «перезвонить»); иначе собственник по телефону; неизвестный входящий → лид «Входящий …»; исходящий на незнакомый номер игнорируется; внутренние звонки (обе стороны — короткие номера) игнорируются; дедупликация по `externalRef`. Сопоставление сотрудника — `settings.telephony.ext_map {ext: userId}` (в UI — «101 = email»), иначе менеджер сделки / дежурный. Записи хранятся у провайдера; ссылка видна только c `deal.contact.view`. Чужие чаты и записи без согласия не собираются.
 
 ## 7. FX
 `FxRateImporter`: CSV `date;currency;rate` (курс ЦБ РУз). Job раз в день проверяет наличие курса на сегодня, если нет — Task Lead.

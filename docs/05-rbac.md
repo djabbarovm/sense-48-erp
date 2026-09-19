@@ -159,7 +159,7 @@
 | mall.manage (мандаты, ставки, линии актива) | OWNER, COMMERCIAL_MANAGER |
 | mall.fee.view (контролируемая база и вознаграждение) | OWNER, FINANCE_OPS_LEAD, ADMIN, COMMERCIAL_MANAGER |
 | contact.merge (слияние дублей клиентов) | OWNER, COMMERCIAL_MANAGER |
-| owner.activity (звонок/заметка/follow-up по собственнику без права менять реестр) | OWNER, COMMERCIAL_MANAGER, BROKER, CALL_CENTER, OPERATIONS_MANAGER |
+| owner.activity (звонок/заметка/follow-up по собственнику без права менять реестр) | OWNER, COMMERCIAL_MANAGER, CALL_CENTER, OPERATIONS_MANAGER (брокер собственников не ведёт, docs/21 §4) |
 | owner.pipeline (воронка собственников, карточка, расчёт) | OWNER, COMMERCIAL_MANAGER, BROKER, MARKETING, FINANCE_OPS_LEAD, ADMIN; изменения — property.manage |
 | house.view (деньги дома: взносы, бюджет, отчёт) | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, OPERATIONS_MANAGER, COMMERCIAL_MANAGER |
 | house.manage (фонд, тариф, бюджет, расходы) | OWNER, OPERATIONS_MANAGER, FINANCE_OPS_LEAD |

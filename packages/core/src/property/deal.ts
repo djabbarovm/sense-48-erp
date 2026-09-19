@@ -9,7 +9,7 @@ import type { CommercialStatus } from './status.js';
 export const DEAL_STAGES = ['NEW', 'QUALIFIED', 'PROPERTY_SELECTED', 'VIEWING', 'OFFER', 'NEGOTIATION', 'LOI', 'CONTRACT', 'MOVE_IN', 'WON', 'LOST'] as const;
 export type DealStage = (typeof DEAL_STAGES)[number];
 export const ACTIVE_DEAL_STAGES: readonly DealStage[] = ['NEW', 'QUALIFIED', 'PROPERTY_SELECTED', 'VIEWING', 'OFFER', 'NEGOTIATION', 'LOI', 'CONTRACT', 'MOVE_IN'];
-export const DEAL_SOURCES = ['WEBSITE', 'TELEGRAM', 'INSTAGRAM', 'REFERRAL', 'BROKER', 'WALK_IN', 'OTHER'] as const;
+export const DEAL_SOURCES = ['WEBSITE', 'TELEGRAM', 'WHATSAPP', 'INSTAGRAM', 'REFERRAL', 'BROKER', 'WALK_IN', 'OTHER'] as const;
 export const DEAL_LOST_REASONS = ['PRICE', 'TIMING', 'LOCATION', 'COMPETITOR', 'NO_RESPONSE', 'OTHER'] as const;
 
 /** Вероятность закрытия по стадии, % (docs/20 §11.2). */

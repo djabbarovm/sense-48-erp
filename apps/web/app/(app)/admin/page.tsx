@@ -1,13 +1,15 @@
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { can, ROLE_CODES } from '@finance-os/core';
-import { listCategories, listCostCenters, listTenantUsers, prisma } from '@finance-os/db';
+import { TELEPHONY_PROVIDERS } from '@finance-os/adapters';
+import { getTelephonySettings, listCategories, listCostCenters, listTenantUsers, prisma } from '@finance-os/db';
 import Link from 'next/link';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, Select, Table, Td, Th } from '@/components/ui';
 import {
   grantRoleAction,
   revokeRoleAction,
+  saveTelephonySettingsAction,
   saveTenantSettingsAction,
   upsertCategoryAction,
   upsertCostCenterAction,
@@ -32,13 +34,18 @@ export default async function AdminPage() {
   if (!can(ctx, 'tenant.settings')) notFound();
   const t = await getTranslations('admin');
 
-  const [tenant, users, costCenters, categories] = await Promise.all([
+  const [tenant, users, costCenters, categories, telephony] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
     listTenantUsers(ctx),
     listCostCenters(ctx),
     listCategories(ctx),
+    getTelephonySettings(ctx.tenantId),
   ]);
   const settings = tenant.settings as Record<string, unknown>;
+  const emailById = new Map(users.map((u) => [u.user.id, u.user.email]));
+  const extMapText = Object.entries(telephony.extMap).map(([ext, userId]) => `${ext} = ${emailById.get(userId) ?? userId}`).join('\n');
+  const webhookUrl = `${(process.env.APP_URL ?? '').replace(/\/$/, '')}/api/telephony/webhook`;
+  const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' }) : t('telephony.none'));
 
   return (
     <div className="space-y-6">
@@ -77,6 +84,47 @@ export default async function AdminPage() {
           <div className="col-span-2">
             <SubmitButton />
           </div>
+        </form>
+      </Card>
+
+      <Card>
+        <h2 className="mb-1 font-medium">{t('telephony.title')}</h2>
+        <p className="mb-3 text-sm text-gray-600">{t('telephony.intro')}</p>
+        <form action={saveTelephonySettingsAction} className="grid max-w-2xl grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="tel-provider">{t('telephony.provider')}</Label>
+            <Select id="tel-provider" name="provider" defaultValue={telephony.provider}>
+              {TELEPHONY_PROVIDERS.map((p) => (<option key={p} value={p}>{t(`telephony.provider${p === 'onlinepbx' ? 'Onlinepbx' : 'Generic'}`)}</option>))}
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="tel-tz">{t('telephony.tzOffset')}</Label>
+            <Input id="tel-tz" name="tzOffset" defaultValue={telephony.tzOffset} pattern="[+-]\d{2}:\d{2}" />
+          </div>
+          <div>
+            <Label htmlFor="tel-extlen">{t('telephony.internalExtLen')}</Label>
+            <Input id="tel-extlen" name="internalExtLen" type="number" min={1} max={6} defaultValue={telephony.internalExtLen} />
+          </div>
+          <div>
+            <Label htmlFor="tel-url">{t('telephony.webhookUrl')}</Label>
+            <Input id="tel-url" readOnly value={webhookUrl} className="font-mono text-xs" />
+          </div>
+          <div className="col-span-2">
+            <Label htmlFor="tel-extmap">{t('telephony.extMap')}</Label>
+            <textarea id="tel-extmap" name="extMap" rows={3} defaultValue={extMapText} className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-ink-900 focus:outline-none focus:ring-2 focus:ring-volt-500/60" />
+            <p className="mt-1 text-xs text-gray-500">{t('telephony.extMapHint')}</p>
+          </div>
+          <div className="col-span-2">
+            <Label htmlFor="tel-fieldmap">{t('telephony.fieldMap')}</Label>
+            <textarea id="tel-fieldmap" name="fieldMap" rows={2} defaultValue={telephony.fieldMap ? JSON.stringify(telephony.fieldMap) : ''} className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-ink-900 focus:outline-none focus:ring-2 focus:ring-volt-500/60" />
+            <p className="mt-1 text-xs text-gray-500">{t('telephony.fieldMapHint')}</p>
+          </div>
+          <div className="col-span-2 text-xs text-gray-600">
+            <p>{t('telephony.webhookHint')}</p>
+            <p className="mt-1">{t('telephony.lastWebhook')}: <span className="font-medium">{fmt(telephony.lastWebhookAt)}</span></p>
+            <p>{t('telephony.lastUnparsed')}: <span className="font-mono">{telephony.lastUnparsed ? `${telephony.lastUnparsed.keys.join(', ')} (${fmt(telephony.lastUnparsed.at)})` : t('telephony.none')}</span></p>
+          </div>
+          <div className="col-span-2"><Button type="submit">{t('telephony.save')}</Button></div>
         </form>
       </Card>
 

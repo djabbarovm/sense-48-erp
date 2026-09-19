@@ -108,7 +108,27 @@
     "addUser": "Добавить пользователя",
     "addCostCenter": "Добавить центр затрат",
     "addCategory": "Добавить категорию",
-    "apiKeys": "API-ключи →"
+    "apiKeys": "API-ключи →",
+    "telephony": {
+      "title": "Телефония",
+      "intro": "Звонки АТС становятся активностями CRM: клиент ищется по номеру, пропущенный даёт шаг «перезвонить», запись — ссылкой у провайдера.",
+      "provider": "Провайдер",
+      "providerGeneric": "Универсальный JSON (docs/07 §8)",
+      "providerOnlinepbx": "OnlinePBX",
+      "tzOffset": "Зона АТС (смещение)",
+      "internalExtLen": "Длина внутренних номеров",
+      "extMap": "Внутренние номера сотрудников",
+      "extMapHint": "По строке: номер = email сотрудника. Например: 101 = commercial@piramit.test",
+      "fieldMap": "Карта полей провайдера (JSON, необязательно)",
+      "fieldMapHint": "Переопределяет имена полей webhook, например id → uuid, from → caller_id_number (ключи: id, event, from, to, direction, ext, start, duration, recording, hangupCause). Пусто — умолчания адаптера.",
+      "webhookUrl": "Адрес webhook",
+      "webhookHint": "OnlinePBX: Сервисы → Интеграция → Webhooks, события «Завершили» и «Пропущенный». Ключ TELEPHONY создаётся в API-ключах; если АТС не умеет заголовок X-Api-Key — добавьте ?key=… к адресу.",
+      "lastWebhook": "Последний webhook",
+      "lastUnparsed": "Последнее непонятое тело: ключи",
+      "none": "ещё не было",
+      "save": "Сохранить телефонию",
+      "saved": "Сохранено"
+    }
   },
   "vendors": {
     "title": "Поставщики",
@@ -1279,6 +1299,7 @@
     "source": {
       "WEBSITE": "Сайт",
       "TELEGRAM": "Telegram",
+      "WHATSAPP": "WhatsApp",
       "INSTAGRAM": "Instagram",
       "REFERRAL": "Рекомендация",
       "BROKER": "Брокер",

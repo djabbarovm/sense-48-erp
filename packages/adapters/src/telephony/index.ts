@@ -37,3 +37,36 @@ export class GenericTelephonyAdapter implements TelephonyAdapter {
     return { kind, externalId: id, direction: dir === 'OUT' || dir === 'OUTBOUND' ? 'OUT' : 'IN', clientPhone: phone, employeeExt: str(b.ext) ?? str(b.employee_ext), startedAt: str(b.started_at) ?? new Date().toISOString(), durationSec: kind === 'CALL_MISSED' ? 0 : num(b.duration ?? b.duration_sec), recordingUrl: str(b.recording_url) ?? str(b.record) };
   }
 }
+
+// ── P-29: выбор провайдера и разбор сырого тела webhook ──
+export * from './onlinepbx.js';
+import { OnlinePbxAdapter, type OnlinePbxField } from './onlinepbx.js';
+
+export type TelephonyProvider = 'generic' | 'onlinepbx';
+export const TELEPHONY_PROVIDERS: readonly TelephonyProvider[] = ['generic', 'onlinepbx'] as const;
+
+/** Настройки телефонии тенанта (`tenant.settings.telephony`). */
+export interface TelephonyConfig {
+  provider: TelephonyProvider;
+  tzOffset?: string;
+  internalExtLen?: number;
+  fieldMap?: Partial<Record<OnlinePbxField, string[]>>;
+}
+
+export function buildTelephonyAdapter(cfg: TelephonyConfig | null | undefined): TelephonyAdapter {
+  if (cfg?.provider === 'onlinepbx') return new OnlinePbxAdapter({ tzOffset: cfg.tzOffset, internalExtMaxLen: cfg.internalExtLen, fieldMap: cfg.fieldMap });
+  return new GenericTelephonyAdapter();
+}
+
+/** Тело webhook: JSON или application/x-www-form-urlencoded (АТС часто шлют форму). Бросает при нечитаемом теле. */
+export function parseWebhookRawBody(contentType: string | null, raw: string): Record<string, unknown> {
+  const ct = (contentType ?? '').toLowerCase();
+  const text = raw.trim();
+  if (!text) return {};
+  const asForm = () => Object.fromEntries(new URLSearchParams(text));
+  if (ct.includes('json')) return JSON.parse(text) as Record<string, unknown>;
+  if (ct.includes('x-www-form-urlencoded')) return asForm();
+  if (text.startsWith('{')) return JSON.parse(text) as Record<string, unknown>;
+  if (/^[^=&\s]+=/.test(text)) return asForm();
+  return JSON.parse(text) as Record<string, unknown>;
+}

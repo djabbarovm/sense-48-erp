@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: телефония OnlinePBX и каналы сообщений (P-29, ADR-032)
+- adapters: `telephony/onlinepbx.ts` — `OnlinePbxAdapter` (карта полей c умолчаниями FreeSWITCH-CDR: uuid / caller_id_number / destination_number / start_stamp / billsec / hangup_cause / download_url; form-urlencoded и JSON; направление по внутреннему номеру; «Ответили» игнорируется; пропущенный по событию или причине), `buildTelephonyAdapter`, `parseWebhookRawBody`, `TELEPHONY_PROVIDERS`; `vitest.config.ts` пакета — тесты adapters входят в `pnpm test`; 6 тестов.
+- db: `getTelephonySettings` / `updateTelephonySettings` (право tenant.settings, email → userId участника тенанта, аудит `telephony.settings.update`) / `noteTelephonyWebhook` (время последнего webhook и ключи непонятого тела, без значений); `actorFor` читает `settings.telephony.ext_map` c fallback на старую карту; enum `DealSource.WHATSAPP` (миграция `deal_source_whatsapp`); тест.
+- web: `/api/telephony/webhook` — провайдер и карта из настроек тенанта, ключ в заголовке или `?key=`, диагностика; «Администрирование → Телефония» (провайдер, зона АТС, длина внутренних, «101 = email», карта полей JSON, адрес webhook, последний webhook и ключи); источник WhatsApp в формах лида.
+- docs: docs/07 §8 переписан под OnlinePBX, docs/21 §2 (каналы: OnlinePBX, Telegram основной, WhatsApp редко) / §7 / §9 P-29, README, ADR-032.
+- fix: право `owner.activity` отозвано у BROKER (регресс P-25 против теста P-22b — брокер собственников не ведёт, docs/05 §owner).
+
 ## [Phase H] 2026-09-19 — Сервер DigitalOcean: HTTPS без домена, демо Tower, webhook бота (H-11)
 - deploy: `deploy/Caddyfile` + сервис `caddy` в `docker-compose.deploy.yml` — публичный адрес `https://<ip-через-дефисы>.sslip.io` c сертификатом Let's Encrypt; web остаётся на loopback, `AUTH_COOKIE_SECURE=true`, `APP_URL`/`TELEGRAM_*` прокинуты в web и workers.
 - workflow Deploy: шаг «Публичный адрес» (свой домен через секрет `PUBLIC_HOST`), `.env.prod` дополняется идемпотентно (`setenv`), проверка HTTPS после старта, `--remove-orphans`, регистрация Telegram webhook при наличии токена (токен в логе маскируется).
