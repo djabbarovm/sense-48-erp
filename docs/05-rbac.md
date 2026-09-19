@@ -149,3 +149,11 @@
 | bonus.confirm_kpi (подтверждение чек-листа, не продажник) | OWNER, COMMERCIAL_MANAGER |
 | bonus.pay (отметка выплаты по ведомости) | OWNER, FINANCE_OPS_LEAD |
 | deal.checklist (отметки пунктов чек-листа) | OWNER, COMMERCIAL_MANAGER, BROKER, OPERATIONS_MANAGER |
+
+### ORDO Mall (docs/20 §11.11)
+
+| Право | Роли |
+|---|---|
+| mall.view | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, COMMERCIAL_MANAGER, BROKER, MARKETING, OPERATIONS_MANAGER |
+| mall.manage (мандаты, ставки, линии актива) | OWNER, COMMERCIAL_MANAGER |
+| mall.fee.view (контролируемая база и вознаграждение) | OWNER, FINANCE_OPS_LEAD, ADMIN, COMMERCIAL_MANAGER |

@@ -122,8 +122,8 @@ function pickStatus(kind: BuildingSpec['kind'], r: () => number, askingMinor: bi
 export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   const tenant = await prisma.tenant.upsert({
     where: { slug: PROPERTY_TENANT.slug },
-    create: { slug: PROPERTY_TENANT.slug, legalName: PROPERTY_TENANT.legalName, taxId: PROPERTY_TENANT.taxId, settings: { product: 'MDS Property', management_fee_bp: 1000 } },
-    update: { legalName: PROPERTY_TENANT.legalName, settings: { product: 'MDS Property', management_fee_bp: 1000 } },
+    create: { slug: PROPERTY_TENANT.slug, legalName: PROPERTY_TENANT.legalName, taxId: PROPERTY_TENANT.taxId, settings: { product: 'MDS Property', management_fee_bp: 1000, mall_rate_scenarios: { '1': { conservative: 4500, base: 5500, optimistic: 6000 }, '2': { conservative: 3500, base: 4500, optimistic: 5000 }, '3': { conservative: 1600, base: 4000, optimistic: 4500 } } } },
+    update: { legalName: PROPERTY_TENANT.legalName, settings: { product: 'MDS Property', management_fee_bp: 1000, mall_rate_scenarios: { '1': { conservative: 4500, base: 5500, optimistic: 6000 }, '2': { conservative: 3500, base: 4500, optimistic: 5000 }, '3': { conservative: 1600, base: 4000, optimistic: 4500 } } } },
   });
   const tenantId = tenant.id;
 
@@ -459,5 +459,48 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
       await closeSale(cm, d3.id, { salePriceMinor: 28_500_000n }, daysAgo(2));
       console.log('  commissions: 3 deals won (lease paid + KPI, office w/ broker, sale)');
     }
+  }
+
+  // ── P-19: ORDO Mall — категории арендаторов, мандаты ДДУ (20 ACTIVE / 4 SIGNED / 3 DRAFT), линии актива ──
+  const mall = await prisma.building.findFirst({ where: { tenantId, kind: 'MALL' } });
+  if (mall) {
+    const mallUnits = await prisma.unit.findMany({ where: { tenantId, buildingId: mall.id, type: 'RETAIL' }, orderBy: { unitNo: 'asc' }, include: { leases: { where: { status: { in: ['ACTIVE', 'EXPIRING'] } } } } });
+    const CATS = ['FASHION', 'FOOD_BEVERAGE', 'BEAUTY_HEALTH', 'ELECTRONICS', 'KIDS', 'SERVICES', 'SPORTS', 'HOME', 'GROCERY', 'ENTERTAINMENT'] as const;
+    let cats = 0;
+    for (let i = 0; i < mallUnits.length; i++) for (const l of mallUnits[i]!.leases) if (!l.tenantCategory) { await prisma.leaseContract.update({ where: { id: l.id }, data: { tenantCategory: CATS[(i * 3) % CATS.length]! } }); cats++; }
+    // один магазин — собственнику owner1 (кабинет собственника показывает отчёт ТРЦ)
+    const owner1 = ownerUser ? await prisma.propertyOwner.findFirst({ where: { tenantId, userId: ownerUser.id } }) : null;
+    if (owner1 && mallUnits[2] && mallUnits[2].ownerId !== owner1.id) await prisma.unit.update({ where: { id: mallUnits[2].id }, data: { ownerId: owner1.id } });
+    let mandates = 0;
+    const withOwner = (await prisma.unit.findMany({ where: { tenantId, buildingId: mall.id, type: 'RETAIL', ownerId: { not: null } }, orderBy: { unitNo: 'asc' } })).slice(0, 27);
+    for (let i = 0; i < withOwner.length; i++) {
+      const u = withOwner[i]!;
+      if (await prisma.mallMandate.findFirst({ where: { tenantId, unitId: u.id, status: { in: ['DRAFT', 'SIGNED', 'ACTIVE'] } } })) continue;
+      const status = i < 20 ? 'ACTIVE' : i < 24 ? 'SIGNED' : 'DRAFT';
+      const feeBp = i % 4 === 0 ? 600 : null; // часть ставок «утверждена» для демонстрации; остальные OPEN
+      await prisma.mallMandate.create({ data: { tenantId, unitId: u.id, ownerId: u.ownerId!, status, feeBp, successFeeMonths: i % 2 === 0 ? 0.5 : 1, feePublished: feeBp != null && i % 8 === 0, signedAt: status !== 'DRAFT' ? daysAgo(30 + i) : null, startAt: status === 'ACTIVE' ? daysAgo(20 + i) : null, createdBy: cmUser ?? null } });
+      if (status === 'ACTIVE') await prisma.unit.update({ where: { id: u.id }, data: { managedByPlatform: true } });
+      mandates++;
+    }
+    const ASSETS: { kind: 'MEDIA' | 'ISLAND' | 'PARKING' | 'PARTNERSHIP'; code: string; name: string; location: string; tariff: bigint; contract?: { name: string; monthly: bigint; months: number } }[] = [
+      { kind: 'MEDIA', code: 'LED-ATRIUM', name: 'LED-экран атриума', location: 'атриум, 1 этаж', tariff: 250_000n, contract: { name: 'Coca-Cola Uzbekistan', monthly: 220_000n, months: 12 } },
+      { kind: 'MEDIA', code: 'LED-ENTRY', name: 'LED-экран главного входа', location: 'вход A', tariff: 180_000n, contract: { name: 'Ucell', monthly: 150_000n, months: 6 } },
+      { kind: 'MEDIA', code: 'LB-01', name: 'Лайтбокс эскалатор 1–2', location: 'эскалатор', tariff: 60_000n },
+      { kind: 'MEDIA', code: 'LB-02', name: 'Лайтбокс эскалатор 2–3', location: 'эскалатор', tariff: 60_000n, contract: { name: 'Artel', monthly: 55_000n, months: 3 } },
+      { kind: 'MEDIA', code: 'PILLAR-01', name: 'Брендирование колонн (4 шт.)', location: '1 этаж', tariff: 90_000n },
+      { kind: 'ISLAND', code: 'ISL-01', name: 'Островок кофе', location: 'атриум', tariff: 120_000n, contract: { name: 'Bon! Coffee', monthly: 120_000n, months: 12 } },
+      { kind: 'ISLAND', code: 'ISL-02', name: 'Островок аксессуары', location: '2 этаж', tariff: 80_000n, contract: { name: 'Charm', monthly: 75_000n, months: 12 } },
+      { kind: 'ISLAND', code: 'ISL-03', name: 'Островок сезонный', location: '1 этаж у входа B', tariff: 70_000n },
+      { kind: 'ISLAND', code: 'PATIO', name: 'Патио (летняя зона)', location: 'терраса', tariff: 115_000n },
+      { kind: 'PARKING', code: 'PARK-MALL', name: 'Паркинг ТРЦ, 300 мест', location: '-1 этаж', tariff: 900_000n, contract: { name: 'Посетители (почасовой сбор)', monthly: 640_000n, months: 12 } },
+      { kind: 'PARTNERSHIP', code: 'EVENT-Q4', name: 'Спонсорство новогодней активации', location: 'атриум', tariff: 500_000n },
+    ];
+    let assets = 0;
+    for (const a of ASSETS) {
+      let row = await prisma.commercialAsset.findFirst({ where: { tenantId, code: a.code } });
+      if (!row) { row = await prisma.commercialAsset.create({ data: { tenantId, buildingId: mall.id, kind: a.kind, code: a.code, name: a.name, location: a.location, tariffMinor: a.tariff, currency: 'USD' } }); assets++; }
+      if (a.contract && (await prisma.assetContract.count({ where: { assetId: row.id } })) === 0) await prisma.assetContract.create({ data: { tenantId, assetId: row.id, counterpartyName: a.contract.name, monthlyMinor: a.contract.monthly, currency: 'USD', startAt: daysAgo(40), endAt: daysAhead(a.contract.months * 30) } });
+    }
+    console.log(`  mall: ${cats} tenant categories, ${mandates} mandates, ${assets} assets`);
   }
 }

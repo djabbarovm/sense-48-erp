@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, Building2, Download, FileSignature, FileText, ShieldCheck, Sparkles, Star, Wallet, Wrench } from 'lucide-react';
+import { AlertTriangle, Building2, Download, FileSignature, FileText, ShieldCheck, Sparkles, Star, Store, Wallet, Wrench } from 'lucide-react';
 import { NotFoundError, WORK_ORDER_CATEGORIES, can } from '@finance-os/core';
 import { createStorageFromEnv } from '@finance-os/adapters';
 import { getOwnerPortal, getOwnerDocumentUrl } from '@finance-os/db';
@@ -23,6 +23,7 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
   const tp = await getTranslations('property');
   const tw = await getTranslations('workorders');
   const ts = await getTranslations('services');
+  const tM = await getTranslations('mall');
   let p: Awaited<ReturnType<typeof getOwnerPortal>>;
   try {
     p = await getOwnerPortal(ctx);
@@ -71,6 +72,33 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
           {p.units.length === 0 ? <EmptyState text={t('noUnits')} /> : null}
         </div>
       </section>
+
+      {p.mall && p.mall.length ? (
+        <section>
+          <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><Store className="h-3.5 w-3.5" />{t('mall')}</h2>
+          <Card>
+            <p className="text-xs text-gray-500">{t('mallHint')}</p>
+            <div className="mt-2 overflow-x-auto">
+              <Table>
+                <thead><tr><Th>{t('unit')}</Th><Th>{t('mallTenant')}</Th><Th className="text-right">{t('mallRate')}</Th><Th>{t('mallLeaseEnd')}</Th><Th className="text-right">{t('mallCollected')}</Th><Th className="text-right">{t('mallOutstanding')}</Th><Th>{t('mallMandate')}</Th></tr></thead>
+                <tbody>
+                  {p.mall.map((u) => (
+                    <tr key={u.id}>
+                      <Td><span className="font-mono font-semibold">{u.unitNo}</span><span className="ml-2 text-xs text-gray-500">{u.areaM2} {t('sqm')}</span>{u.riskVacancy ? <span className="ml-2 text-[10px] text-amber-600">{u.vacantDays != null && u.color === 'RED' ? t('mallVacant', { n: u.vacantDays }) : t('mallRisk')}</span> : null}</Td>
+                      <Td className="text-xs">{u.occupantName ?? '—'}{u.tenantCategory ? <span className="ml-1 text-gray-400">· {tM(`category.${u.tenantCategory}`)}</span> : null}</Td>
+                      <Td className="text-right font-mono text-xs">{u.rentMinor != null ? `${fmtRate(u.rentMinor, u.currency)} · ${fmtRate(u.ratePerM2Minor, u.currency)}${t('mallPerM2')}` : '—'}</Td>
+                      <Td className="font-mono text-xs">{u.leaseEndAt ? fmtDate(u.leaseEndAt) : '—'}</Td>
+                      <Td className="text-right font-mono text-xs text-emerald-600">{fmtRate(u.collectedMinor, u.currency)}</Td>
+                      <Td className={cn('text-right font-mono text-xs', u.outstandingMinor > 0n ? 'text-red-600' : 'text-gray-400')}>{fmtRate(u.outstandingMinor, u.currency)}</Td>
+                      <Td className="text-xs">{u.mandate ? <span><Badge tone={u.mandate.status === 'ACTIVE' ? 'green' : u.mandate.status === 'SIGNED' ? 'yellow' : 'gray'} dot>{t(`mandateStatus.${u.mandate.status}`)}</Badge><span className="ml-1 text-[10px] text-gray-500">{u.mandate.feeBp != null ? t('mallFee', { pct: u.mandate.feeBp / 100 }) : t('mallFeeOpen')}</span></span> : <span className="text-gray-400">{t('mallNoMandate')}</span>}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </Card>
+        </section>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Выписка */}

@@ -1685,7 +1685,8 @@ model PropertyOwner {
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
-  units Unit[]
+  units    Unit[]
+  mandates MallMandate[]
 
   @@unique([tenantId, userId])
   @@index([tenantId, displayName])
@@ -1734,6 +1735,7 @@ model Unit {
   workOrders WorkOrder[]
   serviceOrders ServiceOrder[]
   rentCharges RentCharge[]
+  mandates MallMandate[]
 
   @@unique([buildingId, unitNo])
   @@index([tenantId, buildingId])
@@ -1796,6 +1798,7 @@ model LeaseContract {
   depositMinor     BigInt?             @map("deposit_minor")
   depositReceived  Boolean             @default(false) @map("deposit_received")
   currency         String              @default("USD") @db.Char(3)
+  tenantCategory   TenantCategory?     @map("tenant_category") // ТРЦ: состав арендаторов (tenant mix)
   status           LeaseContractStatus @default(DRAFT)
   terminatedAt     DateTime?           @map("terminated_at")
   terminatedReason String?             @map("terminated_reason")
@@ -1883,6 +1886,7 @@ model Deal {
   commissionRateBp   Int?            @map("commission_rate_bp") // переопределение в коридоре продукта
   externalBrokerName String?         @map("external_broker_name")
   externalShareBp    Int             @default(0) @map("external_share_bp") // доля внешнего брокера в комиссии
+  tenantCategory     TenantCategory? @map("tenant_category")
   wonAt              DateTime?       @map("won_at")
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
@@ -2303,4 +2307,114 @@ model DealChecklistItem {
 
   @@unique([dealId, item])
   @@map("deal_checklist_item")
+}
+
+// ── §P8 ORDO Mall — коммерческая часть (docs/20 §11.11) ──
+
+enum TenantCategory {
+  FASHION
+  FOOD_BEVERAGE
+  GROCERY
+  SERVICES
+  BEAUTY_HEALTH
+  ELECTRONICS
+  KIDS
+  SPORTS
+  ENTERTAINMENT
+  HOME
+  OTHER
+}
+
+enum MandateStatus {
+  DRAFT
+  SIGNED
+  ACTIVE
+  TERMINATED
+}
+
+/** ДДУ — мандат собственника помещения ТРЦ на коммерческое управление (Mall §2A, §3). */
+model MallMandate {
+  id               String        @id @default(uuid(7)) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  unitId           String        @map("unit_id") @db.Uuid
+  ownerId          String        @map("owner_id") @db.Uuid
+  status           MandateStatus @default(DRAFT)
+  /** Регулярное вознаграждение, б.п. от собранной аренды; null — не утверждено (OPEN). */
+  feeBp            Int?          @map("fee_bp")
+  /** Success fee за сдачу — месяцев аренды (0.5 / 1); null — OPEN. */
+  successFeeMonths Decimal?      @map("success_fee_months") @db.Decimal(4, 2)
+  /** BR-P46: проценты видны собственнику только после утверждения (тройная сверка). */
+  feePublished     Boolean       @default(false) @map("fee_published")
+  pricingDelegated Boolean       @default(true) @map("pricing_delegated") // собственник делегировал ценовые полномочия
+  signedAt         DateTime?     @map("signed_at") @db.Date
+  startAt          DateTime?     @map("start_at") @db.Date
+  endAt            DateTime?     @map("end_at") @db.Date
+  terminatedAt     DateTime?     @map("terminated_at")
+  terminatedReason String?       @map("terminated_reason")
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  createdBy        String?       @map("created_by") @db.Uuid
+  updatedBy        String?       @map("updated_by") @db.Uuid
+
+  unit  Unit          @relation(fields: [unitId], references: [id])
+  owner PropertyOwner @relation(fields: [ownerId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, unitId, status])
+  @@map("mall_mandate")
+}
+
+enum AssetKind {
+  MEDIA
+  ISLAND
+  PARKING
+  PARTNERSHIP
+}
+
+enum AssetContractStatus {
+  ACTIVE
+  ENDED
+}
+
+/** Линии актива ТРЦ (медианосители, островки, паркинг, партнёрства) — 100% ORDO по конструкции C. */
+model CommercialAsset {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  buildingId  String    @map("building_id") @db.Uuid
+  kind        AssetKind
+  code        String
+  name        String
+  location    String?
+  tariffMinor BigInt?   @map("tariff_minor") // прайс в месяц
+  currency    String    @default("USD") @db.Char(3)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  contracts AssetContract[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, buildingId, kind])
+  @@map("commercial_asset")
+}
+
+model AssetContract {
+  id               String              @id @default(uuid(7)) @db.Uuid
+  tenantId         String              @map("tenant_id") @db.Uuid
+  assetId          String              @map("asset_id") @db.Uuid
+  counterpartyName String              @map("counterparty_name")
+  monthlyMinor     BigInt              @map("monthly_minor")
+  currency         String              @default("USD") @db.Char(3)
+  startAt          DateTime            @map("start_at") @db.Date
+  endAt            DateTime?           @map("end_at") @db.Date
+  status           AssetContractStatus @default(ACTIVE)
+  notes            String?
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  asset CommercialAsset @relation(fields: [assetId], references: [id])
+
+  @@index([tenantId, assetId, status])
+  @@map("asset_contract")
 }

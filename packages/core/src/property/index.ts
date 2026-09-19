@@ -5,3 +5,4 @@ export * from './workOrder.js';
 export * from './service.js';
 export * from './rent.js';
 export * from './commission.js';
+export * from './mall.js';

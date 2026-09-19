@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle, ArrowLeft, ArrowRight, BadgePercent, Building2, CheckCircle2, Circle, MessageSquare, RotateCcw, XCircle } from 'lucide-react';
-import { DEAL_LOST_REASONS, DEAL_PRODUCTS, DEAL_SOURCES, LEASE_TYPES, NotFoundError, SALE_PRODUCTS, can } from '@finance-os/core';
+import { DEAL_LOST_REASONS, DEAL_PRODUCTS, DEAL_SOURCES, LEASE_TYPES, NotFoundError, SALE_PRODUCTS, TENANT_CATEGORIES, can } from '@finance-os/core';
 import { getDeal, getDealCommission, listDealManagers, listUnits } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '@/components/ui';
@@ -119,6 +119,7 @@ export default async function DealPage({ params, searchParams }: { params: Promi
                 <div><Label htmlFor="l-start">{t('startAt')}</Label><Input id="l-start" name="startAt" type="date" required /></div>
                 <div><Label htmlFor="l-end">{t('endAt')}</Label><Input id="l-end" name="endAt" type="date" /></div>
                 <div><Label htmlFor="l-dep">{t('depositUsd')}</Label><Input id="l-dep" name="deposit" type="number" min="0" step="0.01" /></div>
+                {deal.product === 'MALL_LEASE' ? <div><Label htmlFor="l-cat">{t('tenantCategory')}</Label><Select id="l-cat" name="tenantCategory" defaultValue={deal.tenantCategory ?? 'OTHER'}>{TENANT_CATEGORIES.map((c) => (<option key={c} value={c}>{t(`category.${c}`)}</option>))}</Select></div> : null}
                 <div className="flex flex-col justify-end gap-1 text-xs text-gray-700">
                   <label className="flex items-center gap-2"><input type="checkbox" name="depositReceived" className="h-4 w-4" />{t('depositReceived')}</label>
                   <label className="flex items-center gap-2"><input type="checkbox" name="activate" defaultChecked className="h-4 w-4" />{t('activateNow')}</label>
@@ -150,6 +151,7 @@ export default async function DealPage({ params, searchParams }: { params: Promi
                 <div><Label htmlFor="e-next">{t('nextAction')}</Label><Input id="e-next" name="nextAction" defaultValue={deal.nextAction ?? ''} /></div>
                 <div><Label htmlFor="e-nextAt">{t('nextActionAt')}</Label><Input id="e-nextAt" name="nextActionAt" type="date" defaultValue={dt(deal.nextActionAt)} /></div>
                 <div><Label htmlFor="e-product">{t('productLabel')}</Label><Select id="e-product" name="product" defaultValue={deal.product}>{DEAL_PRODUCTS.map((p) => (<option key={p} value={p}>{t(`product.${p}`)}</option>))}</Select></div>
+                <div><Label htmlFor="e-cat">{t('tenantCategory')}</Label><Select id="e-cat" name="tenantCategory" defaultValue={deal.tenantCategory ?? ''}><option value="">—</option>{TENANT_CATEGORIES.map((c) => (<option key={c} value={c}>{t(`category.${c}`)}</option>))}</Select></div>
                 <div><Label htmlFor="e-sale">{t('salePriceUsd')}</Label><Input id="e-sale" name="salePrice" type="number" min="0" step="0.01" defaultValue={usd(deal.salePriceMinor)} /></div>
                 <div><Label htmlFor="e-crate">{t('commissionRatePct')}</Label><Input id="e-crate" name="commissionRatePct" type="number" min="0" max="100" step="0.1" defaultValue={deal.commissionRateBp != null ? (deal.commissionRateBp / 100).toString() : ''} placeholder={t('commissionRateHint')} /></div>
                 <div><Label htmlFor="e-broker">{t('externalBroker')}</Label><Input id="e-broker" name="externalBrokerName" defaultValue={deal.externalBrokerName ?? ''} /></div>

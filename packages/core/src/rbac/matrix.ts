@@ -134,6 +134,10 @@ export const PERMISSION_MATRIX = {
   'bonus.confirm_kpi': ['OWNER', 'COMMERCIAL_MANAGER'],
   'bonus.pay': ['OWNER', 'FINANCE_OPS_LEAD'],
   'deal.checklist': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER'],
+  // ORDO Mall (docs/20 §11.11): мандаты ДДУ, tenant mix, линии актива
+  'mall.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'BROKER', 'MARKETING', 'OPERATIONS_MANAGER'],
+  'mall.manage': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'mall.fee.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER'],
   // Owner Portal (docs/20 §11.6): у собственника нет property.view — только свой портал и заявки по своим юнитам
   'owner.portal': ['PROPERTY_OWNER'],
   'owner.request': ['PROPERTY_OWNER'],

@@ -138,7 +138,8 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
 | 2b | WorkBot ✓ P-12, realtime ✓ P-13, лиды c сайта + аналитика ✓ P-17, бонусы — заблокировано (P-14) | ✓ |
 | 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
-| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services marketplace + документы ✓ P-16 | ✓ |
+| 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services marketplace + документы ✓ P-16; аренда/дебиторка ✓ P-18; комиссии и бонусы ✓ P-14 | ✓ |
+| 4b Mall | ORDO Mall — коммерция: мандаты ДДУ, tenant mix, линии актива, экономика собственника ✓ P-19; фонды OPEX/маркетинг и отчёт собственнику ТРЦ — c Operations | частично |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
 ## 11. Wave 2 — договоры аренды, сделки, события, публичный API (ADR-018)
@@ -215,6 +216,14 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | BR-P42 | Комиссия PAID только по банковской транзакции | matchCommissionReceipt (rent.match): поступление, не больше остатка, распределение транзакции; PARTIAL → PAID | commissions.test |
 | BR-P43 | Бонус 20% + 10% KPI (аренда), треть комиссии (продажа); к выплате после поступления | DEAL CONFIRMED на WON → PAYABLE при PAID; KPI POTENTIAL → CONFIRMED после подтверждения не продажником, всех пунктов, в срок → PAYABLE при PAID; выплата только PAYABLE и только bonus.pay | commission.test, commissions.test |
 | BR-P44 | Отмена комиссии до поступления → бонусы удержаны; выплаченное не отзывается | расторжение договора c неполученной комиссией → CANCELLED + WITHHELD; KPI без подтверждения после срока → WITHHELD; PAID не меняется | commission.test, commissions.test |
+
+### 11.11 ORDO Mall — коммерческая часть (бизнес-модель Mall v1.1)
+`MallMandate` — ДДУ собственника помещения ТРЦ: DRAFT → SIGNED → ACTIVE → TERMINATED (`mall.manage`); только для помещений ТРЦ (здание MALL / тип RETAIL) и c собственником; один незакрытый на помещение. ACTIVE делает помещение управляемым (`managedByPlatform` → аренда собирается ORDO, начисления P-18 → «контролируемая база» = подписанные ДДУ × сданные площади × собранная аренда). Регулярное вознаграждение `feeBp` и `successFeeMonths` — OPEN (null) до тройной сверки KSP + Quantum Law + Botyr; собственник видит проценты только при `feePublished` (BR-P46), а fee в дашборде считается только по мандатам c утверждённой ставкой. `LeaseContract.tenantCategory` / `Deal.tenantCategory` — состав арендаторов (11 категорий). Линии актива `CommercialAsset` (MEDIA / ISLAND / PARKING / PARTNERSHIP) c договорами `AssetContract` — выручка ORDO по конструкции C, месячная сумма по действующим договорам. Дашборд `/mall`: GLA/сдано/вакантно/отделка, загрузка по GLA и по этажам, средняя ставка $/м², простой, истекающие 90 дн., tenant mix (доля сданной GLA), ставочные сценарии по этажам (`tenant.settings.mall_rate_scenarios`, по умолчанию $30/$40/$50), контролируемая база (начислено/собрано/вознаграждение), воронка MALL_LEASE, линии актива; вкладки мандатов и линий актива; калькулятор экономики собственника «c ORDO / без ORDO» на 5 лет (Mall §5 — условие гейта). Кабинет собственника: раздел «Мои помещения в ТРЦ» (ставка, $/м², арендатор и категория, срок, собрано/остаток, мандат и вознаграждение при публикации, риск простоя). Карточка юнита ТРЦ: блок мандата (создать/подписать/активировать).
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P45 | Мандат ДДУ → помещение под управлением | только помещения ТРЦ c собственником (NOT_MALL_UNIT / MANDATE_OWNER_REQUIRED); один незакрытый (MANDATE_EXISTS); ACTIVE ставит managedByPlatform и включает начисление аренды; TERMINATED снимает | mall.test (core), mall.test (db) |
+| BR-P46 | Проценты собственнику только после утверждения | feePublished невозможен при feeBp = null (FEE_NOT_APPROVED); отчёт собственника отдаёт feeBp только при публикации; fee контролируемой базы = null для OPEN-ставки, счётчик feeOpenUnits | mall.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

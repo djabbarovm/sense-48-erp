@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { IllegalTransitionError, PermissionDeniedError, ValidationError } from '@finance-os/core';
-import type { DocType } from '@finance-os/db';
+import type { DocType, TenantCategory } from '@finance-os/db';
 import { createStorageFromEnv } from '@finance-os/adapters';
 import { activateLease, createLease, terminateLease, updateLease, uploadDocument } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -48,6 +48,7 @@ export async function createLeaseAction(formData: FormData): Promise<void> {
       rentMinor: usdMinor(str(formData, 'rent')) ?? 0n,
       depositMinor: usdMinor(str(formData, 'deposit')),
       depositReceived: formData.get('depositReceived') === 'on',
+      tenantCategory: (str(formData, 'tenantCategory') ?? null) as TenantCategory | null,
     });
     if (formData.get('activate') === 'on') await activateLease(ctx, lease.id);
   });

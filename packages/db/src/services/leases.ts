@@ -2,7 +2,7 @@
  * Wave 2: договор аренды (docs/20 §11.1, ADR-018). Источник истины для occupancy/rentalMode/leaseStatus юнита.
  * Активация/расторжение проставляют поля юнита; ручная смена этих полей при действующем договоре запрещена (LEASE_IS_SOURCE).
  */
-import type { AuditEntry, LeaseType, TenantContext } from '@finance-os/core';
+import type { AuditEntry, LeaseType, TenantCategory, TenantContext } from '@finance-os/core';
 import { EXPIRING_WINDOW_DAYS, ValidationError, can, leaseMachine, requirePermission, unitPatchFromLease } from '@finance-os/core';
 import type { LeaseContract, Prisma } from '@prisma/client';
 import { withAudit } from '../audit.js';
@@ -25,6 +25,8 @@ export interface LeaseInput {
   currency?: string;
   dealId?: string | null;
   notes?: string | null;
+  /** ТРЦ: категория арендатора для tenant mix. */
+  tenantCategory?: TenantCategory | null;
 }
 
 const pick = (l: LeaseContract) => ({ status: l.status, type: l.type, unitId: l.unitId, startAt: l.startAt, endAt: l.endAt, rentMinor: l.rentMinor.toString(), depositReceived: l.depositReceived });
@@ -43,7 +45,7 @@ export async function createLease(ctx: TenantContext, input: LeaseInput): Promis
         occupantName: input.type === 'OWNER_USE' ? (input.occupantName.trim() || 'Собственник') : input.occupantName.trim(),
         occupantContact: input.occupantContact ?? null, startAt: input.startAt, endAt: input.endAt ?? null,
         rentMinor: input.rentMinor, depositMinor: input.depositMinor ?? null, depositReceived: input.depositReceived ?? false,
-        currency: input.currency ?? unit.askingCurrency, notes: input.notes ?? null, createdBy: ctx.userId,
+        currency: input.currency ?? unit.askingCurrency, notes: input.notes ?? null, tenantCategory: input.tenantCategory ?? null, createdBy: ctx.userId,
       },
     });
     // контакт арендатора (PII) в audit не пишем
@@ -119,7 +121,7 @@ export async function terminateLease(ctx: TenantContext, leaseId: string, reason
   });
 }
 
-export async function updateLease(ctx: TenantContext, leaseId: string, patch: { depositReceived?: boolean; notes?: string | null; occupantContact?: string | null; endAt?: Date | null }): Promise<LeaseContract> {
+export async function updateLease(ctx: TenantContext, leaseId: string, patch: { depositReceived?: boolean; notes?: string | null; occupantContact?: string | null; endAt?: Date | null; tenantCategory?: TenantCategory | null }): Promise<LeaseContract> {
   requirePermission(ctx, 'lease.manage');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const before = await findScopedOr404(tx.leaseContract, ctx, leaseId);
@@ -131,6 +133,7 @@ export async function updateLease(ctx: TenantContext, leaseId: string, patch: { 
         ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
         ...(patch.occupantContact !== undefined ? { occupantContact: patch.occupantContact } : {}),
         ...(patch.endAt !== undefined ? { endAt: patch.endAt } : {}),
+        ...(patch.tenantCategory !== undefined ? { tenantCategory: patch.tenantCategory } : {}),
         updatedBy: ctx.userId,
       },
     });
@@ -159,6 +162,7 @@ export interface LeaseRow {
   dealId: string | null;
   terminatedReason: string | null;
   endsInDays: number | null;
+  tenantCategory: LeaseContract['tenantCategory'];
 }
 
 export async function listLeases(ctx: TenantContext, filter: { unitId?: string; status?: LeaseContract['status'][]; expiringWithinDays?: number } = {}, today = new Date()): Promise<LeaseRow[]> {
@@ -178,7 +182,7 @@ export async function listLeases(ctx: TenantContext, filter: { unitId?: string; 
       id: l.id, unitId: l.unitId, unitNo: l.unit.unitNo, buildingName: l.unit.building.name, type: l.type, status: l.status,
       occupantName: l.occupantName, occupantContact: showContact ? l.occupantContact : null, startAt: l.startAt, endAt: l.endAt,
       rentMinor: showFinance ? l.rentMinor : null, depositMinor: showFinance ? l.depositMinor : null, depositReceived: l.depositReceived,
-      currency: l.currency, dealId: l.dealId, terminatedReason: l.terminatedReason, endsInDays,
+      currency: l.currency, dealId: l.dealId, terminatedReason: l.terminatedReason, tenantCategory: l.tenantCategory, endsInDays,
     });
   }
   return out;

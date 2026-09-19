@@ -2,7 +2,7 @@
  * Wave 2: сделки CRM (docs/20 §11.2, ADR-018). Воронка blueprint §6; commercialStatus юнита — производное (BR-P20);
  * брокер видит и ведёт только свои сделки (BR-P21); WON — только через активацию договора (BR-P23, leases.ts).
  */
-import type { DealProduct, DealStage, DealTrigger, TenantContext } from '@finance-os/core';
+import type { DealProduct, DealStage, DealTrigger, TenantCategory, TenantContext } from '@finance-os/core';
 import {
   NotFoundError,
   STAGE_PROBABILITY,
@@ -52,6 +52,7 @@ export interface DealInput {
   commissionRateBp?: number | null;
   externalBrokerName?: string | null;
   externalShareBp?: number;
+  tenantCategory?: TenantCategory | null;
 }
 
 const brokerOnly = (ctx: TenantContext) => hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
@@ -93,7 +94,7 @@ export async function createDeal(ctx: TenantContext, input: DealInput): Promise<
         purpose: input.purpose ?? null, timing: input.timing ?? null, unitId: input.unitId ?? null, managerId,
         stage: input.unitId ? 'PROPERTY_SELECTED' : 'NEW', nextAction: input.nextAction ?? null, nextActionAt: input.nextActionAt ?? null,
         expectedRateMinor: input.expectedRateMinor ?? null, reservedUntil: input.reservedUntil ?? null, depositReceived: input.depositReceived ?? false, createdBy: ctx.userId,
-        product: input.product ?? 'LEASE_LTR', salePriceMinor: input.salePriceMinor ?? null, commissionRateBp: input.commissionRateBp ?? null, externalBrokerName: input.externalBrokerName ?? null, externalShareBp: validShare(input.externalShareBp),
+        product: input.product ?? 'LEASE_LTR', salePriceMinor: input.salePriceMinor ?? null, commissionRateBp: input.commissionRateBp ?? null, externalBrokerName: input.externalBrokerName ?? null, externalShareBp: validShare(input.externalShareBp), tenantCategory: input.tenantCategory ?? null,
       },
     });
     if (created.unitId) await recomputeUnitCommercialStatus(tx, ctx.tenantId, created.unitId);
@@ -134,6 +135,7 @@ export async function updateDeal(ctx: TenantContext, id: string, patch: Partial<
         ...(patch.commissionRateBp !== undefined ? { commissionRateBp: patch.commissionRateBp } : {}),
         ...(patch.externalBrokerName !== undefined ? { externalBrokerName: patch.externalBrokerName } : {}),
         ...(patch.externalShareBp !== undefined ? { externalShareBp: validShare(patch.externalShareBp) } : {}),
+        ...(patch.tenantCategory !== undefined ? { tenantCategory: patch.tenantCategory } : {}),
         updatedBy: ctx.userId,
       },
     });

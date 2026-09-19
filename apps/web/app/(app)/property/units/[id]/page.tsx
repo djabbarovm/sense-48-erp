@@ -2,9 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle, ArrowLeft, Building2, Coins, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare, Wrench } from 'lucide-react';
-import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, can, hasRole } from '@finance-os/core';
+import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, TENANT_CATEGORIES, can, hasRole } from '@finance-os/core';
 import { createStorageFromEnv } from '@finance-os/adapters';
-import { getUnitCard, getUnitFinance, listDeals, listDocumentsFor, listLeases, listWorkOrders } from '@finance-os/db';
+import { getUnitCard, getUnitFinance, listDeals, listDocumentsFor, listLeases, listMandates, listWorkOrders } from '@finance-os/db';
+import { createMandateAction, transitionMandateAction } from '../../../mall/actions';
+import { MANDATE_TONE } from '../../../mall/tones';
 import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction, uploadLeaseDocumentAction } from '../../../leases/actions';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
@@ -35,6 +37,10 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
   }
   const { unit, building, floor, owner, activities, audit, auditVisible, permissions } = card;
   const finance = can(ctx, 'unit.finance.view') ? await getUnitFinance(ctx, unit.id) : null;
+  const isMall = building.kind === 'MALL' || unit.type === 'RETAIL';
+  const mandates = isMall && can(ctx, 'mall.view') ? await listMandates(ctx, { unitId: unit.id }) : [];
+  const mandate = mandates.find((m) => m.status !== 'TERMINATED') ?? null;
+  const tM = await getTranslations('mall');
   const [deals, leases, workOrders] = await Promise.all([
     can(ctx, 'deal.view') ? listDeals(ctx, { unitId: unit.id, includeClosed: true }) : Promise.resolve([]),
     can(ctx, 'lease.view') ? listLeases(ctx, { unitId: unit.id }) : Promise.resolve([]),
@@ -223,6 +229,7 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
                   <Row k={tL('occupant')} v={liveLease.occupantName} />
                   {liveLease.occupantContact ? <Row k={t('phone')} v={<span className="font-mono">{liveLease.occupantContact}</span>} /> : null}
                   <Row k={tL('type')} v={tL(`leaseType.${liveLease.type}`)} />
+                  {liveLease.tenantCategory ? <Row k={tL('tenantCategory')} v={tL(`category.${liveLease.tenantCategory}`)} /> : null}
                   <Row k={tL('period')} v={`${fmtDate(liveLease.startAt)} → ${liveLease.endAt ? fmtDate(liveLease.endAt) : tL('openEnded')}`} />
                   {liveLease.rentMinor != null ? <Row k={tL('rent')} v={<span className="font-mono">{fmtRate(liveLease.rentMinor, liveLease.currency)}</span>} /> : null}
                   {liveLease.depositMinor != null ? <Row k={tL('deposit')} v={<span className={liveLease.depositReceived ? 'text-emerald-600' : 'text-red-600'}>{fmtRate(liveLease.depositMinor, liveLease.currency)} · {liveLease.depositReceived ? tL('received') : tL('notReceived')}</span>} /> : null}
@@ -276,6 +283,7 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
                       <div><Label htmlFor="nl-start">{tL('startAt')}</Label><Input id="nl-start" name="startAt" type="date" required /></div>
                       <div><Label htmlFor="nl-end">{tL('endAt')}</Label><Input id="nl-end" name="endAt" type="date" /></div>
                       <div><Label htmlFor="nl-dep">{tL('depositUsd')}</Label><Input id="nl-dep" name="deposit" type="number" min="0" step="0.01" /></div>
+                      {unit.type === 'RETAIL' ? <div><Label htmlFor="nl-cat">{tL('tenantCategory')}</Label><Select id="nl-cat" name="tenantCategory" defaultValue="OTHER">{TENANT_CATEGORIES.map((c) => (<option key={c} value={c}>{tL(`category.${c}`)}</option>))}</Select></div> : null}
                       <div className="flex flex-col justify-end gap-1 text-xs text-gray-700">
                         <label className="flex items-center gap-2"><input type="checkbox" name="depositReceived" className="h-4 w-4" />{tL('received')}</label>
                         <label className="flex items-center gap-2"><input type="checkbox" name="activate" defaultChecked className="h-4 w-4" />{tL('activateNow')}</label>
@@ -310,6 +318,29 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
         </div>
       ) : null}
 
+      {isMall && can(ctx, 'mall.view') ? (
+        <Card>
+          <div className="flex items-center gap-2"><FileSignature className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{tM('mandate.title')}</h3>{mandate ? <Badge tone={MANDATE_TONE[mandate.status]} dot>{tM(`mandate.status_.${mandate.status}`)}</Badge> : null}</div>
+          {mandate ? (
+            <dl className="mt-3 space-y-1.5">
+              <Row k={tM('mandate.owner')} v={mandate.ownerName} />
+              <Row k={tM('mandate.feePct')} v={mandate.feeBp != null ? `${mandate.feeBp / 100}%${mandate.feePublished ? '' : ' · —'}` : tM('mandate.feeOpen')} />
+              {mandate.successFee != null ? <Row k={tM('mandate.successFee')} v={mandate.successFee} /> : null}
+              <Row k={tM('mandate.signedAt')} v={fmtDate(mandate.signedAt)} />
+              {mandate.startAt ? <Row k={tM('mandate.startAt')} v={fmtDate(mandate.startAt)} /> : null}
+              {mandate.status === 'ACTIVE' ? <p className="text-[11px] text-gray-400">{tM('mandate.activeHint')}</p> : null}
+            </dl>
+          ) : <p className="mt-2 text-sm text-gray-400">{tM('mandate.none')}</p>}
+          {can(ctx, 'mall.manage') ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
+              {!mandate && owner ? <form action={createMandateAction}><input type="hidden" name="unitId" value={unit.id} /><input type="hidden" name="back" value={`/property/units/${unit.id}`} /><Button type="submit" size="sm">{tM('mandate.create')}</Button></form> : null}
+              {mandate?.status === 'DRAFT' ? <form action={transitionMandateAction}><input type="hidden" name="id" value={mandate.id} /><input type="hidden" name="trigger" value="sign" /><input type="hidden" name="back" value={`/property/units/${unit.id}`} /><Button type="submit" size="sm" variant="outline">{tM('mandate.sign')}</Button></form> : null}
+              {mandate?.status === 'SIGNED' ? <form action={transitionMandateAction}><input type="hidden" name="id" value={mandate.id} /><input type="hidden" name="trigger" value="activate" /><input type="hidden" name="back" value={`/property/units/${unit.id}`} /><Button type="submit" size="sm">{tM('mandate.activate')}</Button></form> : null}
+              <Link href="/mall?view=mandates" className="text-xs font-medium text-brand-600 hover:underline">{tM('tab.mandates')} →</Link>
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
       {finance ? (
         <Card>
           <div className="flex items-center gap-2"><Coins className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{t('finance.title')}</h3>{finance.overdueCount ? <Badge tone="red" dot>{t('finance.overdue', { n: finance.overdueCount })}</Badge> : null}</div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { DealLostReason, DealProduct, DealSource, KpiChecklistItem, UnitActivityKind } from '@finance-os/db';
+import type { DealLostReason, DealProduct, DealSource, KpiChecklistItem, TenantCategory, UnitActivityKind } from '@finance-os/db';
 import { NotFoundError, PermissionDeniedError, ValidationError, IllegalTransitionError } from '@finance-os/core';
 import { activateLease, addDealActivity, closeSale, confirmKpi, createDeal, createLease, markChecklistItem, moveDeal, updateDeal } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -62,6 +62,7 @@ function dealInput(fd: FormData) {
     ...(usdMinor(fd, 'salePrice') !== undefined ? { salePriceMinor: usdMinor(fd, 'salePrice') ?? null } : {}),
     ...(fd.has('commissionRatePct') ? { commissionRateBp: str(fd, 'commissionRatePct') ? Math.round(Number(str(fd, 'commissionRatePct')) * 100) : null } : {}),
     ...(fd.has('externalBrokerName') ? { externalBrokerName: str(fd, 'externalBrokerName') ?? null } : {}),
+    ...(fd.has('tenantCategory') ? { tenantCategory: (str(fd, 'tenantCategory') ?? null) as TenantCategory | null } : {}),
     ...(fd.has('externalSharePct') ? { externalShareBp: str(fd, 'externalSharePct') ? Math.round(Number(str(fd, 'externalSharePct')) * 100) : 0 } : {}),
   };
 }
@@ -132,6 +133,7 @@ export async function createLeaseFromDealAction(formData: FormData): Promise<voi
       rentMinor: usdMinor(formData, 'rent') ?? 0n,
       depositMinor: usdMinor(formData, 'deposit') ?? null,
       depositReceived: formData.get('depositReceived') === 'on',
+      tenantCategory: (str(formData, 'tenantCategory') ?? null) as TenantCategory | null,
     });
     if (formData.get('activate') === 'on') await activateLease(ctx, lease.id);
     return `/property/units/${unitId}`;

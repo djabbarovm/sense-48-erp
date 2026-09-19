@@ -12,6 +12,7 @@ import { findScopedOr404, whereTenant } from '../repository.js';
 import { storeDocument } from './documents.js';
 import { createServiceOrder, listCatalog, listServiceOrders, rateServiceOrder } from './serviceOrders.js';
 import { createWorkOrder } from './workOrders.js';
+import { ownerMallReport } from './mall.js';
 
 export const DEFAULT_MANAGEMENT_FEE_BP = 1000; // 10% — переопределяется tenant.settings.management_fee_bp
 
@@ -85,7 +86,7 @@ export async function getOwnerPortal(ctx: TenantContext, today = new Date()) {
   const totals = statement.reduce((a, l) => ({ rent: a.rent + l.rentMinor, fee: a.fee + l.feeMinor, payout: a.payout + l.payoutMinor }), { rent: 0n, fee: 0n, payout: 0n });
   const requests = await prisma.workOrder.findMany({ where: { tenantId: ctx.tenantId, unitId: { in: units.map((u) => u.id) } }, orderBy: { createdAt: 'desc' }, take: 20, include: { unit: { select: { unitNo: true } } } });
   const documents = await listOwnerDocuments(ctx);
-  const [catalog, serviceOrders] = await Promise.all([listCatalog(ctx), listServiceOrders(ctx, { ownerId: owner.id }, today)]);
+  const [catalog, serviceOrders, mall] = await Promise.all([listCatalog(ctx), listServiceOrders(ctx, { ownerId: owner.id }, today), ownerMallReport(ctx, owner.id, today)]);
   return {
     owner: { id: owner.id, displayName: owner.displayName, kind: owner.kind, managementConsent: owner.managementConsent, listingConsent: owner.listingConsent, marketingConsent: owner.marketingConsent, consentUpdatedAt: owner.consentUpdatedAt },
     company: tenant.legalName,
@@ -96,6 +97,7 @@ export async function getOwnerPortal(ctx: TenantContext, today = new Date()) {
     requests: requests.map((r) => ({ id: r.id, number: r.number, unitNo: r.unit?.unitNo ?? null, title: r.title, status: r.status, priority: r.priority, createdAt: r.createdAt, slaDueAt: r.slaDueAt, doneAt: r.doneAt })),
     documents,
     catalog: catalog.map((c) => ({ id: c.id, code: c.code, name: c.name, category: c.category, providerKind: c.providerKind, partnerName: c.partnerName, priceMinor: c.priceMinor, currency: c.currency, slaHours: c.slaHours, description: c.description })),
+    mall,
     serviceOrders: serviceOrders.slice(0, 20).map((o) => ({ id: o.id, number: o.number, unitNo: o.unitNo, serviceName: o.serviceName, status: o.status, priceMinor: o.priceMinor, currency: o.currency, scheduledAt: o.scheduledAt, doneAt: o.doneAt, rating: o.rating, canRate: ['DONE', 'VERIFIED'].includes(o.status) && o.rating == null })),
   };
 }
