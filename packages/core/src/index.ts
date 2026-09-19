@@ -11,3 +11,4 @@ export * from './security/index.js';
 export * from './workflows/index.js';
 export * from './property/index.js';
 export * from './tax/index.js';
+export * from './gamification/index.js';
