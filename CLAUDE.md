@@ -72,6 +72,7 @@ DECISIONS.md TASKS.md CHANGELOG.md README.md
 | `docs/11-security.md` | Threat model, секреты, маскирование, permission tests |
 | `docs/12-domain-glossary.md` | Термины: СФ, Didox, ЭЦП, подотчёт, GPH и т.д. |
 | `docs/20-mds-property.md` | MDS Property: Property Core, статусная модель, BR-P01…P15, роли, экраны, этапы Wave 0–5 |
+| `docs/21-crm-tower-process.md` | CRM Tower как путь сотрудника: роли (КЦ, продажник, руководитель), каналы, путь лида и собственника, бот, «Мой день», аналитика, план P-23…P-27 |
 | `docs/17-ip-ownership.md` | Правообладатель, состав продукта, что продукту не принадлежит, передача в компанию, задачи юристу |
 
 ## Definition of Done (для любой задачи)
