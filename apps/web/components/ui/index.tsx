@@ -1,4 +1,4 @@
-/* Дизайн-система Finance OS: базовые компоненты (Tailwind, shadcn-стиль). */
+/* Дизайн-система DMS: базовые компоненты (Tailwind, shadcn-стиль). */
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import type {

@@ -5,10 +5,10 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 
 export const metadata: Metadata = {
-  title: 'Finance OS',
+  title: 'DMS',
   description: 'Multi-tenant Finance Operations platform',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'MDS' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'DMS' },
   icons: { icon: '/icon.svg', apple: '/icon.svg' },
 };
 

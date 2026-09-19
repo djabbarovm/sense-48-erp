@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — Нейминг: пользовательское «Finance OS» → «DMS» (P-32, ADR-036)
+- web: заголовок приложения/вкладки, экран входа, сайдбар, тема письма-уведомления и имя отправителя уведомления → DMS; e2e-проверка заголовка обновлена; README.
+- Не тронуты: Telegram-бот Property Assistant, workspace-scope @finance-os/*, имя БД finance_os, обмен 1С, внутренние спец-доки — список в ADR-036, переименование в P-09.
+
 ## [Phase P] 2026-09-19 — Реальный тенант ORDO в bootstrap (P-30)
 - scripts/bootstrap-prod: тенант `ordo` без демо-данных, владелец OWNER+ADMIN, пилот Tower umar (CALL_CENTER) / aziz (COMMERCIAL_MANAGER) по системному логину без email; идемпотентно (update:{} не трогает пароль и привязку Telegram).
 - scripts/rotate-passwords: ротация APP_TEMP_PASSWORD теперь охватывает и логины umar/aziz.

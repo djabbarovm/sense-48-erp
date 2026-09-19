@@ -578,7 +578,7 @@ export async function exportBatchClientBank(ctx: TenantContext, batchId: string)
     });
   }
   const file = buildClientBankExchange({
-    sender: 'Finance OS',
+    sender: 'DMS',
     payer: {
       name: tenant.legalName,
       taxId: tenant.taxId,

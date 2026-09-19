@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Finance OS",
+    "appName": "DMS",
     "loading": "Загрузка…",
     "save": "Сохранить",
     "cancel": "Отмена",
@@ -17,7 +17,7 @@
     "accessDenied": "Недостаточно прав"
   },
   "auth": {
-    "title": "Вход в Finance OS",
+    "title": "Вход в DMS",
     "email": "Email",
     "password": "Пароль",
     "signIn": "Войти",
@@ -54,10 +54,10 @@
     "controls": "KPI и контроли",
     "portfolio": "Портфель компаний",
     "ceoMorning": "Моё утро",
-    "property": "Здание (MDS)",
+    "property": "Здание (DMS)",
     "deals": "Сделки",
     "leases": "Договоры аренды",
-    "controlRoom": "Пульт (MDS)",
+    "controlRoom": "Пульт (DMS)",
     "workbot": "WorkBot: черновики",
     "workorders": "Заявки",
     "ownerPortal": "Мой портал",
@@ -74,7 +74,7 @@
     "crmAnalytics": "Аналитика CRM"
   },
   "home": {
-    "title": "Finance OS",
+    "title": "DMS",
     "subtitle": "Платформа Finance Operations",
     "welcome": "Здравствуйте, {name}",
     "pendingApprovals": "Ждут вашего решения",
@@ -703,8 +703,8 @@
       "open_ar": "Долги клиентов (открытая дебиторка)",
       "employees": "Сотрудники (для подотчётов)",
       "budgets": "Бюджеты",
-      "inventory": "MDS Property: инвентарь (здания, этажи, юниты, собственники)",
-      "floorplan": "MDS Property: план этажа (JSON или SVG)",
+      "inventory": "DMS: инвентарь (здания, этажи, юниты, собственники)",
+      "floorplan": "DMS: план этажа (JSON или SVG)",
       "onec_counterparties": "1С: справочник контрагентов",
       "onec_osv": "1С: оборотно-сальдовая ведомость по счёту",
       "onec_staff": "1С: штатные сотрудники",

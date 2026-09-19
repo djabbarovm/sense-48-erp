@@ -1,14 +1,14 @@
-# MDS
+# DMS
 
 Copyright (c) 2026 Murad Djabbarov. Проприетарное ПО, все права защищены — см. `LICENSE` и `docs/17-ip-ownership.md`.
 
-Платформа владельца из двух модулей (ADR-016): **Finance OS** — Finance Operations для бизнесов; **MDS Property** — Property Core и «Живое здание» для управления недвижимостью (`docs/20-mds-property.md`).
+Платформа владельца из двух модулей (ADR-016): модули: Finance Operations для бизнесов и Property Core / «Живое здание» для управления недвижимостью (`docs/20-mds-property.md`).
 
-## MDS Property (Phase P)
+## Недвижимость (Phase P)
 
 После `pnpm seed` доступен демо-тенант «Piramit Tower (демо)»: 3 здания, 30 этажей, 230 юнитов. Пользователи (пароль как в docs/10): `owner@piramit.test` (OWNER), `commercial@piramit.test` (COMMERCIAL_MANAGER), `broker@piramit.test` (BROKER), `ops@piramit.test` (OPERATIONS_MANAGER), `marketing@piramit.test` (MARKETING), `admin@piramit.test` (ADMIN), `finance@piramit.test` (FINANCE_OPS_LEAD). Экраны: `/property` (Building View: KPI, фильтры, 2.5D фасад) → `/property/floors/[id]` (план этажа) → `/property/units/[id]` (карточка юнита, смена статуса по правам, аудит). Цвет юнита вычисляется из полей (`packages/core/src/property`), не хранится. Wave 2: `/deals` (воронка сделок, стадия юнита — из сделок), `/leases` (договоры аренды — источник истины занятости), `/admin/api-keys` + `GET /api/property/public/inventory` (заголовок `X-Api-Key`, только опубликованные юниты без персональных данных). Импорт инвентаря и планов этажей — экран «Миграция данных».
 
-## Finance OS
+## DMS
 
 Multi-tenant Finance Operations platform. Спецификация — `CLAUDE.md` + `docs/`. Мастер-промпт для Claude Code — `MASTER_PROMPT.md`.
 
@@ -61,7 +61,7 @@ TASKS.md DECISIONS.md CHANGELOG.md   рабочие журналы
 
 - Actions → **Deploy** → Run workflow (ветка c нужным кодом). Секреты репозитория: `DEPLOY_HOST` (IP дроплета), `DEPLOY_PASSWORD`, `DEPLOY_DATA_KEY`; опционально `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `APP_TEMP_PASSWORD` (ротация паролей всех учёток `@palym.test` и демо `@piramit.test`), `PUBLIC_HOST` (свой домен).
 - **HTTPS без домена.** Публичный адрес — `https://<IP-через-дефисы>.sslip.io` (например `1-2-3-4.sslip.io`): имя резолвится в IP, сертификат Let's Encrypt получает Caddy (`deploy/Caddyfile`, оверлей `docker-compose.deploy.yml`). Порт 3000 web остаётся на loopback, снаружи только 80 (редирект/ACME) и 443. Когда появится домен — секрет `PUBLIC_HOST`, DNS A-запись на IP, повторный деплой.
-- **Что заводит bootstrap.** Права, тенант `rooftop-real` c командой ADR-012 и книгой KSP, и демо-тенант MDS Property «Piramit Tower (демо)» (синтетика, `BOOTSTRAP_DEMO_PROPERTY=1`, сидится один раз) — владелец `murad@palym.test` получает в нём OWNER+ADMIN и переключает тенант в шапке. Демо-логины `owner@ / commercial@ / callcenter@ / broker@piramit.test`; пароль — из `APP_TEMP_PASSWORD`.
+- **Что заводит bootstrap.** Права, тенант `rooftop-real` c командой ADR-012 и книгой KSP, и демо-тенант «Piramit Tower (демо)» (синтетика, `BOOTSTRAP_DEMO_PROPERTY=1`, сидится один раз) — владелец `murad@palym.test` получает в нём OWNER+ADMIN и переключает тенант в шапке. Демо-логины `owner@ / commercial@ / callcenter@ / broker@piramit.test`; пароль — из `APP_TEMP_PASSWORD`.
 - **Бот.** Если задан `TELEGRAM_BOT_TOKEN`, workflow сам пишет его в `.env.prod`, генерирует `TELEGRAM_WEBHOOK_SECRET` и вызывает `setWebhook` на `https://$PUBLIC_HOST/api/telegram/webhook`. Сотрудник подключает чат: «Мой день» → «Подключить Telegram».
 
 ### CRM Tower: бот, телефония, мобильная версия (P-23…P-28)

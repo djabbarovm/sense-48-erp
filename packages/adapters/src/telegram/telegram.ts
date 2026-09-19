@@ -43,7 +43,7 @@ export class EmailNotificationAdapter implements NotificationAdapter {
     const email = await this.resolveEmail(input.userId);
     if (!email) return;
     const text = `${NOTIFICATION_TEXTS[input.template](input.params)}\n${input.deepLink}`;
-    await this.transport(email, `Finance OS: ${input.template}`, text);
+    await this.transport(email, `DMS: ${input.template}`, text);
   }
 }
 

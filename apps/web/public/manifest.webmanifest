@@ -1,6 +1,6 @@
 {
-  "name": "MDS Property",
-  "short_name": "MDS",
+  "name": "DMS",
+  "short_name": "DMS",
   "description": "CRM и управление зданием: мой день, сделки, клиенты, собственники",
   "start_url": "/me",
   "scope": "/",
