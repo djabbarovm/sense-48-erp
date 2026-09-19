@@ -27,6 +27,8 @@ describe('D-05 workers: реестр джобов', () => {
       'deal-followup',
       'workorder-sla',
       'service-sla',
+      'rent-charges',
+      'rent-overdue',
       'domain-events',
       'event-progress',
       'batch-cutoff-freeze',

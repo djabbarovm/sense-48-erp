@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, ArrowLeft, Building2, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Building2, Coins, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare, Wrench } from 'lucide-react';
 import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, can, hasRole } from '@finance-os/core';
 import { createStorageFromEnv } from '@finance-os/adapters';
-import { getUnitCard, listDeals, listDocumentsFor, listLeases, listWorkOrders } from '@finance-os/db';
+import { getUnitCard, getUnitFinance, listDeals, listDocumentsFor, listLeases, listWorkOrders } from '@finance-os/db';
 import { activateLeaseAction, createLeaseAction, markDepositReceivedAction, terminateLeaseAction, uploadLeaseDocumentAction } from '../../../leases/actions';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
@@ -34,6 +34,7 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
     throw e;
   }
   const { unit, building, floor, owner, activities, audit, auditVisible, permissions } = card;
+  const finance = can(ctx, 'unit.finance.view') ? await getUnitFinance(ctx, unit.id) : null;
   const [deals, leases, workOrders] = await Promise.all([
     can(ctx, 'deal.view') ? listDeals(ctx, { unitId: unit.id, includeClosed: true }) : Promise.resolve([]),
     can(ctx, 'lease.view') ? listLeases(ctx, { unitId: unit.id }) : Promise.resolve([]),
@@ -50,6 +51,7 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
   const draftLeases = leases.filter((l) => l.status === 'DRAFT');
   const tD = await getTranslations('deals');
   const tL = await getTranslations('leases');
+  const tR = await getTranslations('rent');
   const v = unit.view;
   const canStatus = permissions.readiness || permissions.occupancy || permissions.commercial || permissions.operational;
   const brokerOnly = hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
@@ -306,6 +308,26 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
             </Card>
           ) : null}
         </div>
+      ) : null}
+
+      {finance ? (
+        <Card>
+          <div className="flex items-center gap-2"><Coins className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{t('finance.title')}</h3>{finance.overdueCount ? <Badge tone="red" dot>{t('finance.overdue', { n: finance.overdueCount })}</Badge> : null}</div>
+          <dl className="mt-3 space-y-1.5">
+            {finance.monthlyRentMinor != null ? <Row k={t('finance.monthlyRent')} v={<span className="font-mono">{fmtRate(finance.monthlyRentMinor, finance.currency)}</span>} /> : null}
+            <Row k={t('finance.charged')} v={<span className="font-mono">{fmtRate(finance.chargedMinor, finance.currency)}</span>} />
+            <Row k={t('finance.received')} v={<span className="font-mono text-emerald-600">{fmtRate(finance.receivedMinor, finance.currency)}</span>} />
+            <Row k={t('finance.outstanding')} v={<span className={cn('font-mono font-semibold', finance.outstandingMinor > 0n ? (finance.overdueMinor > 0n ? 'text-red-600' : 'text-amber-600') : 'text-gray-400')}>{fmtRate(finance.outstandingMinor, finance.currency)}</span>} />
+            {finance.ownerPayoutMinor != null ? <Row k={t('finance.ownerPayout')} v={<span className="font-mono">{fmtRate(finance.ownerPayoutMinor, finance.currency)}{unit.managedByPlatform ? <span className="ml-1 text-[10px] text-gray-400">{t('finance.feeHint', { fee: finance.feeBp / 100 })}</span> : null}</span>} /> : null}
+            {finance.lastPaymentAt ? <Row k={t('finance.lastPayment')} v={fmtDate(finance.lastPaymentAt)} /> : null}
+          </dl>
+          <p className="mt-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase">{t('finance.charges')}</p>
+          <ul className="mt-1 divide-y divide-gray-100">
+            {finance.charges.length === 0 ? <li className="py-1.5 text-xs text-gray-400">{t('finance.none')}</li> : null}
+            {finance.charges.slice(0, 6).map((c) => (<li key={c.id} className="flex items-center justify-between gap-2 py-1.5 text-xs"><span className="font-mono text-gray-700">{fmtDate(c.periodStart)} → {fmtDate(c.periodEnd)}</span><span className="flex items-center gap-2"><span className="font-mono">{fmtRate(c.receivedMinor, c.currency)} / {fmtRate(c.amountMinor, c.currency)}</span><Badge tone={({ DUE: 'blue', PARTIAL: 'yellow', OVERDUE: 'red', PAID: 'green', WAIVED: 'gray' } as const)[c.status]}>{tR(`status.${c.status}`)}</Badge></span></li>))}
+          </ul>
+          {can(ctx, 'rent.view') ? <Link href={`/rent?view=all&unit=${unit.id}`} className="mt-2 inline-block text-xs font-medium text-brand-600 hover:underline">{t('finance.allRent')}</Link> : null}
+        </Card>
       ) : null}
 
       {can(ctx, 'workorder.view') ? (

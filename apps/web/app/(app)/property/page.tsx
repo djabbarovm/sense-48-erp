@@ -100,9 +100,10 @@ export default async function BuildingViewPage({ searchParams }: { searchParams:
           </Select>
           <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="managed" value="1" defaultChecked={filter.managedOnly ?? false} className="h-4 w-4" />{t('managedOnly')}</label>
           <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="alerts" value="1" defaultChecked={filter.withAlerts ?? false} className="h-4 w-4" />{t('withAlerts')}</label>
+          {can(ctx, 'unit.finance.view') ? <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="debt" value="1" defaultChecked={filter.withDebt ?? false} className="h-4 w-4" />{t('withDebt')}</label> : null}
           <div className="flex gap-2 xl:col-span-2 xl:justify-end">
             <Button type="submit" size="sm"><Filter className="h-3.5 w-3.5" />{t('apply')}</Button>
-            {active ? <Link href={q({ color: null, mode: null, vacant: null, expiring: null, commercial: null, managed: null, alerts: null, q: null, floor: null, readiness: null, occupancy: null })} className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"><X className="h-3.5 w-3.5" />{t('reset')}</Link> : null}
+            {active ? <Link href={q({ color: null, mode: null, vacant: null, expiring: null, commercial: null, managed: null, alerts: null, debt: null, q: null, floor: null, readiness: null, occupancy: null })} className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"><X className="h-3.5 w-3.5" />{t('reset')}</Link> : null}
           </div>
         </form>
       </Card>

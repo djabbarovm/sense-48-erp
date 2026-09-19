@@ -518,6 +518,7 @@ enum TaskType {
   DEAL_FOLLOWUP
   WORKORDER_OVERDUE
   SERVICE_ORDER_OVERDUE
+  RENT_OVERDUE
 }
 
 enum TaskStatus {
@@ -1127,6 +1128,7 @@ model BankTransaction {
 enum ReconObjectType {
   PAYMENT_REQUEST
   AR_INVOICE
+  RENT_CHARGE
   ADVANCE
   TAX
   PAYROLL
@@ -1730,6 +1732,7 @@ model Unit {
   deals      Deal[]
   workOrders WorkOrder[]
   serviceOrders ServiceOrder[]
+  rentCharges RentCharge[]
 
   @@unique([buildingId, unitNo])
   @@index([tenantId, buildingId])
@@ -1802,6 +1805,8 @@ model LeaseContract {
   updatedBy        String?             @map("updated_by") @db.Uuid
 
   unit Unit @relation(fields: [unitId], references: [id])
+
+  rentCharges RentCharge[]
 
   // partial unique: один ACTIVE/EXPIRING договор на юнит — в migration SQL
   @@index([tenantId, unitId, status])
@@ -2120,4 +2125,45 @@ model ServiceOrder {
   @@index([tenantId, ownerId, status])
   @@index([tenantId, catalogItemId])
   @@map("service_order")
+}
+
+// ── §P6 Начисление аренды и дебиторка (docs/20 §11.9) ──
+
+enum RentChargeStatus {
+  DUE
+  PARTIAL
+  OVERDUE
+  PAID // только по банковской транзакции (BR-P37)
+  WAIVED // договор прекращён до периода
+}
+
+model RentCharge {
+  id                String           @id @default(uuid(7)) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  number            String // RC-2026-000001
+  leaseId           String           @map("lease_id") @db.Uuid
+  unitId            String           @map("unit_id") @db.Uuid
+  ownerId           String?          @map("owner_id") @db.Uuid
+  periodStart       DateTime         @map("period_start") @db.Date
+  periodEnd         DateTime         @map("period_end") @db.Date
+  dueAt             DateTime         @map("due_at") @db.Date
+  amountMinor       BigInt           @map("amount_minor")
+  receivedMinor     BigInt           @default(0) @map("received_minor") // из ReconciliationMatch(RENT_CHARGE)
+  currency          String           @db.Char(3)
+  prorated          Boolean          @default(false)
+  status            RentChargeStatus @default(DUE)
+  paidAt            DateTime?        @map("paid_at")
+  waivedReason      String?          @map("waived_reason")
+  overdueNotifiedAt DateTime?        @map("overdue_notified_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  lease LeaseContract @relation(fields: [leaseId], references: [id])
+  unit  Unit          @relation(fields: [unitId], references: [id])
+
+  @@unique([tenantId, number])
+  @@unique([leaseId, periodStart])
+  @@index([tenantId, status, dueAt])
+  @@index([tenantId, unitId, status])
+  @@map("rent_charge")
 }

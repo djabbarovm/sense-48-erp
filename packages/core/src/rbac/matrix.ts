@@ -123,6 +123,9 @@ export const PERMISSION_MATRIX = {
   'service.manage': ['OWNER', 'OPERATIONS_MANAGER'],
   'service.verify': ['OWNER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER'],
   'service.catalog': ['OWNER', 'ADMIN', 'OPERATIONS_MANAGER'],
+  // Аренда и дебиторка (docs/20 §11.9): просмотр начислений и зачёт банковских поступлений
+  'rent.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  'rent.match': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
   // Owner Portal (docs/20 §11.6): у собственника нет property.view — только свой портал и заявки по своим юнитам
   'owner.portal': ['PROPERTY_OWNER'],
   'owner.request': ['PROPERTY_OWNER'],

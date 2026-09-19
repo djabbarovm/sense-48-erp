@@ -81,10 +81,10 @@ export default async function OwnerPortalPage({ searchParams }: { searchParams: 
             {p.statement.length === 0 ? <p className="mt-2 text-sm text-gray-400">{t('noStatement')}</p> : (
               <div className="mt-2 overflow-x-auto">
                 <Table>
-                  <thead><tr><Th>{t('unit')}</Th><Th className="text-right">{t('rent')}</Th><Th className="text-right">{t('fee')}</Th><Th className="text-right">{t('payout')}</Th></tr></thead>
+                  <thead><tr><Th>{t('unit')}</Th><Th className="text-right">{t('rent')}</Th><Th className="text-right">{t('receivedCol')}</Th><Th className="text-right">{t('fee')}</Th><Th className="text-right">{t('payout')}</Th></tr></thead>
                   <tbody>
-                    {p.statement.map((l) => (<tr key={l.unitNo}><Td className="font-mono font-semibold">{l.unitNo}</Td><Td className="text-right font-mono">{fmtRate(l.rentMinor, l.currency)}</Td><Td className="text-right font-mono text-gray-500">{l.managed ? `−${fmtRate(l.feeMinor, l.currency)}` : '—'}</Td><Td className="text-right font-mono font-semibold text-emerald-600">{fmtRate(l.payoutMinor, l.currency)}</Td></tr>))}
-                    <tr><Td className="font-semibold">{t('total')}</Td><Td className="text-right font-mono">{fmtRate(p.totals.rent, 'USD')}</Td><Td className="text-right font-mono text-gray-500">−{fmtRate(p.totals.fee, 'USD')}</Td><Td className="text-right font-mono font-bold text-emerald-600">{fmtRate(p.totals.payout, 'USD')}</Td></tr>
+                    {p.statement.map((l) => (<tr key={l.unitNo}><Td className="font-mono font-semibold">{l.unitNo}</Td><Td className="text-right font-mono">{fmtRate(l.rentMinor, l.currency)}</Td><Td className="text-right font-mono text-xs"><span className={cn(l.chargeStatus === 'PAID' ? 'text-emerald-600' : l.chargeStatus === 'OVERDUE' ? 'text-red-600' : 'text-gray-500')}>{l.receivedMinor != null ? fmtRate(l.receivedMinor, l.currency) : '—'}</span><span className="ml-1 text-[10px] text-gray-400">{t(`chargeStatus.${(l.chargeStatus ?? 'none') as 'none'}`)}</span></Td><Td className="text-right font-mono text-gray-500">{l.managed ? `−${fmtRate(l.feeMinor, l.currency)}` : '—'}</Td><Td className="text-right font-mono font-semibold text-emerald-600">{fmtRate(l.payoutMinor, l.currency)}</Td></tr>))}
+                    <tr><Td className="font-semibold">{t('total')}</Td><Td className="text-right font-mono">{fmtRate(p.totals.rent, 'USD')}</Td><Td /><Td className="text-right font-mono text-gray-500">−{fmtRate(p.totals.fee, 'USD')}</Td><Td className="text-right font-mono font-bold text-emerald-600">{fmtRate(p.totals.payout, 'USD')}</Td></tr>
                   </tbody>
                 </Table>
               </div>

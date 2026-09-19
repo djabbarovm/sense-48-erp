@@ -9,6 +9,7 @@ import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
 import { emitDomainEvent } from './domainEvents.js';
+import { waiveFutureRentCharges } from './rent.js';
 
 export interface LeaseInput {
   unitId: string;
@@ -102,7 +103,8 @@ export async function terminateLease(ctx: TenantContext, leaseId: string, reason
     leaseMachine.assert(ctx, before.status, 'terminate', { unitReady: true, otherActiveOnUnit: false, startAt: before.startAt, endAt: before.endAt, reason });
     const wasLive = before.status === 'ACTIVE' || before.status === 'EXPIRING';
     const after = await tx.leaseContract.update({ where: { id: leaseId }, data: { status: 'TERMINATED', terminatedAt: now, terminatedReason: reason.trim() || null, updatedBy: ctx.userId } });
-    const audit: AuditEntry[] = [{ action: 'lease.terminate', objectType: 'lease_contract', objectId: leaseId, before: pick(before), after: { ...pick(after), reason: reason.trim() } }];
+    const waived = await waiveFutureRentCharges(tx, ctx.tenantId, leaseId, now, `lease terminated: ${reason.trim()}`); // BR-P39
+    const audit: AuditEntry[] = [{ action: 'lease.terminate', objectType: 'lease_contract', objectId: leaseId, before: pick(before), after: { ...pick(after), reason: reason.trim(), waivedCharges: waived } }];
     if (wasLive) {
       const unitChange = await applyLeaseToUnit(tx, ctx, after, now);
       audit.push({ action: 'unit.status.change', objectType: 'unit', objectId: after.unitId, before: { occupancy: unitChange.before.occupancy, leaseStatus: unitChange.before.leaseStatus, occupantName: unitChange.before.occupantName }, after: { occupancy: unitChange.after.occupancy, leaseStatus: unitChange.after.leaseStatus, occupantName: null, reason: `lease ${leaseId} terminated: ${reason.trim()}`, source: 'UI' } });

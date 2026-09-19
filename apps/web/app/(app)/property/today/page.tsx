@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Activity, AlertTriangle, Building2, FileSignature, Handshake, Sparkles, Users, Wrench } from 'lucide-react';
+import { Activity, AlertTriangle, Building2, Coins, FileSignature, Handshake, Sparkles, Users, Wrench } from 'lucide-react';
 import { can } from '@finance-os/core';
 import { getControlRoom } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -135,6 +135,27 @@ export default async function ControlRoomPage() {
             </ul>
           </Card>
         </Section>
+        {cr.finance ? (
+          <Section icon={<Coins className="h-3.5 w-3.5" />} title={t('finance')} href="/rent" linkLabel={t('allRent')}>
+            <Card>
+              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-3">
+                <div><p className="font-mono text-base font-bold whitespace-nowrap text-gray-900">{fmtRate(cr.finance.outstandingMinor, cr.finance.currency)}</p><p className="text-[11px] text-gray-500">{t('outstanding')}</p></div>
+                <div><p className={cn('font-mono text-base font-bold whitespace-nowrap', cr.finance.overdueMinor > 0n ? 'text-red-600' : 'text-gray-400')}>{fmtRate(cr.finance.overdueMinor, cr.finance.currency)}</p><p className="text-[11px] text-gray-500">{t('overdueAmount')}</p></div>
+                <div><p className="font-mono text-xl font-bold text-gray-900">{cr.finance.debtorUnits}</p><p className="text-[11px] text-gray-500">{t('debtors')}</p></div>
+                <div><p className="font-mono text-base font-bold whitespace-nowrap text-gray-900">{fmtRate(cr.finance.monthChargedMinor, cr.finance.currency)}</p><p className="text-[11px] text-gray-500">{t('monthCharged')}</p></div>
+                <div><p className="font-mono text-base font-bold whitespace-nowrap text-emerald-600">{fmtRate(cr.finance.monthReceivedMinor, cr.finance.currency)}</p><p className="text-[11px] text-gray-500">{t('monthReceived')}</p></div>
+                <div><p className={cn('font-mono text-xl font-bold', cr.finance.collectionPct != null && cr.finance.collectionPct < 70 ? 'text-red-600' : 'text-gray-900')}>{cr.finance.collectionPct == null ? '—' : `${cr.finance.collectionPct}%`}</p><p className="text-[11px] text-gray-500">{t('collection')}</p></div>
+              </div>
+              <p className="mt-3 text-[11px] font-semibold tracking-wider text-gray-400 uppercase">{t('topDebtors')}</p>
+              <ul className="mt-1 divide-y divide-gray-100">
+                {cr.finance.topDebtors.length === 0 ? <li className="py-2 text-sm text-gray-400">{t('nothing')}</li> : null}
+                {cr.finance.topDebtors.slice(0, 6).map((u) => (
+                  <li key={u.unitId} className="flex items-center justify-between gap-2 py-1.5 text-sm"><span><Link href={`/property/units/${u.unitId}`} className="font-mono font-semibold text-ink-900 hover:text-brand-600">{u.unitNo}</Link><span className="ml-2 text-xs text-gray-500">{u.occupantName}</span></span><span className={cn('font-mono text-xs', u.daysOverdue > 0 ? 'text-red-600' : 'text-gray-600')}>{fmtRate(u.outstandingMinor, cr.finance!.currency)}{u.daysOverdue ? ` · ${u.daysOverdue} дн.`.replace(' дн.', '') + ' d' : ''}</span></li>
+                ))}
+              </ul>
+            </Card>
+          </Section>
+        ) : null}
         {cr.services ? (
           <Section icon={<Sparkles className="h-3.5 w-3.5" />} title={t('services')} href="/services" linkLabel={t('allServices')}>
             <Card>

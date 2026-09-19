@@ -21,6 +21,7 @@ import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
 import { emitDomainEvent } from './domainEvents.js';
+import { outstandingByUnit } from './rent.js';
 
 type UnitWithOwner = Unit & { owner: PropertyOwner | null };
 
@@ -39,6 +40,8 @@ export interface UnitRow {
   askingRateMinor: bigint | null;
   askingCurrency: string;
   monthlyRentMinor: bigint | null;
+  /** Остаток по начислениям аренды (unit.finance.view); null — нет права. */
+  debtMinor: bigint | null;
   leaseEndsAt: Date | null;
   vacantSince: Date | null;
   readiness: Unit['readiness'];
@@ -59,7 +62,7 @@ export function maskOwnerName(name: string): string {
   return parts.length > 1 ? `${first} ${parts.slice(1).map((p) => `${p[0] ?? ''}.`).join(' ')}` : first;
 }
 
-function toRow(u: UnitWithOwner, ctx: TenantContext, today: Date): UnitRow {
+function toRow(u: UnitWithOwner, ctx: TenantContext, today: Date, debt: bigint | null = null): UnitRow {
   const showOwner = can(ctx, 'unit.owner.view');
   const showFinance = can(ctx, 'unit.finance.view');
   const ownerName = u.owner ? (showOwner ? u.owner.displayName : maskOwnerName(u.owner.displayName)) : null;
@@ -78,6 +81,7 @@ function toRow(u: UnitWithOwner, ctx: TenantContext, today: Date): UnitRow {
     askingRateMinor: u.askingRateMinor,
     askingCurrency: u.askingCurrency,
     monthlyRentMinor: showFinance ? u.monthlyRentMinor : null,
+    debtMinor: showFinance ? (debt ?? 0n) : null,
     leaseEndsAt: u.leaseEndsAt,
     vacantSince: u.vacantSince,
     readiness: u.readiness,
@@ -95,14 +99,16 @@ async function loadUnits(ctx: TenantContext, where: Prisma.UnitWhereInput = {}):
 }
 
 /** Фильтрация в одном месте: и список, и карта, и KPI видят один и тот же набор (BR-P12). */
-function applyFilter(units: UnitWithOwner[], ctx: TenantContext, filter: UnitFilter, today: Date): UnitRow[] {
+async function applyFilter(units: UnitWithOwner[], ctx: TenantContext, filter: UnitFilter, today: Date): Promise<UnitRow[]> {
   const rows: UnitRow[] = [];
+  // Задолженность видна и фильтруется только c правом unit.finance.view (blueprint §1.8 «debt»)
+  const debt = can(ctx, 'unit.finance.view') ? await outstandingByUnit(ctx.tenantId) : null;
   for (const u of units) {
     // Поиск идёт по полному имени собственника (сервер), в ответ уходит маскированное
-    const full = { ...u, ownerName: u.owner?.displayName ?? null, occupantName: u.occupantName, managedByPlatform: u.managedByPlatform };
+    const full = { ...u, ownerName: u.owner?.displayName ?? null, occupantName: u.occupantName, managedByPlatform: u.managedByPlatform, outstandingMinor: debt ? (debt.get(u.id) ?? 0n) : null };
     const view = deriveUnitView(u, today);
     if (!matchesUnitFilter(full, view, filter)) continue;
-    rows.push(toRow(u, ctx, today));
+    rows.push(toRow(u, ctx, today, debt ? (debt.get(u.id) ?? 0n) : null));
   }
   return rows;
 }
@@ -137,7 +143,7 @@ export async function getStatusMap(ctx: TenantContext, filter: UnitFilter = {}, 
     prisma.floor.findMany({ where: whereTenant(ctx), orderBy: { floorNo: 'desc' } }),
     loadUnits(ctx),
   ]);
-  const rows = applyFilter(units, ctx, filter, today);
+  const rows = await applyFilter(units, ctx, filter, today);
   const byFloor = new Map<string, UnitRow[]>();
   for (const r of rows) byFloor.set(r.floorId, [...(byFloor.get(r.floorId) ?? []), r]);
   const kpiInput = (list: UnitWithOwner[]) => list.map((u) => ({ ...u, areaM2: Number(u.areaM2) }));
@@ -167,7 +173,7 @@ export async function getFloor(ctx: TenantContext, floorId: string, filter: Unit
   requirePermission(ctx, 'property.view');
   const floor = await findScopedOr404(prisma.floor, ctx, floorId);
   const building = await findScopedOr404(prisma.building, ctx, floor.buildingId);
-  const units = applyFilter(await loadUnits(ctx, { floorId }), ctx, { ...filter, floorId }, today);
+  const units = await applyFilter(await loadUnits(ctx, { floorId }), ctx, { ...filter, floorId }, today);
   const siblings = await prisma.floor.findMany({ where: whereTenant(ctx, { buildingId: floor.buildingId }), orderBy: { floorNo: 'desc' }, select: { id: true, floorNo: true } });
   return { floor, building, units, siblings };
 }

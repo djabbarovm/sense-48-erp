@@ -31,13 +31,14 @@ export function parseUnitFilter(sp: PropertySearchParams): UnitFilter {
   if (expiring) f.leaseEndsWithinDays = expiring;
   if (one(sp.managed) === '1') f.managedOnly = true;
   if (one(sp.alerts) === '1') f.withAlerts = true;
+  if (one(sp.debt) === '1') f.withDebt = true;
   if (q) f.q = q;
   return f;
 }
 
 /** Сохраняет активные параметры фильтра при переходе между экранами. */
 export function filterQuery(sp: PropertySearchParams, patch: Record<string, string | null> = {}): string {
-  const keep = ['building', 'floor', 'color', 'mode', 'readiness', 'occupancy', 'commercial', 'vacant', 'expiring', 'managed', 'alerts', 'q'];
+  const keep = ['building', 'floor', 'color', 'mode', 'readiness', 'occupancy', 'commercial', 'vacant', 'expiring', 'managed', 'alerts', 'debt', 'q'];
   const params = new URLSearchParams();
   for (const k of keep) {
     const v = k in patch ? patch[k] : one(sp[k]);

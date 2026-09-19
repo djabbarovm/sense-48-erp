@@ -8,7 +8,7 @@ import type { Prisma } from '@prisma/client';
  * (INSERT .. ON CONFLICT DO UPDATE берёт row lock).
  */
 
-export type SequenceKey = 'PR' | 'PAY' | 'INV' | 'EVT' | 'PO' | 'CINV' | 'DEAL' | 'WO' | 'SO';
+export type SequenceKey = 'PR' | 'PAY' | 'INV' | 'EVT' | 'PO' | 'CINV' | 'DEAL' | 'WO' | 'SO' | 'RC';
 
 const PAD: Record<SequenceKey, number> = {
   PR: 6, // PR-2026-000123
@@ -20,6 +20,7 @@ const PAD: Record<SequenceKey, number> = {
   DEAL: 6, // DEAL-2026-000001 (MDS Property)
   WO: 6, // WO-2026-000001 (заявки)
   SO: 6, // SO-2026-000001 (заказы услуг)
+  RC: 6, // RC-2026-000001 (начисления аренды)
 };
 
 export async function nextSequenceValue(

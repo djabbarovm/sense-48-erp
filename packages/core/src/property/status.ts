@@ -185,6 +185,8 @@ export interface UnitFilter {
   leaseEndsWithinDays?: number;
   managedOnly?: boolean;
   withAlerts?: boolean;
+  /** Есть непогашенные начисления аренды (blueprint §1.8 «юниты c задолженностью»). */
+  withDebt?: boolean;
   /** Поиск по номеру юнита / собственнику / арендатору (без учёта регистра). */
   q?: string;
 }
@@ -197,6 +199,8 @@ export interface FilterableUnit extends UnitStatusFields {
   managedByPlatform: boolean;
   ownerName?: string | null;
   occupantName?: string | null;
+  /** Остаток по начислениям аренды; undefined — нет данных/права. */
+  outstandingMinor?: bigint | null;
 }
 
 export function matchesUnitFilter(u: FilterableUnit, view: UnitView, f: UnitFilter): boolean {
@@ -215,6 +219,7 @@ export function matchesUnitFilter(u: FilterableUnit, view: UnitView, f: UnitFilt
   }
   if (f.managedOnly && !u.managedByPlatform) return false;
   if (f.withAlerts && view.alerts.length === 0) return false;
+  if (f.withDebt && !(u.outstandingMinor && u.outstandingMinor > 0n)) return false;
   if (f.q) {
     const q = f.q.trim().toLowerCase();
     if (q) {
