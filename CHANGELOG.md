@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+## [Docs] 2026-09-19 — Порядок внедрения ORDO → Rooftop/Sense (ADR-033)
+- DECISIONS: ADR-033 — фокус ORDO (коммерция → сервис → операции), три тенанта на сервере c разным назначением (`rooftop-real`, `piramit` демо, `ordo` реальный), Rooftop/Sense — этап адаптации; TASKS: блок «Порядок внедрения», P-30 реальный тенант ORDO.
+
 ## [Phase P] 2026-09-19 — CRM Tower: телефония OnlinePBX и каналы сообщений (P-29, ADR-032)
 - adapters: `telephony/onlinepbx.ts` — `OnlinePbxAdapter` (карта полей c умолчаниями FreeSWITCH-CDR: uuid / caller_id_number / destination_number / start_stamp / billsec / hangup_cause / download_url; form-urlencoded и JSON; направление по внутреннему номеру; «Ответили» игнорируется; пропущенный по событию или причине), `buildTelephonyAdapter`, `parseWebhookRawBody`, `TELEPHONY_PROVIDERS`; `vitest.config.ts` пакета — тесты adapters входят в `pnpm test`; 6 тестов.
 - db: `getTelephonySettings` / `updateTelephonySettings` (право tenant.settings, email → userId участника тенанта, аудит `telephony.settings.update`) / `noteTelephonyWebhook` (время последнего webhook и ключи непонятого тела, без значений); `actorFor` читает `settings.telephony.ext_map` c fallback на старую карту; enum `DealSource.WHATSAPP` (миграция `deal_source_whatsapp`); тест.
