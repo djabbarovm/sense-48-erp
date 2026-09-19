@@ -2,10 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { ServiceCategory, ServiceProviderKind } from '@finance-os/db';
+import type { ServiceCategory, ServiceChannel, ServiceCustomerKind, ServiceInvolvement, ServiceProviderKind, ServiceTerms } from '@finance-os/db';
 import { IllegalTransitionError, NotFoundError, PermissionDeniedError, ValidationError, type ServiceOrderTrigger } from '@finance-os/core';
 import { createStorageFromEnv } from '@finance-os/adapters';
-import { createCatalogItem, createServiceOrder, rateServiceOrder, transitionServiceOrder, updateCatalogItem, uploadDocument } from '@finance-os/db';
+import { cancelServicePackage, createCatalogItem, createServiceOrder, createServicePackage, importPartnerStatement, rateServiceOrder, recordHandling, transitionServiceOrder, updateCatalogItem, uploadDocument } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
 const str = (fd: FormData, k: string): string | undefined => {
@@ -51,6 +51,8 @@ export async function createServiceOrderAction(formData: FormData): Promise<void
       notes: str(formData, 'notes') ?? null,
       scheduledAt: str(formData, 'scheduledAt') ? new Date(str(formData, 'scheduledAt')!) : null,
       assigneeId: str(formData, 'assigneeId') ?? null,
+      ...(str(formData, 'channel') ? { channel: str(formData, 'channel') as ServiceChannel } : {}),
+      customerKind: (str(formData, 'customerKind') ?? null) as ServiceCustomerKind | null,
     });
     return `/services/${o.id}`;
   });
@@ -98,7 +100,36 @@ export async function createCatalogItemAction(formData: FormData): Promise<void>
       commissionBp: Math.round(Number(str(formData, 'commissionPct') ?? '0') * 100),
       slaHours: Number(str(formData, 'slaHours') ?? '48'),
       description: str(formData, 'description') ?? null,
+      terms: (str(formData, 'terms') ?? 'COMMISSION_PER_ORDER') as ServiceTerms,
+      involvement: (str(formData, 'involvement') ?? 'MANAGED') as ServiceInvolvement,
+      clientDiscountBp: Math.round(Number(str(formData, 'discountPct') ?? '0') * 100),
+      ownOpsFeeBp: str(formData, 'ownOpsFeePct') ? Math.round(Number(str(formData, 'ownOpsFeePct')) * 100) : null,
+      forMall: formData.get('forMall') === 'on',
     });
+  });
+}
+
+export async function recordHandlingAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const id = String(formData.get('id'));
+  await run(`/services/${id}`, () => recordHandling(ctx, id, { addMinutes: Number(str(formData, 'addMinutes') ?? '0'), ...(formData.has('complaintFlag') ? { complaint: formData.get('complaint') === 'on', complaintNote: str(formData, 'complaintNote') ?? null } : {}) }).then(() => undefined));
+}
+
+export async function createPackageAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await run('/services?view=packages', () => createServicePackage(ctx, { catalogItemId: str(formData, 'catalogItemId') ?? '', unitId: str(formData, 'unitId') ?? '', customerName: str(formData, 'customerName') ?? null, customerKind: (str(formData, 'customerKind') ?? 'RESIDENT') as ServiceCustomerKind, runsPerMonth: Number(str(formData, 'runsPerMonth') ?? '4'), monthlyPriceMinor: toMinor(str(formData, 'monthly')) ?? 0n, ...(str(formData, 'startAt') ? { startAt: new Date(str(formData, 'startAt')!) } : {}) }).then(() => undefined));
+}
+
+export async function cancelPackageAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await run('/services?view=packages', () => cancelServicePackage(ctx, String(formData.get('id')), str(formData, 'reason') ?? '').then(() => undefined));
+}
+
+export async function importStatementAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  await run('/services?view=analytics', async () => {
+    const r = await importPartnerStatement(ctx, { partnerName: str(formData, 'partnerName') ?? '', period: str(formData, 'period') ?? '', csv: String(formData.get('csv') ?? '') });
+    return `/services?view=analytics&imported=${r.imported}&skipped=${r.skipped}&fee=${r.feeMinor.toString()}`;
   });
 }
 

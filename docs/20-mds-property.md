@@ -140,6 +140,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
 | 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services marketplace + документы ✓ P-16; аренда/дебиторка ✓ P-18; комиссии и бонусы ✓ P-14 | ✓ |
 | 4b Mall | ORDO Mall — коммерция: мандаты ДДУ, tenant mix, линии актива, экономика собственника ✓ P-19; фонды OPEX/маркетинг и отчёт собственнику ТРЦ — c Operations | частично |
+| 4c Services | Services v1.0: условия направлений, одно окно, cost-to-serve, пакеты, referral, аналитика валидации ✓ P-20 | ✓ |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
 
 ## 11. Wave 2 — договоры аренды, сделки, события, публичный API (ADR-018)
@@ -224,6 +225,16 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 |---|---|---|---|
 | BR-P45 | Мандат ДДУ → помещение под управлением | только помещения ТРЦ c собственником (NOT_MALL_UNIT / MANDATE_OWNER_REQUIRED); один незакрытый (MANDATE_EXISTS); ACTIVE ставит managedByPlatform и включает начисление аренды; TERMINATED снимает | mall.test (core), mall.test (db) |
 | BR-P46 | Проценты собственнику только после утверждения | feePublished невозможен при feeBp = null (FEE_NOT_APPROVED); отчёт собственника отдаёт feeBp только при публикации; fee контролируемой базы = null для OPEN-ставки, счётчик feeOpenUnits | mall.test |
+
+### 11.12 Services v1.0 — условия, одно окно, cost-to-serve, пакеты, referral (бизнес-модель Services)
+Каталог: `terms` (COMMISSION_PER_ORDER / REFERRAL_RECURRING / PACKAGE), `involvement` (REFERRAL / MANAGED — уровень вовлечения, не модель выручки), `clientDiscountBp` (скидка — выгода клиента, не выручка), `ownOpsFeeBp` (внутренняя ставка Services за свою эксплуатацию; null = OPEN до Master Model → 0), `forMall`. Заказ: `channel` (PORTAL/TELEGRAM/PHONE/APP/WALK_IN/STAFF — «одно окно»), `customerKind` (OWNER/RESIDENT/STR_GUEST/OFFICE_TENANT), `listPriceMinor`/`priceMinor`, снимок трёх уровней (`servicesRevenueMinor`, `executorRevenueMinor`), `handlingMinutes` и `complaint` (cost-to-serve и качество, `recordHandling`). `ServicePackage` — регулярная покупка услуги (частота в месяц, месячная цена; джоб `service-packages` создаёт заказы по `nextRunAt`, цена визита = месячная / частота; отмена c причиной). `PartnerStatementLine` — импорт отчёта партнёра CSV `клиент;база;ставка%` (идемпотентно по партнёру/периоду/клиенту; ставка по умолчанию — из referral-направления партнёра). `getServicesAnalytics`: по направлениям — заказы, GMV, выручка Services, исполнителям, cost-to-serve (минуты × `tenant.settings.services_hour_cost_minor`), Contribution, жалобы, SLA, оценка; спрос — клиентская база (договоры вне Mall + собственники), покупатели, penetration, attach rate, повторные; каналы и профили; referral по партнёрам и периодам; пакеты и MRR. Экран `/services`: вкладки «Пакеты» и «Аналитика» (c импортом отчёта), условия в каталоге, канал/профиль в заказе, форма cost-to-serve в карточке заказа. Сводка: выручка Services и выручка Operations отдельно.
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P47 | Трёхуровневый учёт: GMV → выручка Services → выручка исполнителя | партнёр: Services = комиссия, партнёру остаток; своя эксплуатация: внутренняя ставка OPEN → Services 0, всё Operations; скидка клиенту уменьшает цену, не выручку | serviceModel.test, services-model.test |
+| BR-P48 | Арендаторы Mall — не клиенты Services | заказ по юниту здания MALL → SERVICE_NOT_FOR_MALL, кроме услуг c `forMall`; клиентская база аналитики без Mall | services-model.test |
+| BR-P49 | Cost-to-serve и жалобы — по заказу | recordHandling участником/ops; Contribution направления = выручка Services − cost-to-serve | services-model.test |
+| BR-P50 | Пакет генерирует заказы по частоте, отмена останавливает | runServicePackages по nextRunAt, цена визита = месячная / частота; собственник — только по своему юниту | services-model.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 

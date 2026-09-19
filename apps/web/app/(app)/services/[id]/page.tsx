@@ -9,7 +9,7 @@ import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
 import { fmtDate, fmtRate } from '@/components/property';
 import { PROVIDER_TONE, STATUS_TONE } from '../tones';
-import { rateServiceOrderAction, transitionServiceOrderAction, uploadServiceProofAction } from '../actions';
+import { rateServiceOrderAction, recordHandlingAction, transitionServiceOrderAction, uploadServiceProofAction } from '../actions';
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return <div className="flex justify-between gap-3 text-[13px]"><dt className="text-gray-500">{k}</dt><dd className="text-right font-medium text-gray-900">{v}</dd></div>;
@@ -51,7 +51,10 @@ export default async function ServiceOrderPage({ params, searchParams }: { param
           <dl className="mt-3 space-y-1.5">
             <Row k={t('fields.unit')} v={o.unitId ? <Link href={`/property/units/${o.unitId}`} className="font-mono text-brand-600 hover:underline">{o.unitNo}</Link> : (o.buildingName ?? '—')} />
             {o.customerName ? <Row k={t('fields.customer')} v={o.customerName} /> : null}
-            <Row k={t('fields.price')} v={<span className="font-mono">{fmtRate(o.priceMinor, o.currency)}</span>} />
+            <Row k={t('fields.channel')} v={`${t(`channel.${o.channel}`)}${o.customerKind ? ` · ${t(`customerKind.${o.customerKind}`)}` : ''}${o.packageId ? ` · ${t('fields.package')}` : ''}`} />
+            <Row k={t('fields.price')} v={<span className="font-mono">{fmtRate(o.priceMinor, o.currency)}{o.listPriceMinor != null && o.listPriceMinor !== o.priceMinor ? <span className="ml-1 text-[10px] text-gray-400 line-through">{fmtRate(o.listPriceMinor, o.currency)}</span> : null}</span>} />
+            <Row k={t('fields.servicesRevenue')} v={<span className="font-mono text-emerald-600">{fmtRate(o.servicesRevenueMinor, o.currency)}</span>} />
+            <Row k={t('fields.executorRevenue')} v={<span className="font-mono">{fmtRate(o.executorRevenueMinor, o.currency)}</span>} />
             {o.providerKind === 'PARTNER' ? <><Row k={t('fields.commission')} v={`${o.commissionBp / 100}%`} /><Row k={t('fields.platformRevenue')} v={<span className="font-mono text-emerald-600">{fmtRate(o.platformRevenueMinor, o.currency)}</span>} /><Row k={t('fields.partnerPayout')} v={<span className="font-mono">{fmtRate(o.partnerPayoutMinor, o.currency)}</span>} /></> : null}
             <Row k={t('fields.orderer')} v={o.ordererName} />
             <Row k={t('fields.assignee')} v={o.assigneeName ?? <span className="text-gray-400">{t('fields.unassigned')}</span>} />
@@ -94,6 +97,14 @@ export default async function ServiceOrderPage({ params, searchParams }: { param
               <form action={rateServiceOrderAction} className="flex items-end gap-2 border-t border-gray-100 pt-3"><input type="hidden" name="id" value={o.id} /><div><Label htmlFor="rt">{t('fields.rating')}</Label><Select id="rt" name="rating" defaultValue="5">{[5, 4, 3, 2, 1].map((n) => (<option key={n} value={n}>{'★'.repeat(n)}</option>))}</Select></div><div className="flex-1"><Label htmlFor="rc">{t('fields.ratingComment')}</Label><Input id="rc" name="comment" /></div><Button type="submit" size="sm" variant="outline"><Star className="h-3.5 w-3.5" />{t('rate')}</Button></form>
             ) : null}
             {triggers.length === 0 && !(canRate && o.rating == null) ? <p className="text-sm text-gray-400">{t('noActions')}</p> : null}
+            {can(ctx, 'service.manage') || o.assigneeId === ctx.userId ? (
+              <form action={recordHandlingAction} className="space-y-2 border-t border-gray-100 pt-3">
+                <h4 className="text-[13px] font-semibold text-gray-800">{t('handling.title')}</h4>
+                <p className="text-[11px] text-gray-400">{t('handling.hint')} {t('handling.total', { n: o.handlingMinutes })}</p>
+                <input type="hidden" name="id" value={o.id} /><input type="hidden" name="complaintFlag" value="1" />
+                <div className="flex flex-wrap items-end gap-2"><div><Label htmlFor="h-min">{t('handling.addMinutes')}</Label><Input id="h-min" name="addMinutes" type="number" min="0" max="1440" defaultValue="0" className="w-24" /></div><label className="flex items-center gap-2 pb-2 text-xs text-gray-700"><input type="checkbox" name="complaint" defaultChecked={o.complaint} className="h-4 w-4" />{t('handling.complaintFlag')}</label><div className="flex-1"><Label htmlFor="h-note">{t('fields.complaintNote')}</Label><Input id="h-note" name="complaintNote" defaultValue={o.complaintNote ?? ''} /></div><Button type="submit" size="sm" variant="outline">{t('handling.save')}</Button></div>
+              </form>
+            ) : null}
           </div>
         </Card>
 

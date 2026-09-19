@@ -2085,10 +2085,17 @@ model ServiceCatalogItem {
   slaHours     Int                 @default(48) @map("sla_hours")
   description  String?
   active       Boolean             @default(true)
+  // P-20 (Services v1.0): условия направления, вовлечение, скидка клиенту, внутренняя ставка за свою эксплуатацию (OPEN)
+  terms          ServiceTerms       @default(COMMISSION_PER_ORDER)
+  involvement    ServiceInvolvement @default(MANAGED)
+  clientDiscountBp Int              @default(0) @map("client_discount_bp")
+  ownOpsFeeBp    Int?               @map("own_ops_fee_bp")
+  forMall        Boolean            @default(false) @map("for_mall") // арендаторы Mall — не клиенты Services (BR-P48)
   createdAt    DateTime            @default(now()) @map("created_at")
   updatedAt    DateTime            @updatedAt @map("updated_at")
 
-  orders ServiceOrder[]
+  orders   ServiceOrder[]
+  packages ServicePackage[]
 
   @@unique([tenantId, code])
   @@index([tenantId, active, category])
@@ -2110,6 +2117,16 @@ model ServiceOrder {
   currency          String              @db.Char(3)
   commissionBp      Int                 @map("commission_bp")
   quantity          Int                 @default(1)
+  // P-20: канал одного окна, профиль клиента, прайс/скидка, трёхуровневый учёт, cost-to-serve, жалоба, пакет
+  channel               ServiceChannel       @default(STAFF)
+  customerKind          ServiceCustomerKind?  @map("customer_kind")
+  listPriceMinor        BigInt?              @map("list_price_minor")
+  servicesRevenueMinor  BigInt               @default(0) @map("services_revenue_minor")
+  executorRevenueMinor  BigInt               @default(0) @map("executor_revenue_minor")
+  handlingMinutes       Int                  @default(0) @map("handling_minutes")
+  complaint             Boolean              @default(false)
+  complaintNote         String?              @map("complaint_note")
+  packageId             String?              @map("package_id") @db.Uuid
   customerName      String?             @map("customer_name") // арендатор/собственник — отображаемое имя
   ordererId         String              @map("orderer_id") @db.Uuid
   ownerId           String?             @map("owner_id") @db.Uuid // заказ собственника (Owner Portal)
@@ -2133,6 +2150,7 @@ model ServiceOrder {
 
   catalogItem ServiceCatalogItem @relation(fields: [catalogItemId], references: [id])
   unit        Unit?              @relation(fields: [unitId], references: [id])
+  package     ServicePackage?    @relation(fields: [packageId], references: [id])
 
   @@unique([tenantId, number])
   @@index([tenantId, status, dueAt])
@@ -2417,4 +2435,88 @@ model AssetContract {
 
   @@index([tenantId, assetId, status])
   @@map("asset_contract")
+}
+
+// ── §P9 Services v1.0 (docs/20 §11.12): условия, каналы, пакеты, referral ──
+
+enum ServiceTerms {
+  COMMISSION_PER_ORDER
+  REFERRAL_RECURRING
+  PACKAGE
+}
+
+enum ServiceInvolvement {
+  REFERRAL
+  MANAGED
+}
+
+enum ServiceChannel {
+  PORTAL
+  TELEGRAM
+  PHONE
+  APP
+  WALK_IN
+  STAFF
+}
+
+enum ServiceCustomerKind {
+  OWNER
+  RESIDENT
+  STR_GUEST
+  OFFICE_TENANT
+}
+
+enum PackageStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+/** Recurring Service Package (Services §3.4): регулярная покупка конкретной услуги, генерирует заказы по частоте. */
+model ServicePackage {
+  id                String              @id @default(uuid(7)) @db.Uuid
+  tenantId          String              @map("tenant_id") @db.Uuid
+  catalogItemId     String              @map("catalog_item_id") @db.Uuid
+  unitId            String              @map("unit_id") @db.Uuid
+  ownerId           String?             @map("owner_id") @db.Uuid
+  customerName      String?             @map("customer_name")
+  customerKind      ServiceCustomerKind @default(RESIDENT) @map("customer_kind")
+  channel           ServiceChannel      @default(STAFF)
+  runsPerMonth      Int                 @map("runs_per_month")
+  monthlyPriceMinor BigInt              @map("monthly_price_minor")
+  currency          String              @db.Char(3)
+  status            PackageStatus       @default(ACTIVE)
+  startAt           DateTime            @map("start_at")
+  nextRunAt         DateTime            @map("next_run_at")
+  lastRunAt         DateTime?           @map("last_run_at")
+  cancelledAt       DateTime?           @map("cancelled_at")
+  cancelReason      String?             @map("cancel_reason")
+  createdBy         String?             @map("created_by") @db.Uuid
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  catalogItem ServiceCatalogItem @relation(fields: [catalogItemId], references: [id])
+  orders      ServiceOrder[]
+
+  @@index([tenantId, status, nextRunAt])
+  @@map("service_package")
+}
+
+/** Отчёт партнёра по referral-вознаграждению (CityNet: 15% ежемесячно от поступлений подключённого клиента). */
+model PartnerStatementLine {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  partnerName String   @map("partner_name")
+  period      String // YYYY-MM
+  customerRef String   @map("customer_ref") // юнит/договор партнёра — без ПДн
+  baseMinor   BigInt   @map("base_minor")
+  feeBp       Int      @map("fee_bp")
+  feeMinor    BigInt   @map("fee_minor")
+  currency    String   @default("UZS") @db.Char(3)
+  importedBy  String?  @map("imported_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, partnerName, period, customerRef])
+  @@index([tenantId, period])
+  @@map("partner_statement_line")
 }

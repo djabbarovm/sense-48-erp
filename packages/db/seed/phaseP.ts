@@ -122,8 +122,8 @@ function pickStatus(kind: BuildingSpec['kind'], r: () => number, askingMinor: bi
 export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   const tenant = await prisma.tenant.upsert({
     where: { slug: PROPERTY_TENANT.slug },
-    create: { slug: PROPERTY_TENANT.slug, legalName: PROPERTY_TENANT.legalName, taxId: PROPERTY_TENANT.taxId, settings: { product: 'MDS Property', management_fee_bp: 1000, mall_rate_scenarios: { '1': { conservative: 4500, base: 5500, optimistic: 6000 }, '2': { conservative: 3500, base: 4500, optimistic: 5000 }, '3': { conservative: 1600, base: 4000, optimistic: 4500 } } } },
-    update: { legalName: PROPERTY_TENANT.legalName, settings: { product: 'MDS Property', management_fee_bp: 1000, mall_rate_scenarios: { '1': { conservative: 4500, base: 5500, optimistic: 6000 }, '2': { conservative: 3500, base: 4500, optimistic: 5000 }, '3': { conservative: 1600, base: 4000, optimistic: 4500 } } } },
+    create: { slug: PROPERTY_TENANT.slug, legalName: PROPERTY_TENANT.legalName, taxId: PROPERTY_TENANT.taxId, settings: { product: 'MDS Property', management_fee_bp: 1000, services_hour_cost_minor: '4000000', mall_rate_scenarios: { '1': { conservative: 4500, base: 5500, optimistic: 6000 }, '2': { conservative: 3500, base: 4500, optimistic: 5000 }, '3': { conservative: 1600, base: 4000, optimistic: 4500 } } } },
+    update: { legalName: PROPERTY_TENANT.legalName, settings: { product: 'MDS Property', management_fee_bp: 1000, services_hour_cost_minor: '4000000', mall_rate_scenarios: { '1': { conservative: 4500, base: 5500, optimistic: 6000 }, '2': { conservative: 3500, base: 4500, optimistic: 5000 }, '3': { conservative: 1600, base: 4000, optimistic: 4500 } } } },
   });
   const tenantId = tenant.id;
 
@@ -503,4 +503,36 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
     }
     console.log(`  mall: ${cats} tenant categories, ${mandates} mandates, ${assets} assets`);
   }
+
+  // ── P-20: Services v1.0 — условия направлений, каналы/профили, cost-to-serve, пакеты, referral-отчёты CityNet ──
+  await prisma.serviceCatalogItem.updateMany({ where: { tenantId, code: 'LAUNDRY' }, data: { clientDiscountBp: 500, involvement: 'MANAGED' } });
+  await prisma.serviceCatalogItem.updateMany({ where: { tenantId, code: 'IT-SETUP' }, data: { terms: 'REFERRAL_RECURRING', involvement: 'REFERRAL', partnerName: 'CityNet', commissionBp: 1500 } });
+  await prisma.serviceCatalogItem.updateMany({ where: { tenantId, code: 'CLEAN-STD' }, data: { terms: 'PACKAGE' } });
+  const CH = ['PORTAL', 'TELEGRAM', 'PHONE', 'APP', 'STAFF', 'TELEGRAM'] as const;
+  const CK = ['RESIDENT', 'STR_GUEST', 'OWNER', 'OFFICE_TENANT', 'RESIDENT', 'STR_GUEST'] as const;
+  const seededOrders = await prisma.serviceOrder.findMany({ where: { tenantId, channel: 'STAFF', handlingMinutes: 0 }, include: { catalogItem: true }, orderBy: { number: 'asc' } });
+  for (let i = 0; i < seededOrders.length; i++) {
+    const o = seededOrders[i]!;
+    const bp = o.providerKind === 'PARTNER' ? o.commissionBp : (o.catalogItem.ownOpsFeeBp ?? 0);
+    const services = (o.priceMinor * BigInt(bp)) / 10_000n;
+    await prisma.serviceOrder.update({ where: { id: o.id }, data: { channel: CH[i % CH.length]!, customerKind: CK[i % CK.length]!, listPriceMinor: o.priceMinor, servicesRevenueMinor: services, executorRevenueMinor: o.priceMinor - services, handlingMinutes: [10, 25, 45, 15, 60, 20][i % 6]!, complaint: i % 7 === 3, complaintNote: i % 7 === 3 ? 'не уложились в срок' : null } });
+  }
+  if ((await prisma.servicePackage.count({ where: { tenantId } })) === 0) {
+    const clean = await prisma.serviceCatalogItem.findFirst({ where: { tenantId, code: 'CLEAN-STD' } });
+    const laundryItem = await prisma.serviceCatalogItem.findFirst({ where: { tenantId, code: 'LAUNDRY' } });
+    const resUnits = await prisma.unit.findMany({ where: { tenantId, type: 'APARTMENT', occupancy: 'OCCUPIED' }, take: 2, orderBy: { unitNo: 'asc' } });
+    if (clean && resUnits[0]) await prisma.servicePackage.create({ data: { tenantId, catalogItemId: clean.id, unitId: resUnits[0].id, customerName: resUnits[0].occupantName, customerKind: 'RESIDENT', channel: 'PORTAL', runsPerMonth: 8, monthlyPriceMinor: 1_600_000_00n, currency: 'UZS', startAt: daysAgo(20), nextRunAt: daysAhead(2), lastRunAt: daysAgo(2), createdBy: opsId ?? null } });
+    if (laundryItem && resUnits[1]) await prisma.servicePackage.create({ data: { tenantId, catalogItemId: laundryItem.id, unitId: resUnits[1].id, customerName: resUnits[1].occupantName, customerKind: 'STR_GUEST', channel: 'APP', runsPerMonth: 4, monthlyPriceMinor: 400_000_00n, currency: 'UZS', startAt: daysAgo(10), nextRunAt: daysAhead(5), createdBy: opsId ?? null } });
+  }
+  const periods = [0, 1].map((k) => { const dte = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - k - 1, 1)); return `${dte.getUTCFullYear()}-${String(dte.getUTCMonth() + 1).padStart(2, '0')}`; });
+  const officeUnits = await prisma.unit.findMany({ where: { tenantId, type: 'OFFICE', occupancy: 'OCCUPIED' }, take: 12, orderBy: { unitNo: 'asc' } });
+  let stLines = 0;
+  for (const period of periods) for (let i = 0; i < officeUnits.length; i++) {
+    const ref = officeUnits[i]!.unitNo;
+    if (await prisma.partnerStatementLine.findUnique({ where: { tenantId_partnerName_period_customerRef: { tenantId, partnerName: 'CityNet', period, customerRef: ref } } })) continue;
+    const base = BigInt(600_000 + (i * 137) % 900_000) * 100n;
+    await prisma.partnerStatementLine.create({ data: { tenantId, partnerName: 'CityNet', period, customerRef: ref, baseMinor: base, feeBp: 1500, feeMinor: (base * 1500n) / 10_000n, currency: 'UZS', importedBy: opsId ?? null } });
+    stLines++;
+  }
+  console.log(`  services model: ${seededOrders.length} orders enriched, ${stLines} referral lines`);
 }

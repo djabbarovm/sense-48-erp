@@ -1927,7 +1927,9 @@
       "overdue": "Просроченные",
       "mine": "Мои",
       "done": "Закрытые",
-      "catalog": "Каталог"
+      "catalog": "Каталог",
+      "analytics": "Аналитика",
+      "packages": "Пакеты"
     },
     "newTitle": "Новый заказ услуги",
     "create": "Заказать",
@@ -1949,7 +1951,9 @@
       "byProvider": "Исполнители",
       "byCategory": "Категории",
       "orders": "заказов: {n}",
-      "noData": "нет данных"
+      "noData": "нет данных",
+      "servicesRevenue": "Выручка Services",
+      "operationsRevenue": "Выручка Operations"
     },
     "fields": {
       "number": "№",
@@ -1979,7 +1983,16 @@
       "ratingComment": "Комментарий к оценке",
       "platformRevenue": "Платформе",
       "partnerPayout": "Партнёру",
-      "commission": "Комиссия"
+      "commission": "Комиссия",
+      "channel": "Канал",
+      "customerKind": "Клиент",
+      "listPrice": "Прайс",
+      "servicesRevenue": "Выручка Services",
+      "executorRevenue": "Исполнителю",
+      "handling": "Время координации, мин",
+      "complaint": "Жалоба",
+      "complaintNote": "Суть жалобы",
+      "package": "пакет"
     },
     "category": {
       "CLEANING": "Клининг",
@@ -2038,7 +2051,12 @@
       "create": "Добавить",
       "save": "Сохранить",
       "empty": "Каталог пуст",
-      "hint": "Цена и комиссия фиксируются в заказе на момент оформления: изменение каталога не меняет существующие заказы. Партнёр получает цену минус комиссию; услуги собственной эксплуатации — выручка Operations целиком."
+      "hint": "Цена и комиссия фиксируются в заказе на момент оформления: изменение каталога не меняет существующие заказы. Партнёр получает цену минус комиссию; услуги собственной эксплуатации — выручка Operations целиком.",
+      "terms": "Условия",
+      "involvement": "Вовлечение",
+      "discountPct": "Скидка клиенту, %",
+      "ownOpsFeePct": "Внутренняя ставка Services, % (своя эксплуатация; пусто — OPEN)",
+      "forMall": "Доступна арендаторам ТРЦ"
     },
     "unitSection": "Заказы услуг по юниту",
     "newShort": "Заказать услугу →",
@@ -2064,10 +2082,112 @@
       "PRICE_INVALID": "Некорректная цена.",
       "COMMISSION_INVALID": "Комиссия от 0 до 100%.",
       "SLA_INVALID": "SLA — целое число часов.",
-      "PARTNER_REQUIRED": "Для партнёрской услуги укажите партнёра.",
+      "PARTNER_REQUIRED": "Укажите партнёра.",
       "CURRENCY_INVALID": "Валюта — 3 буквы.",
       "AMOUNT_INVALID": "Некорректная сумма.",
-      "PERMISSION_DENIED": "Недостаточно прав."
+      "PERMISSION_DENIED": "Недостаточно прав.",
+      "SERVICE_NOT_FOR_MALL": "Арендаторы ТРЦ обслуживаются командой Mall.",
+      "DISCOUNT_INVALID": "Скидка 0–100%.",
+      "MINUTES_INVALID": "Минуты 0–1440.",
+      "CADENCE_INVALID": "Частота 1–31 раз в месяц.",
+      "PACKAGE_CANCELLED": "Пакет уже отменён.",
+      "PERIOD_INVALID": "Период в формате YYYY-MM.",
+      "STATEMENT_EMPTY": "В CSV нет строк.",
+      "STATEMENT_ROW_INVALID": "Некорректная строка CSV.",
+      "FEE_REQUIRED": "Нет ставки: укажите в CSV или создайте referral-направление партнёра."
+    },
+    "terms": {
+      "COMMISSION_PER_ORDER": "Комиссия c заказа",
+      "REFERRAL_RECURRING": "Referral ежемесячно",
+      "PACKAGE": "Регулярный пакет"
+    },
+    "involvement": {
+      "REFERRAL": "Referral / low-touch",
+      "MANAGED": "Managed / high-touch"
+    },
+    "channel": {
+      "PORTAL": "Кабинет",
+      "TELEGRAM": "Telegram",
+      "PHONE": "Телефон",
+      "APP": "Приложение",
+      "WALK_IN": "Лично",
+      "STAFF": "Сотрудник"
+    },
+    "customerKind": {
+      "OWNER": "Собственник",
+      "RESIDENT": "Житель / LTR",
+      "STR_GUEST": "Гость STR",
+      "OFFICE_TENANT": "Офисный арендатор"
+    },
+    "handling": {
+      "title": "Cost-to-Serve и качество",
+      "hint": "Время координации и жалобы фиксируются по заказу: без них Contribution направления не посчитать (гейт H1A).",
+      "addMinutes": "Добавить минут",
+      "complaintFlag": "Есть жалоба",
+      "save": "Записать",
+      "total": "учтено {n} мин"
+    },
+    "analytics": {
+      "title": "Валидация модели Services",
+      "period": "Период, дней",
+      "gmv": "GMV (спрос)",
+      "revenue": "Выручка Services",
+      "referral": "из них referral",
+      "executor": "Исполнителям",
+      "cost": "Cost-to-Serve",
+      "contribution": "Contribution",
+      "complaints": "Жалобы",
+      "hourCost": "стоимость часа клиентского слоя: {v}",
+      "directions": "По направлениям (Contribution = выручка Services − Cost-to-Serve)",
+      "direction": "Направление",
+      "orders": "Заказов",
+      "sla": "SLA",
+      "rating": "Оценка",
+      "minutes": "мин/заказ",
+      "demand": "Спрос (H4/H5)",
+      "customerBase": "Клиентская база",
+      "buyers": "Покупали",
+      "penetration": "Penetration",
+      "attach": "Attach rate",
+      "repeat": "Повторные",
+      "byChannel": "По каналам одного окна",
+      "byCustomer": "По профилям клиентов",
+      "referralTitle": "Referral-отчёты партнёров",
+      "noReferral": "Отчётов нет",
+      "lines": "строк: {n}",
+      "packages": "Пакеты",
+      "mrr": "MRR активных пакетов",
+      "gmvHint": "GMV — метрика спроса, не выручка Services. Скидка клиенту — выгода клиента. Внутренняя ставка за свою эксплуатацию не определена до Master Model, поэтому выручка Services по ней = 0."
+    },
+    "statement": {
+      "title": "Импорт отчёта партнёра (referral)",
+      "hint": "CSV: клиент;база;ставка% (ставка опциональна — берётся из referral-направления партнёра). Идемпотентно по партнёру, периоду и клиенту.",
+      "partner": "Партнёр",
+      "period": "Период (YYYY-MM)",
+      "csv": "CSV",
+      "submit": "Импортировать",
+      "imported": "импортировано {n}, пропущено {s}, вознаграждение {fee}"
+    },
+    "package": {
+      "newTitle": "Новый регулярный пакет",
+      "service": "Услуга",
+      "unit": "Юнит",
+      "customer": "Клиент",
+      "runsPerMonth": "Раз в месяц",
+      "monthly": "Цена в месяц",
+      "startAt": "Старт",
+      "create": "Создать пакет",
+      "next": "следующий визит",
+      "orders": "заказов: {n}",
+      "cancel": "Отменить",
+      "reason": "Причина",
+      "empty": "Пакетов нет",
+      "hint": "Пакет — регулярная покупка конкретной услуги (напр. уборка 2 раза в неделю). Заказы создаёт ежедневный джоб по частоте; цена визита = месячная / частота.",
+      "status": {
+        "ACTIVE": "активен",
+        "PAUSED": "пауза",
+        "CANCELLED": "отменён"
+      }
     }
   },
   "rent": {

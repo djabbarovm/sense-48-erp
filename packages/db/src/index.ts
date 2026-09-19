@@ -54,3 +54,4 @@ export * from './services/serviceOrders.js';
 export * from './services/rent.js';
 export * from './services/commissions.js';
 export * from './services/mall.js';
+export * from './services/servicesModel.js';

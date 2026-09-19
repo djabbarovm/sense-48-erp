@@ -4,8 +4,8 @@
  * BR-P35: цена/комиссия фиксируются в заказе на момент создания. BR-P36: в GMV/выручку попадают только DONE/VERIFIED.
  * BR-P32: QA не исполнителем и только c подтверждением. BR-P33: собственник заказывает только по своим юнитам.
  */
-import type { ServiceOrderTrigger, TenantContext } from '@finance-os/core';
-import { NotFoundError, REVENUE_SERVICE_ORDER_STATUSES, ValidationError, can, isServiceOrderOverdue, requirePermission, serviceOrderMachine, serviceRevenueSplit, slaCompliance, validateRating } from '@finance-os/core';
+import type { ServiceChannel, ServiceCustomerKind, ServiceInvolvement, ServiceOrderTrigger, ServiceTerms, TenantContext } from '@finance-os/core';
+import { NotFoundError, REVENUE_SERVICE_ORDER_STATUSES, ValidationError, applyClientDiscount, can, isServiceOrderOverdue, requirePermission, serviceOrderMachine, serviceRevenueSplit, serviceRevenueSplit3, slaCompliance, validateRating } from '@finance-os/core';
 import type { ChangeSource, Prisma, ServiceCatalogItem, ServiceCategory, ServiceOrder, ServiceProviderKind } from '@prisma/client';
 import { withAudit } from '../audit.js';
 import { prisma } from '../client.js';
@@ -27,9 +27,15 @@ export interface CatalogItemInput {
   slaHours?: number;
   description?: string | null;
   active?: boolean;
+  /** Services v1.0: условия направления, вовлечение, скидка клиенту, внутренняя ставка за свою эксплуатацию (null = OPEN), доступность для Mall. */
+  terms?: ServiceTerms;
+  involvement?: ServiceInvolvement;
+  clientDiscountBp?: number;
+  ownOpsFeeBp?: number | null;
+  forMall?: boolean;
 }
 
-const pickItem = (i: ServiceCatalogItem) => ({ code: i.code, name: i.name, category: i.category, providerKind: i.providerKind, partnerName: i.partnerName, priceMinor: i.priceMinor, currency: i.currency, commissionBp: i.commissionBp, slaHours: i.slaHours, active: i.active });
+const pickItem = (i: ServiceCatalogItem) => ({ code: i.code, name: i.name, category: i.category, providerKind: i.providerKind, partnerName: i.partnerName, priceMinor: i.priceMinor, currency: i.currency, commissionBp: i.commissionBp, slaHours: i.slaHours, active: i.active, terms: i.terms, involvement: i.involvement, clientDiscountBp: i.clientDiscountBp, ownOpsFeeBp: i.ownOpsFeeBp, forMall: i.forMall });
 
 function validateItem(input: Partial<CatalogItemInput>): void {
   if (input.code !== undefined && !/^[A-Z0-9][A-Z0-9-]{1,30}$/.test(input.code)) throw new ValidationError('CODE_INVALID', 'CODE_INVALID: код A–Z, 0–9, дефис');
@@ -39,6 +45,8 @@ function validateItem(input: Partial<CatalogItemInput>): void {
   if (input.slaHours !== undefined && (!Number.isInteger(input.slaHours) || input.slaHours < 1)) throw new ValidationError('SLA_INVALID');
   if (input.providerKind === 'PARTNER' && input.partnerName !== undefined && !input.partnerName?.trim()) throw new ValidationError('PARTNER_REQUIRED', 'PARTNER_REQUIRED: для партнёрской услуги укажите партнёра');
   if (input.currency !== undefined && !/^[A-Z]{3}$/.test(input.currency)) throw new ValidationError('CURRENCY_INVALID');
+  if (input.clientDiscountBp !== undefined && (input.clientDiscountBp < 0 || input.clientDiscountBp > 10_000)) throw new ValidationError('DISCOUNT_INVALID');
+  if (input.ownOpsFeeBp != null && (input.ownOpsFeeBp < 0 || input.ownOpsFeeBp > 10_000)) throw new ValidationError('COMMISSION_INVALID');
 }
 
 export async function createCatalogItem(ctx: TenantContext, input: CatalogItemInput): Promise<ServiceCatalogItem> {
@@ -52,6 +60,7 @@ export async function createCatalogItem(ctx: TenantContext, input: CatalogItemIn
         tenantId: ctx.tenantId, code: input.code, name: input.name.trim(), category: input.category, providerKind: input.providerKind,
         partnerName: input.providerKind === 'PARTNER' ? (input.partnerName?.trim() ?? null) : null, priceMinor: input.priceMinor, currency: input.currency ?? 'UZS',
         commissionBp: input.providerKind === 'PARTNER' ? (input.commissionBp ?? 0) : 0, slaHours: input.slaHours ?? 48, description: input.description ?? null, active: input.active ?? true,
+        terms: input.terms ?? 'COMMISSION_PER_ORDER', involvement: input.involvement ?? 'MANAGED', clientDiscountBp: input.clientDiscountBp ?? 0, ownOpsFeeBp: input.providerKind === 'OWN_OPS' ? (input.ownOpsFeeBp ?? null) : null, forMall: input.forMall ?? false,
       },
     });
     return { result: created, audit: { action: 'service_catalog.create', objectType: 'service_catalog_item', objectId: created.id, after: pickItem(created) } };
@@ -77,6 +86,11 @@ export async function updateCatalogItem(ctx: TenantContext, id: string, input: P
         ...(input.slaHours !== undefined ? { slaHours: input.slaHours } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.active !== undefined ? { active: input.active } : {}),
+        ...(input.terms !== undefined ? { terms: input.terms } : {}),
+        ...(input.involvement !== undefined ? { involvement: input.involvement } : {}),
+        ...(input.clientDiscountBp !== undefined ? { clientDiscountBp: input.clientDiscountBp } : {}),
+        ...(input.ownOpsFeeBp !== undefined ? { ownOpsFeeBp: input.ownOpsFeeBp } : {}),
+        ...(input.forMall !== undefined ? { forMall: input.forMall } : {}),
       },
     });
     return { result: after, audit: { action: 'service_catalog.update', objectType: 'service_catalog_item', objectId: id, before: pickItem(before), after: pickItem(after) } };
@@ -100,6 +114,9 @@ export interface ServiceOrderInput {
   scheduledAt?: Date | null;
   assigneeId?: string | null;
   source?: ChangeSource;
+  channel?: ServiceChannel;
+  customerKind?: ServiceCustomerKind | null;
+  packageId?: string | null;
 }
 
 const pick = (o: ServiceOrder) => ({ status: o.status, catalogItemId: o.catalogItemId, unitId: o.unitId, providerKind: o.providerKind, priceMinor: o.priceMinor, commissionBp: o.commissionBp, quantity: o.quantity, assigneeId: o.assigneeId, dueAt: o.dueAt, ownerId: o.ownerId });
@@ -118,6 +135,11 @@ export async function createServiceOrder(ctx: TenantContext, input: ServiceOrder
     const item = await findScopedOr404(tx.serviceCatalogItem, ctx, input.catalogItemId);
     if (!item.active) throw new ValidationError('SERVICE_INACTIVE');
     const unit = input.unitId ? await findScopedOr404(tx.unit, ctx, input.unitId) : null;
+    // BR-P48: арендаторы Mall — не клиенты Services (их запросы ведёт команда ТРЦ), кроме услуг, явно открытых для Mall
+    if (unit && !item.forMall) {
+      const b = await tx.building.findUnique({ where: { id: unit.buildingId }, select: { kind: true } });
+      if (b?.kind === 'MALL') throw new ValidationError('SERVICE_NOT_FOR_MALL', 'SERVICE_NOT_FOR_MALL: арендаторы ТРЦ обслуживаются командой Mall');
+    }
     let ownerId: string | null = null;
     if (asOwner) {
       const owner = await tx.propertyOwner.findFirst({ where: { tenantId: ctx.tenantId, userId: ctx.userId }, select: { id: true } });
@@ -127,11 +149,15 @@ export async function createServiceOrder(ctx: TenantContext, input: ServiceOrder
     if (input.buildingId) await findScopedOr404(tx.building, ctx, input.buildingId);
     const number = await nextNumber(tx, ctx.tenantId, 'SO', now);
     const assigneeId = can(ctx, 'service.manage') ? (input.assigneeId ?? null) : null;
-    const priceMinor = item.priceMinor * BigInt(quantity);
+    const listPriceMinor = item.priceMinor * BigInt(quantity);
+    const priceMinor = applyClientDiscount(listPriceMinor, item.clientDiscountBp); // скидка — выгода клиента, не выручка
+    const split = serviceRevenueSplit3(priceMinor, item.providerKind, item.commissionBp, item.ownOpsFeeBp); // BR-P47
     const created = await tx.serviceOrder.create({
       data: {
         tenantId: ctx.tenantId, number, catalogItemId: item.id, unitId: unit?.id ?? null, buildingId: unit?.buildingId ?? input.buildingId ?? null,
-        status: assigneeId ? 'ACCEPTED' : 'NEW', providerKind: item.providerKind, partnerName: item.partnerName, priceMinor, currency: item.currency, commissionBp: item.commissionBp, quantity,
+        status: assigneeId ? 'ACCEPTED' : 'NEW', providerKind: item.providerKind, partnerName: item.partnerName, priceMinor, listPriceMinor, currency: item.currency, commissionBp: item.commissionBp, quantity,
+        servicesRevenueMinor: split.servicesRevenueMinor, executorRevenueMinor: split.executorRevenueMinor,
+        channel: input.channel ?? (asOwner ? 'PORTAL' : 'STAFF'), customerKind: input.customerKind ?? (asOwner ? 'OWNER' : null), packageId: input.packageId ?? null,
         customerName: input.customerName?.trim() || null, ordererId: ctx.userId, ownerId, assigneeId, notes: input.notes?.trim() || null, source: asOwner ? 'API' : (input.source ?? 'UI'),
         scheduledAt, dueAt: new Date(scheduledAt.getTime() + item.slaHours * 3_600_000), acceptedAt: assigneeId ? now : null, createdAt: now,
       },
@@ -175,6 +201,18 @@ export async function rateServiceOrder(ctx: TenantContext, id: string, rating: n
     if (!REVENUE_SERVICE_ORDER_STATUSES.includes(before.status)) throw new ValidationError('NOT_DONE', 'NOT_DONE: оценить можно выполненный заказ');
     const after = await tx.serviceOrder.update({ where: { id }, data: { rating, ratingComment: comment?.trim() || null, updatedBy: ctx.userId } });
     return { result: after, audit: { action: 'service_order.rate', objectType: 'service_order', objectId: id, before: { rating: before.rating }, after: { rating, hasComment: !!comment?.trim() } } };
+  });
+}
+
+/** BR-P49: cost-to-serve и жалобы фиксируются по заказу (координация, разбор) — база для Contribution направления. */
+export async function recordHandling(ctx: TenantContext, id: string, input: { addMinutes?: number; complaint?: boolean; complaintNote?: string | null }): Promise<ServiceOrder> {
+  return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
+    const before = await findScopedOr404(tx.serviceOrder, ctx, id);
+    if (!can(ctx, 'service.manage') && before.assigneeId !== ctx.userId && before.ordererId !== ctx.userId) throw new NotFoundError();
+    const add = input.addMinutes ?? 0;
+    if (!Number.isInteger(add) || add < 0 || add > 24 * 60) throw new ValidationError('MINUTES_INVALID');
+    const after = await tx.serviceOrder.update({ where: { id }, data: { handlingMinutes: before.handlingMinutes + add, ...(input.complaint !== undefined ? { complaint: input.complaint, complaintNote: input.complaint ? (input.complaintNote?.trim() || null) : null } : {}), updatedBy: ctx.userId } });
+    return { result: after, audit: { action: 'service_order.handling', objectType: 'service_order', objectId: id, before: { handlingMinutes: before.handlingMinutes, complaint: before.complaint }, after: { handlingMinutes: after.handlingMinutes, complaint: after.complaint, addMinutes: add } } };
   });
 }
 
@@ -242,7 +280,10 @@ export interface ServicesSummary {
   overdue: number;
   done: number; // за период
   gmvMinor: bigint;
+  /** ORDO всего = выручка Services + выручка Operations (своя эксплуатация). */
   platformRevenueMinor: bigint;
+  servicesRevenueMinor: bigint;
+  operationsRevenueMinor: bigint;
   partnerPayoutMinor: bigint;
   currency: string;
   slaPct: number | null;
@@ -255,7 +296,7 @@ export interface ServicesSummary {
 export async function getServicesSummary(ctx: TenantContext, opts: { days?: number } = {}, now = new Date()): Promise<ServicesSummary> {
   requirePermission(ctx, 'service.view');
   const since = new Date(now.getTime() - (opts.days ?? 30) * 86_400_000);
-  const rows = await prisma.serviceOrder.findMany({ where: { tenantId: ctx.tenantId, OR: [{ status: { in: ['NEW', 'ACCEPTED', 'IN_PROGRESS'] } }, { createdAt: { gte: since } }] }, select: { status: true, dueAt: true, doneAt: true, priceMinor: true, providerKind: true, partnerName: true, commissionBp: true, rating: true, currency: true, catalogItem: { select: { category: true } } } });
+  const rows = await prisma.serviceOrder.findMany({ where: { tenantId: ctx.tenantId, OR: [{ status: { in: ['NEW', 'ACCEPTED', 'IN_PROGRESS'] } }, { createdAt: { gte: since } }] }, select: { status: true, dueAt: true, doneAt: true, priceMinor: true, providerKind: true, partnerName: true, commissionBp: true, rating: true, currency: true, servicesRevenueMinor: true, executorRevenueMinor: true, catalogItem: { select: { category: true } } } });
   const revenue = rows.filter((r) => REVENUE_SERVICE_ORDER_STATUSES.includes(r.status));
   const sum = (xs: typeof revenue, f: (r: (typeof revenue)[number]) => bigint) => xs.reduce((a, r) => a + f(r), 0n);
   const platform = (r: (typeof revenue)[number]) => serviceRevenueSplit(r.priceMinor, r.providerKind, r.commissionBp).platformRevenueMinor;
@@ -270,6 +311,7 @@ export async function getServicesSummary(ctx: TenantContext, opts: { days?: numb
     overdue: rows.filter((r) => isServiceOrderOverdue(r, now)).length,
     done: revenue.length,
     gmvMinor: sum(revenue, (r) => r.priceMinor), platformRevenueMinor: sum(revenue, platform), partnerPayoutMinor: sum(revenue, partner),
+    servicesRevenueMinor: sum(revenue, (r) => r.servicesRevenueMinor), operationsRevenueMinor: sum(revenue.filter((r) => r.providerKind === 'OWN_OPS'), (r) => r.executorRevenueMinor),
     currency: rows[0]?.currency ?? 'UZS', slaPct: slaCompliance(rows), avgRating: avg(revenue),
     byProvider: [...providers.entries()].map(([, xs]) => { const rev = xs.filter((r) => REVENUE_SERVICE_ORDER_STATUSES.includes(r.status)); return { providerKind: xs[0]!.providerKind, partnerName: xs[0]!.partnerName, orders: xs.length, gmvMinor: sum(rev, (r) => r.priceMinor), platformRevenueMinor: sum(rev, platform), slaPct: slaCompliance(xs), avgRating: avg(rev) }; }).sort((a, b) => Number(b.gmvMinor - a.gmvMinor)),
     byCategory: [...cats.entries()].map(([category, xs]) => ({ category, orders: xs.length, gmvMinor: sum(xs, (r) => r.priceMinor) })).sort((a, b) => Number(b.gmvMinor - a.gmvMinor)),
