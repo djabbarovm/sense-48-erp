@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, ArrowLeft, ArrowRight, Building2, MessageSquare, RotateCcw, XCircle } from 'lucide-react';
-import { DEAL_LOST_REASONS, DEAL_SOURCES, LEASE_TYPES, NotFoundError, can } from '@finance-os/core';
-import { getDeal, listDealManagers, listUnits } from '@finance-os/db';
+import { AlertTriangle, ArrowLeft, ArrowRight, BadgePercent, Building2, CheckCircle2, Circle, MessageSquare, RotateCcw, XCircle } from 'lucide-react';
+import { DEAL_LOST_REASONS, DEAL_PRODUCTS, DEAL_SOURCES, LEASE_TYPES, NotFoundError, SALE_PRODUCTS, can } from '@finance-os/core';
+import { getDeal, getDealCommission, listDealManagers, listUnits } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '@/components/ui';
 import { fmtDate, fmtRate } from '@/components/property';
-import { addDealActivityAction, createLeaseFromDealAction, moveDealAction, updateDealAction } from '../actions';
+import { addDealActivityAction, checklistAction, closeSaleAction, confirmKpiAction, createLeaseFromDealAction, moveDealAction, updateDealAction } from '../actions';
+import { BONUS_TONE, COMMISSION_TONE } from '../../commissions/tones';
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
   return <div className="flex justify-between gap-3 text-[13px]"><dt className="text-gray-500">{k}</dt><dd className="text-right font-medium text-gray-900">{v}</dd></div>;
@@ -28,6 +29,8 @@ export default async function DealPage({ params, searchParams }: { params: Promi
   }
   const { deal, managerName, probability, attention, nextStage, prevStage, can: c, lease, audit } = data;
   const [managers, units] = c.edit ? await Promise.all([listDealManagers(ctx), listUnits(ctx)]) : [[], []];
+  const cm = await getDealCommission(ctx, id);
+  const isSale = SALE_PRODUCTS.includes(deal.product);
   const selectable = units.filter((u) => u.view.isSellable || u.id === deal.unitId);
   const usd = (m: bigint | null | undefined) => (m == null ? '' : (Number(m) / 100).toFixed(2));
   const dt = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : '');
@@ -43,7 +46,7 @@ export default async function DealPage({ params, searchParams }: { params: Promi
       {error ? <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{t.has(`error.${error}`) ? t(`error.${error}`) : t('error.GENERIC')}</div> : null}
 
       {/* Стадии — кнопки переходов */}
-      {c.edit ? (
+      {c.edit && (!closed || c.reopen) ? (
         <Card>
           <div className="flex flex-wrap items-center gap-2">
             {c.back && prevStage ? <form action={moveDealAction}><input type="hidden" name="dealId" value={deal.id} /><input type="hidden" name="trigger" value="back" /><Button type="submit" variant="outline" size="sm"><ArrowLeft className="h-3.5 w-3.5" />{t(`stage.${prevStage}`)}</Button></form> : null}
@@ -95,7 +98,9 @@ export default async function DealPage({ params, searchParams }: { params: Promi
             </dl>
           ) : <p className="mt-2 text-sm text-gray-400">{t('noUnitYet')}</p>}
           <dl className="mt-3 space-y-1.5">
-            <Row k={t('expectedRateUsd')} v={fmtRate(deal.expectedRateMinor, 'USD')} />
+            <Row k={t('productLabel')} v={t(`product.${deal.product}`)} />
+            {isSale ? <Row k={t('salePriceUsd')} v={fmtRate(deal.salePriceMinor ?? deal.unit?.askingRateMinor ?? null, 'USD')} /> : <Row k={t('expectedRateUsd')} v={fmtRate(deal.expectedRateMinor, 'USD')} />}
+            {deal.externalBrokerName ? <Row k={t('externalBroker')} v={`${deal.externalBrokerName} · ${deal.externalShareBp / 100}%`} /> : null}
             <Row k={t('reservedUntil')} v={fmtDate(deal.reservedUntil)} />
             <Row k={t('depositReceived')} v={deal.depositReceived ? t('yes') : t('no')} />
             <Row k={t('nextAction')} v={deal.nextAction ? `${fmtDate(deal.nextActionAt)} · ${deal.nextAction}` : '—'} />
@@ -123,6 +128,14 @@ export default async function DealPage({ params, searchParams }: { params: Promi
               <p className="text-[11px] text-gray-400">{t('leaseHint')}</p>
             </form>
           ) : null}
+          {c.closeSale ? (
+            <form action={closeSaleAction} className="mt-4 space-y-2 border-t border-gray-100 pt-3">
+              <h4 className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-800"><BadgePercent className="h-3.5 w-3.5" />{t('closeSale')}</h4>
+              <input type="hidden" name="dealId" value={deal.id} />
+              <div className="flex items-end gap-2"><div className="flex-1"><Label htmlFor="s-price">{t('salePriceUsd')}</Label><Input id="s-price" name="salePrice" type="number" min="0" step="0.01" defaultValue={usd(deal.salePriceMinor)} required /></div><Button type="submit" size="sm">{t('closeSale')}</Button></div>
+              <p className="text-[11px] text-gray-400">{t('closeSaleHint')}</p>
+            </form>
+          ) : null}
         </Card>
 
         <Card>
@@ -136,6 +149,11 @@ export default async function DealPage({ params, searchParams }: { params: Promi
                 <div><Label htmlFor="e-res">{t('reservedUntil')}</Label><Input id="e-res" name="reservedUntil" type="date" defaultValue={dt(deal.reservedUntil)} /></div>
                 <div><Label htmlFor="e-next">{t('nextAction')}</Label><Input id="e-next" name="nextAction" defaultValue={deal.nextAction ?? ''} /></div>
                 <div><Label htmlFor="e-nextAt">{t('nextActionAt')}</Label><Input id="e-nextAt" name="nextActionAt" type="date" defaultValue={dt(deal.nextActionAt)} /></div>
+                <div><Label htmlFor="e-product">{t('productLabel')}</Label><Select id="e-product" name="product" defaultValue={deal.product}>{DEAL_PRODUCTS.map((p) => (<option key={p} value={p}>{t(`product.${p}`)}</option>))}</Select></div>
+                <div><Label htmlFor="e-sale">{t('salePriceUsd')}</Label><Input id="e-sale" name="salePrice" type="number" min="0" step="0.01" defaultValue={usd(deal.salePriceMinor)} /></div>
+                <div><Label htmlFor="e-crate">{t('commissionRatePct')}</Label><Input id="e-crate" name="commissionRatePct" type="number" min="0" max="100" step="0.1" defaultValue={deal.commissionRateBp != null ? (deal.commissionRateBp / 100).toString() : ''} placeholder={t('commissionRateHint')} /></div>
+                <div><Label htmlFor="e-broker">{t('externalBroker')}</Label><Input id="e-broker" name="externalBrokerName" defaultValue={deal.externalBrokerName ?? ''} /></div>
+                <div><Label htmlFor="e-share">{t('externalSharePct')}</Label><Input id="e-share" name="externalSharePct" type="number" min="0" max="100" step="0.5" defaultValue={deal.externalShareBp ? (deal.externalShareBp / 100).toString() : ''} /></div>
                 <div><Label htmlFor="e-source">{t('sourceLabel')}</Label><Select id="e-source" name="source" defaultValue={deal.source}>{DEAL_SOURCES.map((s) => (<option key={s} value={s}>{t(`source.${s}`)}</option>))}</Select></div>
                 {managers.length && !(ctx.roles.includes('BROKER') && !ctx.roles.some((r) => r === 'OWNER' || r === 'COMMERCIAL_MANAGER')) ? <div><Label htmlFor="e-manager">{t('manager')}</Label><Select id="e-manager" name="managerId" defaultValue={deal.managerId}>{managers.map((m) => (<option key={m.id} value={m.id}>{m.fullName}</option>))}</Select></div> : null}
               </div>
@@ -145,6 +163,50 @@ export default async function DealPage({ params, searchParams }: { params: Promi
           ) : <p className="mt-2 text-sm text-gray-400">{closed ? t('closedHint') : t('readOnly')}</p>}
         </Card>
       </div>
+
+      {cm.commission || cm.bonuses.length || cm.checklist.length || (deal.stage === 'WON' && can(ctx, 'commission.view')) ? (
+        <Card>
+          <div className="flex items-center gap-2"><BadgePercent className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{t('commissionBlock')}</h3>{cm.commission ? <Badge tone={COMMISSION_TONE[cm.commission.status]} dot>{t(`commissionStatus.${cm.commission.status}`)}</Badge> : null}</div>
+          <div className="mt-3 grid gap-4 lg:grid-cols-3">
+            <div>
+              {cm.commission ? (
+                <dl className="space-y-1.5">
+                  <Row k={t('commissionPayer')} v={`${cm.commission.payerName} (${t(`payer.${cm.commission.payer}`)})`} />
+                  <Row k={t('commissionAmount')} v={<span className="font-mono">{fmtRate(cm.commission.amountMinor, cm.commission.currency)} · {cm.commission.rateBp / 100}%</span>} />
+                  {cm.commission.netMinor !== cm.commission.amountMinor ? <Row k={t('commissionNet')} v={<span className="font-mono">{fmtRate(cm.commission.netMinor, cm.commission.currency)}</span>} /> : null}
+                  <Row k={t('commissionReceived')} v={<span className="font-mono text-emerald-600">{fmtRate(cm.commission.receivedMinor, cm.commission.currency)}</span>} />
+                  <Row k={t('commissionDue')} v={fmtDate(cm.commission.dueAt)} />
+                  {cm.commission.cancelReason ? <Row k={t('lostReason')} v={cm.commission.cancelReason} /> : null}
+                </dl>
+              ) : <p className="text-sm text-gray-400">{deal.stage === 'WON' ? t('commissionOpen') : t('commissionNone')}</p>}
+            </div>
+            <div>
+              <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">{t('bonusTitle')}</p>
+              <ul className="mt-1 divide-y divide-gray-100">
+                {cm.bonuses.length === 0 ? <li className="py-1.5 text-xs text-gray-400">—</li> : null}
+                {cm.bonuses.map((b) => (<li key={b.id} className="flex items-center justify-between gap-2 py-1.5 text-xs"><span>{t(`bonusKind.${b.kind}`)} · {b.rateBp / 100}% · <span className="text-gray-500">{b.employeeName}</span></span><span className="flex items-center gap-2"><span className={b.status === 'WITHHELD' ? 'font-mono text-gray-400 line-through' : 'font-mono'}>{fmtRate(b.amountMinor, b.currency)}</span><Badge tone={BONUS_TONE[b.status]}>{t(`bonusStatus.${b.status}`)}</Badge></span></li>))}
+              </ul>
+              <p className="mt-1 text-[11px] text-gray-400">{t('bonusHint')}</p>
+            </div>
+            <div>
+              {cm.checklist.length ? (
+                <>
+                  <p className="text-[11px] font-semibold tracking-wider text-gray-400 uppercase">{t('checklist')}{cm.kpi?.deadline ? <span className="ml-2 font-normal normal-case">{cm.kpi.confirmedAt ? t('checklistConfirmed', { d: fmtDate(cm.kpi.confirmedAt) }) : t('checklistDeadline', { d: fmtDate(cm.kpi.deadline) })}</span> : null}</p>
+                  <ul className="mt-1 divide-y divide-gray-100">
+                    {cm.checklist.map((i) => (
+                      <li key={i.id} className="flex items-center justify-between gap-2 py-1.5 text-xs">
+                        <span className="flex items-center gap-1.5">{i.doneAt ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <Circle className="h-3.5 w-3.5 text-gray-300" />}<span className={i.doneAt ? 'text-gray-900' : 'text-gray-600'}>{t(`checklistItem.${i.item}`)}</span>{i.doneAt ? <span className="text-[10px] text-gray-400">{t('doneBy', { name: i.doneByName ?? '', d: fmtDate(i.doneAt) })}</span> : null}</span>
+                        {cm.can.checklist ? <form action={checklistAction}><input type="hidden" name="dealId" value={deal.id} /><input type="hidden" name="item" value={i.item} /><input type="hidden" name="done" value={i.doneAt ? '0' : '1'} /><Button type="submit" size="sm" variant="outline">{i.doneAt ? t('markUndone') : t('markDone')}</Button></form> : null}
+                      </li>
+                    ))}
+                  </ul>
+                  {cm.can.confirmKpi ? <form action={confirmKpiAction} className="mt-2 flex items-center gap-2"><input type="hidden" name="dealId" value={deal.id} /><Button type="submit" size="sm">{t('confirmKpi')}</Button><span className="text-[11px] text-gray-400">{t('confirmKpiHint')}</span></form> : null}
+                </>
+              ) : null}
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

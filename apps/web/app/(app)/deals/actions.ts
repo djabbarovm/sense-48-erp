@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { DealLostReason, DealSource, UnitActivityKind } from '@finance-os/db';
-import { PermissionDeniedError, ValidationError, IllegalTransitionError } from '@finance-os/core';
-import { activateLease, addDealActivity, createDeal, createLease, moveDeal, updateDeal } from '@finance-os/db';
+import type { DealLostReason, DealProduct, DealSource, KpiChecklistItem, UnitActivityKind } from '@finance-os/db';
+import { NotFoundError, PermissionDeniedError, ValidationError, IllegalTransitionError } from '@finance-os/core';
+import { activateLease, addDealActivity, closeSale, confirmKpi, createDeal, createLease, markChecklistItem, moveDeal, updateDeal } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 
 const str = (fd: FormData, k: string): string | undefined => {
@@ -28,9 +28,12 @@ async function run(back: string, fn: () => Promise<string | void>): Promise<neve
     if (r) target = r;
   } catch (e) {
     if (e instanceof ValidationError || e instanceof PermissionDeniedError || e instanceof IllegalTransitionError) error = e.code;
+    else if (e instanceof NotFoundError) error = 'NOT_FOUND';
     else throw e;
   }
   revalidatePath('/deals');
+  revalidatePath('/commissions');
+  revalidatePath('/bonuses');
   revalidatePath('/property');
   revalidatePath(target);
   redirect(`${target}${error ? `?error=${encodeURIComponent(error)}` : ''}`);
@@ -55,7 +58,30 @@ function dealInput(fd: FormData) {
     ...(usdMinor(fd, 'expectedRate') !== undefined ? { expectedRateMinor: usdMinor(fd, 'expectedRate') ?? null } : {}),
     ...(date(fd, 'reservedUntil') !== undefined ? { reservedUntil: date(fd, 'reservedUntil') ?? null } : {}),
     ...(fd.has('depositReceivedFlag') ? { depositReceived: fd.get('depositReceived') === 'on' } : {}),
+    ...(str(fd, 'product') ? { product: str(fd, 'product') as DealProduct } : {}),
+    ...(usdMinor(fd, 'salePrice') !== undefined ? { salePriceMinor: usdMinor(fd, 'salePrice') ?? null } : {}),
+    ...(fd.has('commissionRatePct') ? { commissionRateBp: str(fd, 'commissionRatePct') ? Math.round(Number(str(fd, 'commissionRatePct')) * 100) : null } : {}),
+    ...(fd.has('externalBrokerName') ? { externalBrokerName: str(fd, 'externalBrokerName') ?? null } : {}),
+    ...(fd.has('externalSharePct') ? { externalShareBp: str(fd, 'externalSharePct') ? Math.round(Number(str(fd, 'externalSharePct')) * 100) : 0 } : {}),
   };
+}
+
+export async function closeSaleAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const dealId = String(formData.get('dealId'));
+  await run(`/deals/${dealId}`, () => closeSale(ctx, dealId, { salePriceMinor: usdMinor(formData, 'salePrice') ?? 0n }).then(() => undefined));
+}
+
+export async function checklistAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const dealId = String(formData.get('dealId'));
+  await run(`/deals/${dealId}`, () => markChecklistItem(ctx, dealId, String(formData.get('item')) as KpiChecklistItem, formData.get('done') === '1', str(formData, 'note') ?? null).then(() => undefined));
+}
+
+export async function confirmKpiAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const dealId = String(formData.get('dealId'));
+  await run(`/deals/${dealId}`, () => confirmKpi(ctx, dealId).then(() => undefined));
 }
 
 export async function createDealAction(formData: FormData): Promise<void> {

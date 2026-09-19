@@ -10,6 +10,7 @@ import { prisma } from '../client.js';
 import { findScopedOr404, whereTenant } from '../repository.js';
 import { emitDomainEvent } from './domainEvents.js';
 import { waiveFutureRentCharges } from './rent.js';
+import { accrueCommission, cancelCommissionForDeal } from './commissions.js';
 
 export interface LeaseInput {
   unitId: string;
@@ -86,8 +87,11 @@ export async function activateLease(ctx: TenantContext, leaseId: string, now = n
     if (after.dealId) {
       const deal = await tx.deal.findFirst({ where: { id: after.dealId, tenantId: ctx.tenantId } });
       if (deal && deal.stage !== 'WON') {
-        await tx.deal.update({ where: { id: deal.id }, data: { stage: 'WON', stageChangedAt: now, wonLeaseId: leaseId, unitId: after.unitId, updatedBy: ctx.userId } });
+        const won = await tx.deal.update({ where: { id: deal.id }, data: { stage: 'WON', stageChangedAt: now, wonAt: now, wonLeaseId: leaseId, unitId: after.unitId, updatedBy: ctx.userId } });
         audit.push({ action: 'deal.stage.change', objectType: 'deal', objectId: deal.id, before: { stage: deal.stage }, after: { stage: 'WON', wonLeaseId: leaseId } });
+        // BR-P41: комиссия ORDO c арендатора (50% месяца) и бонусы продажника — на WON
+        const commission = await accrueCommission(tx, ctx, won, after.rentMinor, after.occupantName, after.currency, now, after.startAt);
+        if (commission) audit.push({ action: 'commission.accrue', objectType: 'commission', objectId: commission.id, after: { number: commission.number, dealId: deal.id, amountMinor: commission.amountMinor.toString(), netMinor: commission.netMinor.toString(), rateBp: commission.rateBp } });
         await emitDomainEvent(tx, ctx.tenantId, 'deal.stage.changed', 'deal', deal.id, { number: deal.number, stage: 'WON', detail: `unit ${unit.unitNo}`, deepLink: `/deals/${deal.id}` });
       }
     }
@@ -105,6 +109,7 @@ export async function terminateLease(ctx: TenantContext, leaseId: string, reason
     const after = await tx.leaseContract.update({ where: { id: leaseId }, data: { status: 'TERMINATED', terminatedAt: now, terminatedReason: reason.trim() || null, updatedBy: ctx.userId } });
     const waived = await waiveFutureRentCharges(tx, ctx.tenantId, leaseId, now, `lease terminated: ${reason.trim()}`); // BR-P39
     const audit: AuditEntry[] = [{ action: 'lease.terminate', objectType: 'lease_contract', objectId: leaseId, before: pick(before), after: { ...pick(after), reason: reason.trim(), waivedCharges: waived } }];
+    if (before.dealId) audit.push(...(await cancelCommissionForDeal(tx, ctx, before.dealId, `lease terminated before commission received: ${reason.trim()}`, now)).audit); // BR-P44
     if (wasLive) {
       const unitChange = await applyLeaseToUnit(tx, ctx, after, now);
       audit.push({ action: 'unit.status.change', objectType: 'unit', objectId: after.unitId, before: { occupancy: unitChange.before.occupancy, leaseStatus: unitChange.before.leaseStatus, occupantName: unitChange.before.occupantName }, after: { occupancy: unitChange.after.occupancy, leaseStatus: unitChange.after.leaseStatus, occupantName: null, reason: `lease ${leaseId} terminated: ${reason.trim()}`, source: 'UI' } });

@@ -14,6 +14,7 @@ import {
   escalateOverdueServiceOrders,
   generateRentCharges,
   markOverdueRentCharges,
+  withholdExpiredKpi,
   markExpiringLeases,
   escalateOverdueTasks,
   generateTaxObligations,
@@ -106,6 +107,11 @@ export function buildJobs(notifier?: NotificationAdapter): JobDef[] {
       name: 'rent-overdue',
       cron: '45 3 * * *',
       run: (tenantId, now) => markOverdueRentCharges(tenantId, now),
+    },
+    {
+      name: 'bonus-kpi-deadline',
+      cron: '0 4 * * *',
+      run: (tenantId, now) => withholdExpiredKpi(tenantId, now),
     },
     {
       name: 'domain-events',

@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle } from 'lucide-react';
-import { DEAL_SOURCES, can } from '@finance-os/core';
+import { DEAL_PRODUCTS, DEAL_SOURCES, can } from '@finance-os/core';
 import { listDealManagers, listUnits } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Button, Card, Input, Label, PageHeader, Select } from '@/components/ui';
@@ -26,6 +26,7 @@ export default async function NewDealPage({ searchParams }: { searchParams: Prom
           <div><Label htmlFor="d-company">{t('company')}</Label><Input id="d-company" name="company" /></div>
           <div><Label htmlFor="d-phone">{t('phone')}</Label><Input id="d-phone" name="contactPhone" type="tel" /></div>
           <div><Label htmlFor="d-email">{t('email')}</Label><Input id="d-email" name="contactEmail" type="email" /></div>
+          <div><Label htmlFor="d-product">{t('productLabel')}</Label><Select id="d-product" name="product" defaultValue="LEASE_LTR">{DEAL_PRODUCTS.map((p) => (<option key={p} value={p}>{t(`product.${p}`)}</option>))}</Select></div>
           <div><Label htmlFor="d-source">{t('sourceLabel')}</Label><Select id="d-source" name="source" defaultValue="OTHER">{DEAL_SOURCES.map((s) => (<option key={s} value={s}>{t(`source.${s}`)}</option>))}</Select></div>
           <div><Label htmlFor="d-manager">{t('manager')}</Label><Select id="d-manager" name="managerId" defaultValue={ctx.userId} disabled={brokerOnly}>{managers.map((m) => (<option key={m.id} value={m.id}>{m.fullName}</option>))}</Select></div>
           <div className="sm:col-span-2"><Label htmlFor="d-unit">{t('unit')}</Label>

@@ -39,6 +39,8 @@ import {
   Wrench,
   Sparkles,
   Coins,
+  BadgePercent,
+  Award,
   Home,
   Users } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
@@ -66,6 +68,8 @@ const NAV: NavItem[] = [
   { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, permission: 'workorder.view' },
   { key: 'services', href: '/services', icon: <Sparkles className={ICON} />, permission: 'service.view' },
   { key: 'rent', href: '/rent', icon: <Coins className={ICON} />, permission: 'rent.view' },
+  { key: 'commissions', href: '/commissions', icon: <BadgePercent className={ICON} />, permission: 'commission.view' },
+  { key: 'bonuses', href: '/bonuses', icon: <Award className={ICON} />, permission: 'bonus.own' },
   { key: 'owners', href: '/property/owners', icon: <Users className={ICON} />, permission: 'property.manage' },
   { key: 'workbot', href: '/property/actions', icon: <Bot className={ICON} />, permission: 'action.draft' },
   { key: 'dashboard', href: '/', icon: <LayoutDashboard className={ICON} />, permission: 'dashboard.ops' },

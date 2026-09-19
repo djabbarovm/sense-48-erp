@@ -52,3 +52,4 @@ export * from './services/leadIntake.js';
 export * from './services/dealAnalytics.js';
 export * from './services/serviceOrders.js';
 export * from './services/rent.js';
+export * from './services/commissions.js';

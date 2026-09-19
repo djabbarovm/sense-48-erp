@@ -126,6 +126,14 @@ export const PERMISSION_MATRIX = {
   // Аренда и дебиторка (docs/20 §11.9): просмотр начислений и зачёт банковских поступлений
   'rent.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER'],
   'rent.match': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
+  // Комиссии ORDO и бонусы (docs/20 §11.10): комиссия — деньги ORDO; бонус видит владелец/финансы/коммерция, свой — продажник
+  'commission.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  'commission.manage': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'bonus.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER'],
+  'bonus.own': ['COMMERCIAL_MANAGER', 'BROKER'],
+  'bonus.confirm_kpi': ['OWNER', 'COMMERCIAL_MANAGER'],
+  'bonus.pay': ['OWNER', 'FINANCE_OPS_LEAD'],
+  'deal.checklist': ['OWNER', 'COMMERCIAL_MANAGER', 'BROKER', 'OPERATIONS_MANAGER'],
   // Owner Portal (docs/20 §11.6): у собственника нет property.view — только свой портал и заявки по своим юнитам
   'owner.portal': ['PROPERTY_OWNER'],
   'owner.request': ['PROPERTY_OWNER'],

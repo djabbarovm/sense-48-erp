@@ -31,6 +31,9 @@ export interface DealPayload {
   target?: DealStage;
   hasUnit: boolean;
   hasLease?: boolean;
+  /** Сделка продажи: WON фиксируется закрытием продажи c ценой, а не договором аренды. */
+  isSale?: boolean;
+  hasSalePrice?: boolean;
 }
 
 /**
@@ -57,7 +60,9 @@ export const dealMachine = new StateMachine<DealStage, DealTrigger, DealPayload>
     to: 'WON',
     permission: 'deal.manage',
     guard: ({ payload }) => {
-      if (!payload.hasLease) throw new ValidationError('DEAL_WIN_REQUIRES_LEASE', 'DEAL_WIN_REQUIRES_LEASE: сделка выигрывается активацией договора аренды (BR-P23)');
+      if (payload.isSale) {
+        if (!payload.hasSalePrice) throw new ValidationError('SALE_PRICE_REQUIRED', 'SALE_PRICE_REQUIRED: закрытие продажи требует цену сделки');
+      } else if (!payload.hasLease) throw new ValidationError('DEAL_WIN_REQUIRES_LEASE', 'DEAL_WIN_REQUIRES_LEASE: сделка выигрывается активацией договора аренды (BR-P23)');
       if (payload.brokerOnly) throw new ValidationError('BROKER_STAGE_LIMIT');
     },
   },

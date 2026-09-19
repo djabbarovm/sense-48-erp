@@ -5,6 +5,10 @@
  */
 import { encryptSecret, hashPassword, maskAccount } from '@finance-os/core';
 import { generateRentCharges, markOverdueRentCharges } from '../src/services/rent.js';
+import { unsafeCreateTenantContext } from '@finance-os/core';
+import { createDeal, moveDeal } from '../src/services/deals.js';
+import { activateLease, createLease } from '../src/services/leases.js';
+import { closeSale, confirmKpi, markChecklistItem, matchCommissionReceipt } from '../src/services/commissions.js';
 import type { CommercialStatus, DealSource, DealStage, LeaseStatus, OccupancyStatus, PrismaClient, ReadinessStatus, RentalMode, RoleCode, UnitType } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { DEV_PASSWORD } from './phaseA.js';
@@ -257,6 +261,7 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
           nextAction: stage === 'LOST' || i % 4 === 3 ? null : ['перезвонить', 'отправить КП', 'назначить показ', 'согласовать скидку'][i % 4]!, nextActionAt: stage === 'LOST' || i % 4 === 3 ? null : daysAhead(nextIn),
           expectedRateMinor: unit ? expected : null, reservedUntil: stage === 'NEGOTIATION' && i % 2 === 0 ? daysAhead(5) : null, depositReceived: stage === 'CONTRACT',
           lostReason: stage === 'LOST' ? (i % 2 ? 'PRICE' : 'COMPETITOR') : null, createdBy: managerId,
+          product: unit?.type === 'OFFICE' ? 'LEASE_OFFICE' : unit?.type === 'RETAIL' ? 'MALL_LEASE' : i % 9 === 8 ? 'SALE' : 'LEASE_LTR',
         },
       });
       dealsCreated++;
@@ -425,4 +430,34 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   }
   const overdue = await markOverdueRentCharges(tenantId);
   console.log(`  rent: ${generated} charges generated, ${paid} paid by bank tx, ${overdue} marked overdue`);
+
+  // ── P-14: комиссии ORDO и бонусы — три выигранные сделки через сервисы (реальный поток: WON → комиссия → оплата → KPI) ──
+  if (cmUser && brUser && finance && (await prisma.commission.count({ where: { tenantId } })) === 0) {
+    const cm = unsafeCreateTenantContext({ tenantId, tenantSlug: PROPERTY_TENANT.slug, userId: cmUser, roles: ['COMMERCIAL_MANAGER'] });
+    const fin = unsafeCreateTenantContext({ tenantId, tenantSlug: PROPERTY_TENANT.slug, userId: finance, roles: ['FINANCE_OPS_LEAD'] });
+    const free = await prisma.unit.findMany({ where: { tenantId, occupancy: 'VACANT', readiness: 'READY', type: { in: ['APARTMENT', 'OFFICE'] }, leases: { none: { status: { in: ['ACTIVE', 'EXPIRING'] } } } }, orderBy: { unitNo: 'asc' }, take: 3 });
+    if (free.length === 3) {
+      // 1. аренда квартиры брокером: WON, комиссия получена, KPI подтверждён → бонусы к выплате
+      const d1 = await createDeal(cm, { contactName: 'Камола Юсупова', company: null, unitId: free[0]!.id, managerId: brUser, product: free[0]!.type === 'OFFICE' ? 'LEASE_OFFICE' : 'LEASE_LTR', source: 'WEBSITE' });
+      const l1 = await createLease(cm, { unitId: free[0]!.id, dealId: d1.id, type: 'LTR', occupantName: 'Камола Юсупова', startAt: daysAgo(10), endAt: daysAhead(355), rentMinor: free[0]!.askingRateMinor ?? 150_000n, depositMinor: free[0]!.askingRateMinor ?? 150_000n, depositReceived: true });
+      await activateLease(cm, l1.id, daysAgo(10));
+      const c1 = await prisma.commission.findUnique({ where: { dealId: d1.id } });
+      if (c1) {
+        const t1 = await prisma.bankTransaction.create({ data: { tenantId, bankAccountId: account.id, externalId: `COMM-${c1.number}`, bookingDate: daysAgo(6), valueDate: daysAgo(6), amountMinor: c1.amountMinor, currency: c1.currency, counterpartyName: 'Камола Юсупова', purposeText: `Комиссия ${c1.number}` } });
+        await matchCommissionReceipt(fin, { bankTransactionId: t1.id, commissionId: c1.id }, daysAgo(6));
+        for (const item of ['ONBOARDING', 'ACCESS_KEYS', 'INTERNET', 'CLEANING', 'HANDOVER_SERVICES'] as const) await markChecklistItem(unsafeCreateTenantContext({ tenantId, tenantSlug: PROPERTY_TENANT.slug, userId: opsId ?? cmUser, roles: ['OPERATIONS_MANAGER'] }), d1.id, item, true, null, daysAgo(4));
+        await confirmKpi(cm, d1.id, daysAgo(3));
+      }
+      // 2. аренда офиса c внешним брокером: WON, комиссия к получению, чек-лист наполовину
+      const d2 = await createDeal(cm, { contactName: 'Фаррух Умаров', company: 'Delta Consulting', unitId: free[1]!.id, managerId: cmUser, product: free[1]!.type === 'OFFICE' ? 'LEASE_OFFICE' : 'LEASE_LTR', source: 'BROKER', externalBrokerName: 'UzFranchise', externalShareBp: 2000 });
+      const l2 = await createLease(cm, { unitId: free[1]!.id, dealId: d2.id, type: 'LTR', occupantName: 'Delta Consulting', startAt: daysAgo(3), endAt: daysAhead(727), rentMinor: free[1]!.askingRateMinor ?? 400_000n });
+      await activateLease(cm, l2.id, daysAgo(3));
+      for (const item of ['ONBOARDING', 'ACCESS_KEYS'] as const) await markChecklistItem(cm, d2.id, item, true, null, daysAgo(1));
+      // 3. продажа: закрыта ценой, комиссия 3% к получению
+      const d3 = await createDeal(cm, { contactName: 'Сардор Алиев', unitId: free[2]!.id, managerId: brUser, product: 'SALE', source: 'INSTAGRAM' });
+      for (let i = 0; i < 5; i++) await moveDeal(cm, d3.id, 'advance');
+      await closeSale(cm, d3.id, { salePriceMinor: 28_500_000n }, daysAgo(2));
+      console.log('  commissions: 3 deals won (lease paid + KPI, office w/ broker, sale)');
+    }
+  }
 }

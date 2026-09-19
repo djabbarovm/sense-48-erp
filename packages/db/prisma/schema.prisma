@@ -1129,6 +1129,7 @@ enum ReconObjectType {
   PAYMENT_REQUEST
   AR_INVOICE
   RENT_CHARGE
+  COMMISSION
   ADVANCE
   TAX
   PAYROLL
@@ -1876,6 +1877,13 @@ model Deal {
   lostReason         DealLostReason? @map("lost_reason")
   lostNote           String?         @map("lost_note")
   wonLeaseId         String?         @map("won_lease_id") @db.Uuid
+  // P-14: продукт сделки → плательщик/база/ставка комиссии (BR-P41); продажа закрывается ценой
+  product            DealProduct     @default(LEASE_LTR)
+  salePriceMinor     BigInt?         @map("sale_price_minor")
+  commissionRateBp   Int?            @map("commission_rate_bp") // переопределение в коридоре продукта
+  externalBrokerName String?         @map("external_broker_name")
+  externalShareBp    Int             @default(0) @map("external_share_bp") // доля внешнего брокера в комиссии
+  wonAt              DateTime?       @map("won_at")
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
   createdBy          String?         @map("created_by") @db.Uuid
@@ -1883,6 +1891,9 @@ model Deal {
 
   unit       Unit?          @relation(fields: [unitId], references: [id])
   activities UnitActivity[]
+  commission Commission?
+  bonuses    SalesBonus[]
+  checklist  DealChecklistItem[]
 
   @@unique([tenantId, number])
   @@index([tenantId, stage])
@@ -2166,4 +2177,130 @@ model RentCharge {
   @@index([tenantId, status, dueAt])
   @@index([tenantId, unitId, status])
   @@map("rent_charge")
+}
+
+// ── §P7 Комиссии ORDO и бонусы продажников (docs/20 §11.10) ──
+
+enum DealProduct {
+  LEASE_LTR
+  LEASE_OFFICE
+  SALE
+  STR_MANDATE
+  PARKING_LEASE
+  PARKING_SALE
+  MALL_LEASE
+}
+
+enum CommissionPayer {
+  TENANT
+  OWNER
+  SELLER
+  DEVELOPER
+}
+
+enum CommissionStatus {
+  ACCRUED
+  PARTIAL
+  PAID // только по банковской транзакции (BR-P42)
+  CANCELLED
+}
+
+model Commission {
+  id                 String           @id @default(uuid(7)) @db.Uuid
+  tenantId           String           @map("tenant_id") @db.Uuid
+  number             String // CM-2026-000001
+  dealId             String           @unique @map("deal_id") @db.Uuid
+  unitId             String?          @map("unit_id") @db.Uuid
+  product            DealProduct
+  payer              CommissionPayer
+  payerName          String           @map("payer_name") // арендатор/продавец/собственник — отображаемое имя
+  baseMinor          BigInt           @map("base_minor")
+  rateBp             Int              @map("rate_bp")
+  amountMinor        BigInt           @map("amount_minor")
+  externalBrokerName String?          @map("external_broker_name")
+  externalShareBp    Int              @default(0) @map("external_share_bp")
+  netMinor           BigInt           @map("net_minor") // после доли внешнего брокера — база бонуса и выручка ORDO
+  currency           String           @db.Char(3)
+  status             CommissionStatus @default(ACCRUED)
+  receivedMinor      BigInt           @default(0) @map("received_minor")
+  dueAt              DateTime         @map("due_at") @db.Date
+  paidAt             DateTime?        @map("paid_at")
+  cancelReason       String?          @map("cancel_reason")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  deal    Deal         @relation(fields: [dealId], references: [id])
+  bonuses SalesBonus[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status, dueAt])
+  @@map("commission")
+}
+
+enum BonusKind {
+  DEAL
+  KPI
+}
+
+enum BonusStatus {
+  POTENTIAL
+  CONFIRMED
+  PAYABLE
+  PAID
+  WITHHELD
+}
+
+model SalesBonus {
+  id             String      @id @default(uuid(7)) @db.Uuid
+  tenantId       String      @map("tenant_id") @db.Uuid
+  dealId         String      @map("deal_id") @db.Uuid
+  commissionId   String      @map("commission_id") @db.Uuid
+  employeeId     String      @map("employee_id") @db.Uuid
+  kind           BonusKind
+  rateBp         Int         @map("rate_bp")
+  baseMinor      BigInt      @map("base_minor") // чистая комиссия
+  amountMinor    BigInt      @map("amount_minor")
+  currency       String      @db.Char(3)
+  status         BonusStatus @default(POTENTIAL)
+  kpiDeadline    DateTime?   @map("kpi_deadline")
+  kpiConfirmedAt DateTime?   @map("kpi_confirmed_at")
+  kpiConfirmedBy String?     @map("kpi_confirmed_by") @db.Uuid
+  payableAt      DateTime?   @map("payable_at")
+  paidAt         DateTime?   @map("paid_at")
+  payoutPeriod   String?     @map("payout_period") // YYYY-MM ведомости
+  payoutRef      String?     @map("payout_ref") // номер ведомости/платежа
+  withheldReason String?     @map("withheld_reason")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  deal       Deal       @relation(fields: [dealId], references: [id])
+  commission Commission @relation(fields: [commissionId], references: [id])
+
+  @@unique([commissionId, employeeId, kind])
+  @@index([tenantId, employeeId, status])
+  @@index([tenantId, status])
+  @@map("sales_bonus")
+}
+
+enum KpiChecklistItem {
+  ONBOARDING
+  ACCESS_KEYS
+  INTERNET
+  CLEANING
+  HANDOVER_SERVICES
+}
+
+model DealChecklistItem {
+  id      String           @id @default(uuid(7)) @db.Uuid
+  tenantId String          @map("tenant_id") @db.Uuid
+  dealId  String           @map("deal_id") @db.Uuid
+  item    KpiChecklistItem
+  doneAt  DateTime?        @map("done_at")
+  doneBy  String?          @map("done_by") @db.Uuid
+  note    String?
+
+  deal Deal @relation(fields: [dealId], references: [id])
+
+  @@unique([dealId, item])
+  @@map("deal_checklist_item")
 }

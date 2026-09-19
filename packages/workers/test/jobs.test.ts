@@ -29,6 +29,7 @@ describe('D-05 workers: реестр джобов', () => {
       'service-sla',
       'rent-charges',
       'rent-overdue',
+      'bonus-kpi-deadline',
       'domain-events',
       'event-progress',
       'batch-cutoff-freeze',

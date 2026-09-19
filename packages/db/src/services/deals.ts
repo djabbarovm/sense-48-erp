@@ -2,7 +2,7 @@
  * Wave 2: сделки CRM (docs/20 §11.2, ADR-018). Воронка blueprint §6; commercialStatus юнита — производное (BR-P20);
  * брокер видит и ведёт только свои сделки (BR-P21); WON — только через активацию договора (BR-P23, leases.ts).
  */
-import type { DealStage, DealTrigger, TenantContext } from '@finance-os/core';
+import type { DealProduct, DealStage, DealTrigger, TenantContext } from '@finance-os/core';
 import {
   NotFoundError,
   STAGE_PROBABILITY,
@@ -46,10 +46,18 @@ export interface DealInput {
   expectedRateMinor?: bigint | null;
   reservedUntil?: Date | null;
   depositReceived?: boolean;
+  /** P-14: продукт сделки (BR-P41); по умолчанию LEASE_LTR, для офисов — LEASE_OFFICE. */
+  product?: DealProduct;
+  salePriceMinor?: bigint | null;
+  commissionRateBp?: number | null;
+  externalBrokerName?: string | null;
+  externalShareBp?: number;
 }
 
 const brokerOnly = (ctx: TenantContext) => hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
-const pick = (d: Deal) => ({ stage: d.stage, unitId: d.unitId, managerId: d.managerId, expectedRateMinor: d.expectedRateMinor?.toString() ?? null, reservedUntil: d.reservedUntil, nextActionAt: d.nextActionAt, depositReceived: d.depositReceived });
+const pick = (d: Deal) => ({ stage: d.stage, product: d.product, unitId: d.unitId, managerId: d.managerId, expectedRateMinor: d.expectedRateMinor?.toString() ?? null, reservedUntil: d.reservedUntil, nextActionAt: d.nextActionAt, depositReceived: d.depositReceived });
+
+const validShare = (bp?: number): number => { if (bp == null) return 0; if (!Number.isInteger(bp) || bp < 0 || bp > 10_000) throw new ValidationError('SHARE_INVALID', 'SHARE_INVALID: доля внешнего брокера 0–100%'); return bp; };
 
 /** BR-P21: брокер работает только со своими сделками. */
 async function loadOwnDeal(tx: Prisma.TransactionClient, ctx: TenantContext, id: string): Promise<Deal> {
@@ -85,6 +93,7 @@ export async function createDeal(ctx: TenantContext, input: DealInput): Promise<
         purpose: input.purpose ?? null, timing: input.timing ?? null, unitId: input.unitId ?? null, managerId,
         stage: input.unitId ? 'PROPERTY_SELECTED' : 'NEW', nextAction: input.nextAction ?? null, nextActionAt: input.nextActionAt ?? null,
         expectedRateMinor: input.expectedRateMinor ?? null, reservedUntil: input.reservedUntil ?? null, depositReceived: input.depositReceived ?? false, createdBy: ctx.userId,
+        product: input.product ?? 'LEASE_LTR', salePriceMinor: input.salePriceMinor ?? null, commissionRateBp: input.commissionRateBp ?? null, externalBrokerName: input.externalBrokerName ?? null, externalShareBp: validShare(input.externalShareBp),
       },
     });
     if (created.unitId) await recomputeUnitCommercialStatus(tx, ctx.tenantId, created.unitId);
@@ -120,6 +129,11 @@ export async function updateDeal(ctx: TenantContext, id: string, patch: Partial<
         ...(patch.expectedRateMinor !== undefined ? { expectedRateMinor: patch.expectedRateMinor } : {}),
         ...(patch.reservedUntil !== undefined ? { reservedUntil: patch.reservedUntil } : {}),
         ...(patch.depositReceived !== undefined ? { depositReceived: patch.depositReceived } : {}),
+        ...(patch.product !== undefined ? { product: patch.product } : {}),
+        ...(patch.salePriceMinor !== undefined ? { salePriceMinor: patch.salePriceMinor } : {}),
+        ...(patch.commissionRateBp !== undefined ? { commissionRateBp: patch.commissionRateBp } : {}),
+        ...(patch.externalBrokerName !== undefined ? { externalBrokerName: patch.externalBrokerName } : {}),
+        ...(patch.externalShareBp !== undefined ? { externalShareBp: validShare(patch.externalShareBp) } : {}),
         updatedBy: ctx.userId,
       },
     });
@@ -282,7 +296,8 @@ export async function getDeal(ctx: TenantContext, id: string, today = new Date()
       lose: dealMachine.can(ctx, d.stage, 'lose', payload),
       reopen: dealMachine.can(ctx, d.stage, 'reopen', payload),
       edit: can(ctx, 'deal.manage') && (!brokerOnly(ctx) || d.managerId === ctx.userId),
-      lease: can(ctx, 'lease.manage') && isActiveStage(d.stage) && !!d.unitId,
+      lease: can(ctx, 'lease.manage') && isActiveStage(d.stage) && !!d.unitId && !['SALE', 'PARKING_SALE'].includes(d.product),
+      closeSale: can(ctx, 'deal.manage') && !brokerOnly(ctx) && ['SALE', 'PARKING_SALE'].includes(d.product) && (d.stage === 'CONTRACT' || d.stage === 'MOVE_IN'),
     },
     lease,
     audit,

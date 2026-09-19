@@ -137,3 +137,15 @@
 |---|---|
 | rent.view | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, COMMERCIAL_MANAGER |
 | rent.match (зачёт банковских поступлений — единственный путь к PAID) | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE |
+
+### Комиссии и бонусы (MDS Property, docs/20 §11.10)
+
+| Право | Роли |
+|---|---|
+| commission.view | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, COMMERCIAL_MANAGER |
+| commission.manage | OWNER, COMMERCIAL_MANAGER |
+| bonus.view (все бонусы, отчёт) | OWNER, FINANCE_OPS_LEAD, ADMIN, COMMERCIAL_MANAGER |
+| bonus.own (только свои) | COMMERCIAL_MANAGER, BROKER |
+| bonus.confirm_kpi (подтверждение чек-листа, не продажник) | OWNER, COMMERCIAL_MANAGER |
+| bonus.pay (отметка выплаты по ведомости) | OWNER, FINANCE_OPS_LEAD |
+| deal.checklist (отметки пунктов чек-листа) | OWNER, COMMERCIAL_MANAGER, BROKER, OPERATIONS_MANAGER |
