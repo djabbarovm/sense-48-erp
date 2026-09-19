@@ -1332,7 +1332,8 @@
       "OCCUPANT_REQUIRED": "Укажите арендатора.",
       "PERMISSION_DENIED": "Недостаточно прав."
     },
-    "sqm": "м²"
+    "sqm": "м²",
+    "analytics": "Аналитика"
   },
   "leases": {
     "title": "Договоры аренды",
@@ -1392,7 +1393,8 @@
     "namePlaceholder": "piramit.uz",
     "scope": {
       "PUBLIC_INVENTORY": "Публичный inventory",
-      "WORKBOT": "WorkBot (черновики действий)"
+      "WORKBOT": "WorkBot (черновики действий)",
+      "LEADS": "Лиды c сайта/бота"
     },
     "create": "Создать ключ",
     "creating": "Создаю…",
@@ -1668,5 +1670,26 @@
       "USER_ALREADY_LINKED": "Эта учётная запись уже привязана к другому собственнику.",
       "PERMISSION_DENIED": "Недостаточно прав."
     }
+  },
+  "analytics": {
+    "title": "Воронка и атрибуция",
+    "days": "{n} дн.",
+    "kpi": {
+      "leads": "Лидов",
+      "active": "Активных",
+      "won": "Выиграно",
+      "lost": "Проиграно",
+      "winRate": "Win rate",
+      "wonRent": "Выигранная аренда, USD/мес"
+    },
+    "funnel": "Воронка по стадиям",
+    "avgToWon": "Дней до выигрыша",
+    "avgToLost": "Дней до проигрыша",
+    "medianInPipeline": "Медиана в воронке, дн.",
+    "bySource": "По источникам",
+    "source": "Источник",
+    "conversion": "Конверсия",
+    "campaigns": "UTM-кампании (лиды → выигрыши)",
+    "lostReasons": "Причины проигрыша"
   }
 }

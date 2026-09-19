@@ -3,6 +3,17 @@ import { expect, test } from '@playwright/test';
 
 /* P-10: MDS Property Wave 2 — доска сделок, карточка, договор из сделки, брокерские ограничения, API-ключ. */
 
+/** Dev-режим Next: клик по <Link> до завершения гидратации может не навигировать — ждём URL и повторяем клик один раз. */
+async function clickTo(page: Page, locator: ReturnType<Page['locator']>, url: RegExp) {
+  await locator.first().click();
+  try {
+    await page.waitForURL(url, { timeout: 4000 });
+  } catch {
+    await locator.first().click();
+    await page.waitForURL(url, { timeout: 10000 });
+  }
+}
+
 async function login(page: Page, email: string) {
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
@@ -19,8 +30,7 @@ test('доска сделок: сводка, колонки, карточка; a
   // свежая сделка — тест не зависит от состояния seed после прошлых прогонов
   await page.goto('/deals/new');
   await page.getByLabel('Контакт *').fill('E2E Клиент');
-  await page.getByRole('button', { name: 'Создать сделку' }).click();
-  await expect(page).toHaveURL(/\/deals\/[0-9a-f-]+$/);
+  await clickTo(page, page.getByRole('button', { name: 'Создать сделку' }), /\/deals\/[0-9a-f-]+$/);
   await expect(page.locator('h1 ~ span span').first()).toContainText('Новый лид');
   const advance = page.locator('form').filter({ has: page.locator('input[name=trigger][value=advance]') }).getByRole('button');
   await expect(advance).toBeVisible();

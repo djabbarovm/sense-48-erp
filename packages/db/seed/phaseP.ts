@@ -252,7 +252,7 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
         data: {
           tenantId, number, contactName: `${FIRST[(i * 5) % FIRST.length]} ${LAST[(i * 3) % LAST.length]}`, contactPhone: `+99890${String(3000000 + i * 4111).slice(0, 7)}`,
           company: DEAL_COMPANIES[i % DEAL_COMPANIES.length] ?? null, source: SOURCES[i % SOURCES.length]!, budgetMinor: expected, purpose: unit?.type === 'OFFICE' ? 'офис' : unit?.type === 'RETAIL' ? 'торговая точка' : 'жильё',
-          unitId: unit?.id ?? null, managerId, stage, stageChangedAt: daysAgo(Math.floor(r() * 20)),
+          unitId: unit?.id ?? null, managerId, stage, createdAt: daysAgo(25 + Math.floor(r() * 40)), stageChangedAt: daysAgo(Math.floor(r() * 20)),
           nextAction: stage === 'LOST' || i % 4 === 3 ? null : ['перезвонить', 'отправить КП', 'назначить показ', 'согласовать скидку'][i % 4]!, nextActionAt: stage === 'LOST' || i % 4 === 3 ? null : daysAhead(nextIn),
           expectedRateMinor: unit ? expected : null, reservedUntil: stage === 'NEGOTIATION' && i % 2 === 0 ? daysAhead(5) : null, depositReceived: stage === 'CONTRACT',
           lostReason: stage === 'LOST' ? (i % 2 ? 'PRICE' : 'COMPETITOR') : null, createdBy: managerId,

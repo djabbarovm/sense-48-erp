@@ -48,3 +48,5 @@ export * from './services/controlRoom.js';
 export * from './services/actionDrafts.js';
 export * from './services/workOrders.js';
 export * from './services/ownerPortal.js';
+export * from './services/leadIntake.js';
+export * from './services/dealAnalytics.js';

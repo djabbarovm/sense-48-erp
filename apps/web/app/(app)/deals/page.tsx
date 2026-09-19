@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertCircle, Plus } from 'lucide-react';
+import { AlertCircle, BarChart3, Plus } from 'lucide-react';
 import { ACTIVE_DEAL_STAGES, can, type DealStage } from '@finance-os/core';
 import { getPipelineSummary, listDealManagers, listDeals, type DealRow } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
@@ -51,7 +51,7 @@ export default async function DealsBoardPage({ searchParams }: { searchParams: P
       <PageHeader
         title={t('title')}
         meta={<Badge tone={summary.attention ? 'red' : 'gray'} dot>{t('attentionCount', { n: summary.attention })}</Badge>}
-        actions={can(ctx, 'deal.manage') ? <Link href="/deals/new"><Button size="sm"><Plus className="h-3.5 w-3.5" />{t('newDeal')}</Button></Link> : null}
+        actions={<div className="flex items-center gap-2"><Link href="/deals/analytics" className="inline-flex items-center gap-1 rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100"><BarChart3 className="h-4 w-4" />{t('analytics')}</Link>{can(ctx, 'deal.manage') ? <Link href="/deals/new"><Button size="sm"><Plus className="h-3.5 w-3.5" />{t('newDeal')}</Button></Link> : null}</div>}
       />
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 sm:grid-cols-3 lg:grid-cols-6">

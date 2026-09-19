@@ -136,7 +136,7 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | 1 Core MVP | Property Core + Building/Floor/Unit + фильтры + audit + seed | ✓ P-02…P-06 |
 | 1b | Импорт инвентаря из XLSX, планов этажей JSON/SVG, e2e | ✓ P-07, P-08 |
 | 2 Commercial | Deal + воронка, LeaseContract, outbox событий, публичный inventory API | ✓ P-10 |
-| 2b | WorkBot API (draft→confirm→commit), realtime repaint, бонусы продажников | P-11 |
+| 2b | WorkBot ✓ P-12, realtime ✓ P-13, лиды c сайта + аналитика ✓ P-17, бонусы — заблокировано (P-14) | ✓ |
 | 3 AI Operations | WorkBot: текст → structured draft → confirm → commit → audit; API для бота | ✓ P-12 (текст); голос/фото — 3b |
 | 4 Owner/Operations | Work orders/SLA ✓ P-15a; Owner Portal ✓ P-15b; services — P-16 | частично |
 | 5 App/Advanced | Resident app adapters, 3D, BI, access/payment adapters | после ROI |
@@ -174,6 +174,13 @@ Realtime (P-13): `GET /api/property/events/stream` — SSE по DomainEvent те
 | ID | Правило | Поведение | Тест |
 |---|---|---|---|
 | BR-P33 | Собственник видит и трогает только своё | выборки через PropertyOwner.userId; заявка по чужому юниту → 404; нет property.view → 403 на карту/карточку/статусы | owner-portal.test |
+
+### 11.7 Лиды c сайта/бота и атрибуция (blueprint §3, §8, §14)
+`POST /api/property/public/leads` (X-Api-Key scope LEADS): форма сайта/бота → `intakeLead` → Deal (source WEBSITE/TELEGRAM/…, UTM, страница, юнит по номеру) дежурному менеджеру c nextAction «связаться». Цепочка атрибуции Visit → Lead → … → Contract → Revenue: UTM хранится в сделке, `/deals/analytics` показывает конверсию по источникам и кампаниям, причины проигрыша и скорость.
+
+| ID | Правило | Поведение | Тест |
+|---|---|---|---|
+| BR-P34 | Повторное обращение — не дубликат | тот же телефон/email c активной сделкой ≤ 30 дней → активность и следующее действие в существующей сделке | lead-intake.test |
 
 ## 12. Acceptance (blueprint §1.15 → тесты)
 
