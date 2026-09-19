@@ -18,7 +18,7 @@
   },
   "auth": {
     "title": "Вход в DMS",
-    "email": "Email",
+    "email": "Email или логин",
     "password": "Пароль",
     "signIn": "Войти",
     "signOut": "Выйти",
