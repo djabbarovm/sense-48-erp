@@ -62,4 +62,5 @@ export * from './services/ownerPipeline.js';
 export * from './services/myDay.js';
 export * from './services/telegramBot.js';
 export * from './services/crmAnalytics.js';
+export * from './services/proposals.js';
 export * from './services/telephony.js';

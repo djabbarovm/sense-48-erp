@@ -1941,6 +1941,30 @@ model Contact {
   @@map("contact")
 }
 
+/// P-28 (docs/21 §3): коммерческое предложение — подборка помещений клиенту по ссылке без входа; просмотр и запрос показа фиксируются.
+model DealProposal {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  dealId             String    @map("deal_id") @db.Uuid
+  token              String    @unique
+  unitIds            String[]  @map("unit_ids") @db.Uuid
+  note               String?
+  validUntil         DateTime? @map("valid_until")
+  viewsCount         Int       @default(0) @map("views_count")
+  viewedAt           DateTime? @map("viewed_at")
+  viewNotifiedAt     DateTime? @map("view_notified_at")
+  viewingRequestedAt DateTime? @map("viewing_requested_at")
+  requestNote        String?   @map("request_note")
+  requestNotifiedAt  DateTime? @map("request_notified_at")
+  createdBy          String    @map("created_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  deal Deal @relation(fields: [dealId], references: [id])
+
+  @@index([tenantId, dealId])
+  @@map("deal_proposal")
+}
+
 model Deal {
   id                 String          @id @default(uuid(7)) @db.Uuid
   tenantId           String          @map("tenant_id") @db.Uuid
@@ -1985,6 +2009,7 @@ model Deal {
 
   unit       Unit?          @relation(fields: [unitId], references: [id])
   contact    Contact?       @relation(fields: [contactId], references: [id])
+  proposals  DealProposal[]
   activities UnitActivity[]
   commission Commission?
   bonuses    SalesBonus[]

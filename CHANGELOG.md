@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+## [Phase P] 2026-09-19 — CRM Tower: коммерческое предложение клиенту (P-28)
+- db: модель `DealProposal` (миграция `deal_proposals`); `services/proposals.ts` — `createProposal` (активность OFFER, следующий шаг «узнать реакцию»), `listProposals`, `getPublicProposal` (публичные поля, счётчик просмотров, срок), `requestViewingFromProposal` (один запрос, активность, шаг «назначить показ»), уведомления менеджеру через `crm-reminders` («открыл КП», «запросил показ»); тест.
+- web: блок «Коммерческое предложение» в карточке сделки (выбор помещений, комментарий, срок, ссылка и статус), публичная страница `/p/[token]` (mobile-first, печать в PDF, запрос показа); словари `deals.proposal`, `proposal`.
+- Проверка production-сборки `next build` — успешно (перед будущим деплоем).
+
 ## [Phase P] 2026-09-19 — CRM Tower: аналитика и телефония (P-26)
 - adapters: `telephony/` — `TelephonyAdapter`, `TelephonyEvent`, `GenericTelephonyAdapter` (нормализованный webhook).
 - db: `UnitActivity.durationSec/recordingUrl/callDirection/externalRef`, `ChangeSource.PHONE`, scope `TELEPHONY` (миграция `crm_calls`); `services/telephony.ts` — `ingestCallEvent`; `services/crmAnalytics.ts` — `getCrmAnalytics` (скорость, сотрудники, конверсия, качество, звонки, собственники); тесты.

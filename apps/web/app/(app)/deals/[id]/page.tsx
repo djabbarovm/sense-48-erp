@@ -1,13 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { AlertTriangle, ArrowLeft, ArrowRight, BadgePercent, Building2, CheckCircle2, Circle, MessageSquare, RotateCcw, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, BadgePercent, Building2, CheckCircle2, Circle, FileText, MessageSquare, RotateCcw, XCircle } from 'lucide-react';
 import { DEAL_LOST_REASONS, DEAL_PRODUCTS, DEAL_SOURCES, LEASE_TYPES, NotFoundError, SALE_PRODUCTS, TENANT_CATEGORIES, can } from '@finance-os/core';
-import { getDeal, getDealCommission, listDealManagers, listUnits } from '@finance-os/db';
+import { getDeal, getDealCommission, listDealManagers, listProposals, listUnits } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '@/components/ui';
 import { fmtDate, fmtRate } from '@/components/property';
-import { addDealActivityAction, checklistAction, closeSaleAction, confirmKpiAction, createLeaseFromDealAction, moveDealAction, updateDealAction } from '../actions';
+import { addDealActivityAction, checklistAction, closeSaleAction, confirmKpiAction, createLeaseFromDealAction, createProposalAction, moveDealAction, updateDealAction } from '../actions';
 import { BONUS_TONE, COMMISSION_TONE } from '../../commissions/tones';
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
@@ -32,6 +32,8 @@ export default async function DealPage({ params, searchParams }: { params: Promi
   const cm = await getDealCommission(ctx, id);
   const isSale = SALE_PRODUCTS.includes(deal.product);
   const selectable = units.filter((u) => u.view.isSellable || u.id === deal.unitId);
+  const proposals = await listProposals(ctx, deal.id);
+  const proposalUnits = [...selectable].sort((a, b) => (a.id === deal.unitId ? -1 : b.id === deal.unitId ? 1 : 0)).slice(0, 40);
   const usd = (m: bigint | null | undefined) => (m == null ? '' : (Number(m) / 100).toFixed(2));
   const dt = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : '');
   const closed = deal.stage === 'WON' || deal.stage === 'LOST';
@@ -211,6 +213,32 @@ export default async function DealPage({ params, searchParams }: { params: Promi
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{t('proposal.title')}</h3>{proposals.length ? <Badge tone="gray">{proposals.length}</Badge> : null}</div>
+          <p className="mt-1 text-xs text-gray-500">{t('proposal.hint')}</p>
+          {proposals.length ? (
+            <ul className="mt-3 divide-y divide-gray-100 text-sm">
+              {proposals.map((p) => (
+                <li key={p.id} className="py-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2"><span className="font-mono text-xs">{p.unitNos.join(', ')}</span><span className="flex items-center gap-1.5">{p.viewingRequestedAt ? <Badge tone="green" dot>{t('proposal.requested')}</Badge> : p.viewedAt ? <Badge tone="blue" dot>{t('proposal.viewed', { n: p.viewsCount })}</Badge> : <Badge tone="gray">{t('proposal.sent')}</Badge>}{p.validUntil && p.validUntil < new Date() ? <Badge tone="red">{t('proposal.expired')}</Badge> : null}</span></div>
+                  <p className="mt-0.5 text-[11px] text-gray-500">{fmtDate(p.createdAt)}{p.validUntil ? ` · ${t('proposal.validUntil', { d: fmtDate(p.validUntil) })}` : ''}{p.requestNote ? ` · «${p.requestNote}»` : ''}</p>
+                  <a href={p.url} target="_blank" rel="noreferrer" className="mt-1 block truncate font-mono text-[11px] text-brand-600 hover:underline">{p.url}</a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {c.edit && !closed ? (
+            <form action={createProposalAction} className="mt-3 space-y-2">
+              <input type="hidden" name="dealId" value={deal.id} />
+              <div className="grid max-h-48 gap-1 overflow-y-auto rounded-md border border-gray-100 p-2 sm:grid-cols-2">
+                {proposalUnits.map((u) => (<label key={u.id} className="flex items-center gap-2 text-xs"><input type="checkbox" name="unitIds" value={u.id} defaultChecked={u.id === deal.unitId} className="h-3.5 w-3.5 rounded border-gray-300" /><span className="font-mono font-semibold">{u.unitNo}</span><span className="text-gray-500">{u.areaM2} {t('sqm')} · {fmtRate(u.askingRateMinor, u.askingCurrency)}</span></label>))}
+                {proposalUnits.length === 0 ? <span className="text-xs text-gray-400">{t('proposal.noUnits')}</span> : null}
+              </div>
+              <div className="flex flex-wrap items-end gap-2"><div className="flex-1"><Label htmlFor="pr-note">{t('proposal.note')}</Label><Input id="pr-note" name="note" placeholder={t('proposal.notePlaceholder')} /></div><div><Label htmlFor="pr-days">{t('proposal.validDays')}</Label><Input id="pr-days" name="validDays" type="number" min="1" max="60" defaultValue={7} className="w-20" /></div><Button type="submit" size="sm" variant="outline">{t('proposal.create')}</Button></div>
+            </form>
+          ) : null}
+        </Card>
+
         <Card>
           <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-brand-500" /><h3 className="font-display text-sm font-semibold">{t('activities')}</h3></div>
           {c.edit ? (

@@ -14,6 +14,7 @@ import { prisma } from '../client.js';
 import { buildTenantContext } from '../context.js';
 import { confirmActionDraft, createActionDraft, rejectActionDraft } from './actionDrafts.js';
 import { getMyDay, taskDone, viewingResult, type MyDay, type ViewingResult } from './myDay.js';
+import { markProposalNotified, pendingProposalNotices } from './proposals.js';
 
 const CRM_ROLES: RoleCode[] = ['COMMERCIAL_MANAGER', 'BROKER', 'CALL_CENTER', 'OWNER', 'MARKETING', 'FINANCE_OPS_LEAD', 'ADMIN'];
 const appUrl = () => (process.env.APP_URL ?? '').replace(/\/$/, '');
@@ -224,6 +225,11 @@ export async function sendCrmReminders(tenantId: string, now: Date, api: Telegra
       if (!(await marked(tenantId, 'lead.sla.warn', d.id))) { await mark(tenantId, 'lead.sla.warn', 'deal', d.id, now); const warn = `🔔 Лид без ответа ${mins} мин: ${d.contactName} (${d.source}). Свяжитесь и напишите мне «позвонил ${d.contactName.split(/\s+/)[0]}…».\n${link(`/deals/${d.id}`)}`; await send(d.managerId, warn); for (const c of callCenter) if (c.userId !== d.managerId) await send(c.userId, warn); }
       if (mins >= 30 && !(await marked(tenantId, 'lead.sla.escalate', d.id))) { await mark(tenantId, 'lead.sla.escalate', 'deal', d.id, now); for (const o of owners) if (o.userId !== d.managerId) await send(o.userId, `🚨 Лид ${d.contactName} без касания ${mins} мин (менеджер не ответил). ${link(`/deals/${d.id}`)}`); }
     }
+  }
+  // 4. КП: клиент открыл / запросил показ (P-28)
+  for (const pn of await pendingProposalNotices(tenantId)) {
+    if (pn.requested) { await send(pn.managerId, `📩 ${pn.contactName} запросил показ по КП${pn.requestNote ? `: «${pn.requestNote}»` : ''}. Назначьте: «показ <юнит> завтра 15:00 ${pn.contactName.split(/\s+/)[0]}».\n${link(`/deals/${pn.dealId}`)}`); await markProposalNotified(pn.id, { requested: true, viewed: true }, now); continue; }
+    if (pn.viewed) { await send(pn.managerId, `👀 ${pn.contactName} открыл КП (просмотров: ${pn.viewsCount}). Хороший момент позвонить.\n${link(`/deals/${pn.dealId}`)}`); await markProposalNotified(pn.id, { viewed: true }, now); }
   }
   return n;
 }
