@@ -51,61 +51,87 @@ import { logoutAction, switchTenantAction } from '@/lib/auth-actions';
 import { requireSessionUser, requireTenantContext } from '@/lib/session';
 import { Button } from '@/components/ui';
 
+type Section = 'daily' | 'commercial' | 'property' | 'finance' | 'reports' | 'admin';
+
 interface NavItem {
   key: string;
   href: string;
   icon: ReactNode;
+  section: Section;
   permission?: PermissionCode;
 }
 
 const ICON = 'h-[18px] w-[18px]';
+const SECTION_ORDER: Section[] = ['daily', 'commercial', 'property', 'finance', 'reports', 'admin'];
 
+// Навигация сгруппирована по разделам (docs/06). Права по-прежнему фильтруют каждый пункт —
+// группировка и «фокус» ниже только меняют ПОДАЧУ, доступ не расширяют и не сужают.
 const NAV: NavItem[] = [
-  { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, permission: 'dashboard.owner' },
-  { key: 'ownerPortal', href: '/owner', icon: <Home className={ICON} />, permission: 'owner.portal' },
-  { key: 'me', href: '/me', icon: <Sun className={ICON} />, permission: 'deal.view' },
-  { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, permission: 'property.view' },
-  { key: 'property', href: '/property', icon: <Building className={ICON} />, permission: 'property.view' },
-  { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, permission: 'deal.view' },
-  { key: 'contacts', href: '/contacts', icon: <Users className={ICON} />, permission: 'deal.view' },
-  { key: 'crmAnalytics', href: '/crm/analytics', icon: <BarChart3 className={ICON} />, permission: 'deal.view' },
-  { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, permission: 'lease.view' },
-  { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, permission: 'workorder.view' },
-  { key: 'services', href: '/services', icon: <Sparkles className={ICON} />, permission: 'service.view' },
-  { key: 'mall', href: '/mall', icon: <Store className={ICON} />, permission: 'mall.view' },
-  { key: 'rent', href: '/rent', icon: <Coins className={ICON} />, permission: 'rent.view' },
-  { key: 'house', href: '/house', icon: <Landmark className={ICON} />, permission: 'house.view' },
-  { key: 'commissions', href: '/commissions', icon: <BadgePercent className={ICON} />, permission: 'commission.view' },
-  { key: 'bonuses', href: '/bonuses', icon: <Award className={ICON} />, permission: 'bonus.own' },
-  { key: 'owners', href: '/property/owners', icon: <Users className={ICON} />, permission: 'property.manage' },
-  { key: 'workbot', href: '/property/actions', icon: <Bot className={ICON} />, permission: 'action.draft' },
-  { key: 'dashboard', href: '/', icon: <LayoutDashboard className={ICON} />, permission: 'dashboard.ops' },
-  { key: 'ownerDash', href: '/dashboard', icon: <Crown className={ICON} />, permission: 'dashboard.owner' },
-  { key: 'approvals', href: '/approvals', icon: <CheckSquare className={ICON} /> },
-  { key: 'purchaseRequests', href: '/pr', icon: <ShoppingCart className={ICON} />, permission: 'pr.view' },
-  { key: 'vendors', href: '/vendors', icon: <Store className={ICON} />, permission: 'vendor.view' },
-  { key: 'contracts', href: '/contracts', icon: <FileText className={ICON} />, permission: 'contract.view' },
-  { key: 'invoices', href: '/invoices', icon: <FileCheck className={ICON} />, permission: 'invoice.create' },
-  { key: 'payments', href: '/payments', icon: <Wallet className={ICON} />, permission: 'payment.view' },
-  { key: 'batches', href: '/batches', icon: <Banknote className={ICON} />, permission: 'batch.create' },
-  { key: 'bank', href: '/bank', icon: <Landmark className={ICON} />, permission: 'bank.import' },
-  { key: 'ap', href: '/ap', icon: <Hourglass className={ICON} />, permission: 'payment.view' },
-  { key: 'ar', href: '/ar', icon: <HandCoins className={ICON} />, permission: 'payment.view' },
-  { key: 'events', href: '/events', icon: <PartyPopper className={ICON} />, permission: 'payment.view' },
-  { key: 'forecast', href: '/forecast', icon: <TrendingUp className={ICON} />, permission: 'payment.view' },
-  { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, permission: 'budget.manage' },
-  { key: 'documents', href: '/documents/health', icon: <FileWarning className={ICON} />, permission: 'payment.view' },
-  { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} /> },
-  { key: 'close', href: '/close', icon: <CalendarCheck className={ICON} />, permission: 'close.run' },
-  { key: 'controls', href: '/controls', icon: <Gauge className={ICON} />, permission: 'dashboard.ops' },
-  { key: 'portfolio', href: '/portfolio', icon: <Briefcase className={ICON} /> },
-  { key: 'audit', href: '/audit', icon: <History className={ICON} />, permission: 'audit.view' },
-  { key: 'tax', href: '/tax', icon: <Scale className={ICON} />, permission: 'payment.view' },
-  { key: 'payroll', href: '/payroll', icon: <UsersRound className={ICON} />, permission: 'payroll.prepare' },
-  { key: 'onec', href: '/onec', icon: <BookOpenCheck className={ICON} />, permission: 'report.export' },
-  { key: 'migration', href: '/migration', icon: <Upload className={ICON} />, permission: 'budget.manage' },
-  { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, permission: 'tenant.settings' },
+  // ── Мой день / обзоры ──
+  { key: 'me', href: '/me', icon: <Sun className={ICON} />, section: 'daily', permission: 'deal.view' },
+  { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, section: 'daily', permission: 'dashboard.owner' },
+  { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, section: 'daily', permission: 'property.view' },
+  { key: 'dashboard', href: '/', icon: <LayoutDashboard className={ICON} />, section: 'daily', permission: 'dashboard.ops' },
+  { key: 'ownerDash', href: '/dashboard', icon: <Crown className={ICON} />, section: 'daily', permission: 'dashboard.owner' },
+  { key: 'ownerPortal', href: '/owner', icon: <Home className={ICON} />, section: 'daily', permission: 'owner.portal' },
+  { key: 'approvals', href: '/approvals', icon: <CheckSquare className={ICON} />, section: 'daily' },
+  { key: 'tasks', href: '/tasks', icon: <ListTodo className={ICON} />, section: 'daily' },
+  // ── Коммерция ──
+  { key: 'deals', href: '/deals', icon: <Handshake className={ICON} />, section: 'commercial', permission: 'deal.view' },
+  { key: 'contacts', href: '/contacts', icon: <Users className={ICON} />, section: 'commercial', permission: 'deal.view' },
+  { key: 'crmAnalytics', href: '/crm/analytics', icon: <BarChart3 className={ICON} />, section: 'commercial', permission: 'deal.view' },
+  { key: 'leases', href: '/leases', icon: <FileSignature className={ICON} />, section: 'commercial', permission: 'lease.view' },
+  { key: 'mall', href: '/mall', icon: <Store className={ICON} />, section: 'commercial', permission: 'mall.view' },
+  { key: 'commissions', href: '/commissions', icon: <BadgePercent className={ICON} />, section: 'commercial', permission: 'commission.view' },
+  { key: 'bonuses', href: '/bonuses', icon: <Award className={ICON} />, section: 'commercial', permission: 'bonus.own' },
+  // ── Недвижимость / эксплуатация ──
+  { key: 'property', href: '/property', icon: <Building className={ICON} />, section: 'property', permission: 'property.view' },
+  { key: 'owners', href: '/property/owners', icon: <Users className={ICON} />, section: 'property', permission: 'property.manage' },
+  { key: 'workorders', href: '/workorders', icon: <Wrench className={ICON} />, section: 'property', permission: 'workorder.view' },
+  { key: 'services', href: '/services', icon: <Sparkles className={ICON} />, section: 'property', permission: 'service.view' },
+  { key: 'workbot', href: '/property/actions', icon: <Bot className={ICON} />, section: 'property', permission: 'action.draft' },
+  // ── Финансы ──
+  { key: 'purchaseRequests', href: '/pr', icon: <ShoppingCart className={ICON} />, section: 'finance', permission: 'pr.view' },
+  { key: 'vendors', href: '/vendors', icon: <Store className={ICON} />, section: 'finance', permission: 'vendor.view' },
+  { key: 'contracts', href: '/contracts', icon: <FileText className={ICON} />, section: 'finance', permission: 'contract.view' },
+  { key: 'invoices', href: '/invoices', icon: <FileCheck className={ICON} />, section: 'finance', permission: 'invoice.create' },
+  { key: 'payments', href: '/payments', icon: <Wallet className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'batches', href: '/batches', icon: <Banknote className={ICON} />, section: 'finance', permission: 'batch.create' },
+  { key: 'bank', href: '/bank', icon: <Landmark className={ICON} />, section: 'finance', permission: 'bank.import' },
+  { key: 'ap', href: '/ap', icon: <Hourglass className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'ar', href: '/ar', icon: <HandCoins className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'rent', href: '/rent', icon: <Coins className={ICON} />, section: 'finance', permission: 'rent.view' },
+  { key: 'house', href: '/house', icon: <Landmark className={ICON} />, section: 'finance', permission: 'house.view' },
+  { key: 'events', href: '/events', icon: <PartyPopper className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'forecast', href: '/forecast', icon: <TrendingUp className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'budget', href: '/budget', icon: <PieChart className={ICON} />, section: 'finance', permission: 'budget.manage' },
+  { key: 'documents', href: '/documents/health', icon: <FileWarning className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'tax', href: '/tax', icon: <Scale className={ICON} />, section: 'finance', permission: 'payment.view' },
+  { key: 'payroll', href: '/payroll', icon: <UsersRound className={ICON} />, section: 'finance', permission: 'payroll.prepare' },
+  // ── Отчёты и контроль ──
+  { key: 'close', href: '/close', icon: <CalendarCheck className={ICON} />, section: 'reports', permission: 'close.run' },
+  { key: 'controls', href: '/controls', icon: <Gauge className={ICON} />, section: 'reports', permission: 'dashboard.ops' },
+  { key: 'portfolio', href: '/portfolio', icon: <Briefcase className={ICON} />, section: 'reports' },
+  { key: 'audit', href: '/audit', icon: <History className={ICON} />, section: 'reports', permission: 'audit.view' },
+  { key: 'onec', href: '/onec', icon: <BookOpenCheck className={ICON} />, section: 'reports', permission: 'report.export' },
+  // ── Администрирование ──
+  { key: 'migration', href: '/migration', icon: <Upload className={ICON} />, section: 'admin', permission: 'budget.manage' },
+  { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, section: 'admin', permission: 'tenant.settings' },
 ];
+
+// Роли с узким операционным контуром: им показываем компактный «фокус» + сворачиваемый полный список.
+// Широкие роли (владелец, финансы, админ) видят полный сгруппированный список сразу.
+const FOCUSED_ROLES = new Set(['CALL_CENTER', 'COMMERCIAL_MANAGER', 'BROKER', 'COMMERCIAL_DIRECTOR', 'OPERATIONS_MANAGER', 'MARKETING', 'PROPERTY_OWNER', 'CEO']);
+const PRIMARY_NAV: Record<string, string[]> = {
+  CALL_CENTER: ['me', 'deals', 'contacts', 'tasks'],
+  COMMERCIAL_MANAGER: ['me', 'deals', 'contacts', 'property', 'tasks'],
+  BROKER: ['me', 'deals', 'contacts', 'property'],
+  COMMERCIAL_DIRECTOR: ['me', 'deals', 'contacts', 'crmAnalytics', 'commissions'],
+  OPERATIONS_MANAGER: ['controlRoom', 'workorders', 'services', 'property', 'tasks'],
+  MARKETING: ['property', 'deals', 'mall', 'crmAnalytics'],
+  PROPERTY_OWNER: ['ownerPortal'],
+  CEO: ['ceoMorning', 'controlRoom', 'deals', 'payments', 'audit'],
+};
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireSessionUser();
@@ -115,6 +141,41 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const tAuth = await getTranslations('auth');
 
   const items = NAV.filter((item) => !item.permission || can(ctx, item.permission));
+  const byKey = new Map(items.map((i) => [i.key, i]));
+  const sections = SECTION_ORDER.map((s) => ({ s, list: items.filter((i) => i.section === s) })).filter((g) => g.list.length);
+
+  // «Фокус»: пользователь только с узкими ролями получает короткое меню + сворачиваемый полный список.
+  const isFocused = ctx.roles.length > 0 && ctx.roles.every((r) => FOCUSED_ROLES.has(r));
+  const focusKeys = isFocused
+    ? [...new Set(ctx.roles.flatMap((r) => PRIMARY_NAV[r] ?? []))].filter((k) => byKey.has(k))
+    : [];
+  const focusItems = focusKeys.map((k) => byKey.get(k)!);
+  const mobileKeys = (focusKeys.length ? focusKeys : ['me', 'deals', 'contacts', 'owners', 'controlRoom'])
+    .filter((k) => byKey.has(k))
+    .slice(0, 5);
+  const mobileItems = mobileKeys.map((k) => byKey.get(k)!);
+
+  const navLink = (item: NavItem) => (
+    <Link
+      key={item.key}
+      href={item.href}
+      className="group flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] font-medium text-slate-400 transition-colors hover:bg-ink-800 hover:text-white"
+    >
+      <span className="text-slate-600 transition-colors group-hover:text-volt-500">{item.icon}</span>
+      {t(item.key)}
+    </Link>
+  );
+  const sectionBlock = (
+    <div className="space-y-3">
+      {sections.map(({ s, list }) => (
+        <div key={s} className="space-y-0.5">
+          <p className="px-3 pt-1 pb-0.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-slate-600 uppercase">{t(`section.${s}`)}</p>
+          {list.map(navLink)}
+        </div>
+      ))}
+    </div>
+  );
+
   const initials = user.fullName
     .split(/\s+/)
     .slice(0, 2)
@@ -135,17 +196,24 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             D<span className="text-volt-500">MS</span>
           </div>
         </div>
-        <nav className="flex-1 space-y-0.5 px-3 pb-4">
-          {items.map((item) => (
-            <Link
-              key={item.key}
-              href={item.href}
-              className="group flex items-center gap-3 rounded-md px-3 py-2 text-[13.5px] font-medium text-slate-400 transition-colors hover:bg-ink-800 hover:text-white"
-            >
-              <span className="text-slate-600 transition-colors group-hover:text-volt-500">{item.icon}</span>
-              {t(item.key)}
-            </Link>
-          ))}
+        <nav className="flex-1 overflow-y-auto px-3 pb-4">
+          {focusItems.length ? (
+            <>
+              <div className="space-y-0.5">
+                <p className="px-3 pt-1 pb-0.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-volt-600 uppercase">{t('focus')}</p>
+                {focusItems.map(navLink)}
+              </div>
+              <details className="mt-3 group">
+                <summary className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-[12px] font-medium text-slate-500 hover:text-white marker:content-['']">
+                  <span className="transition-transform group-open:rotate-90">›</span>
+                  {t('allSections')}
+                </summary>
+                <div className="mt-2">{sectionBlock}</div>
+              </details>
+            </>
+          ) : (
+            sectionBlock
+          )}
         </nav>
         <div className="border-t border-ink-800 px-5 py-4">
           <p className="font-mono text-[11px] tracking-[0.18em] text-volt-600 uppercase">{ctx.tenantSlug}</p>
@@ -189,12 +257,18 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 p-4 pb-20 md:p-7">{children}</main>
-        {/* P-23: нижняя навигация на телефоне — путь сотрудника CRM (docs/21 §8) */}
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-gray-200 bg-white/95 backdrop-blur md:hidden" aria-label={t('mobileNav')}>
-          {items.filter((i) => ['me', 'deals', 'contacts', 'owners', 'controlRoom'].includes(i.key)).slice(0, 5).map((item) => (
-            <Link key={item.key} href={item.href} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-600 hover:text-brand-600">{item.icon}<span>{t(item.key)}</span></Link>
-          ))}
-        </nav>
+        {/* Нижняя навигация на телефоне — под роль пользователя (фокус-набор), с запасным набором (docs/21 §8) */}
+        {mobileItems.length > 0 && (
+          <nav
+            className="fixed inset-x-0 bottom-0 z-30 grid border-t border-gray-200 bg-white/95 backdrop-blur md:hidden"
+            style={{ gridTemplateColumns: `repeat(${mobileItems.length}, minmax(0, 1fr))` }}
+            aria-label={t('mobileNav')}
+          >
+            {mobileItems.map((item) => (
+              <Link key={item.key} href={item.href} className="flex flex-col items-center gap-0.5 py-2 text-[10px] text-gray-600 hover:text-brand-600">{item.icon}<span>{t(item.key)}</span></Link>
+            ))}
+          </nav>
+        )}
       </div>
     </div>
   );

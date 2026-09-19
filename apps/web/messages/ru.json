@@ -71,7 +71,17 @@
     "contacts": "Клиенты",
     "me": "Мой день",
     "mobileNav": "Навигация",
-    "crmAnalytics": "Аналитика CRM"
+    "crmAnalytics": "Аналитика CRM",
+    "section": {
+      "daily": "Мой день",
+      "commercial": "Коммерция",
+      "property": "Недвижимость",
+      "finance": "Финансы",
+      "reports": "Отчёты и контроль",
+      "admin": "Администрирование"
+    },
+    "allSections": "Все разделы",
+    "focus": "Главное"
   },
   "home": {
     "title": "DMS",
