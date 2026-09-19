@@ -130,3 +130,10 @@
 | service.verify | OWNER, OPERATIONS_MANAGER, COMMERCIAL_MANAGER |
 | service.catalog | OWNER, ADMIN, OPERATIONS_MANAGER |
 | owner.request (заказ услуг и заявки собственника по своим юнитам) | PROPERTY_OWNER |
+
+### Аренда и дебиторка (MDS Property, docs/20 §11.9)
+
+| Право | Роли |
+|---|---|
+| rent.view | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE, ACCOUNTANT, ADMIN, COMMERCIAL_MANAGER |
+| rent.match (зачёт банковских поступлений — единственный путь к PAID) | OWNER, FINANCE_OPS_LEAD, JUNIOR_FINANCE |

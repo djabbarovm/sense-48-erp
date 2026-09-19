@@ -14,19 +14,25 @@ import { RENT_TONE } from './tones';
 
 const period = (c: { periodStart: Date; periodEnd: Date; prorated: boolean }) => `${fmtDate(c.periodStart)} → ${fmtDate(c.periodEnd)}`;
 
-export default async function RentPage({ searchParams }: { searchParams: Promise<{ view?: string; error?: string; unit?: string }> }) {
+const PAGE = 100;
+
+export default async function RentPage({ searchParams }: { searchParams: Promise<{ view?: string; error?: string; unit?: string; page?: string }> }) {
   const ctx = await requireTenantContext();
   if (!can(ctx, 'rent.view')) notFound();
   const sp = await searchParams;
   const t = await getTranslations('rent');
   const view = sp.view ?? 'open';
+  const page = Math.max(1, Number(sp.page ?? '1') || 1);
   const status = view === 'overdue' ? ['OVERDUE' as const] : view === 'paid' ? ['PAID' as const, 'WAIVED' as const] : view === 'all' ? undefined : ['DUE' as const, 'PARTIAL' as const, 'OVERDUE' as const];
   const [rows, summary, incoming] = await Promise.all([
-    listRentCharges(ctx, { ...(status ? { status } : {}), ...(sp.unit ? { unitId: sp.unit } : {}) }),
+    listRentCharges(ctx, { ...(status ? { status } : {}), ...(sp.unit ? { unitId: sp.unit } : {}), take: PAGE + 1, skip: (page - 1) * PAGE }),
     getReceivablesSummary(ctx),
     can(ctx, 'rent.match') ? listUnmatchedIncoming(ctx) : Promise.resolve([]),
   ]);
+  const hasNext = rows.length > PAGE;
+  if (hasNext) rows.pop();
   const openCharges = rows.filter((r) => ['DUE', 'PARTIAL', 'OVERDUE'].includes(r.status));
+  const pageHref = (n: number) => `/rent?view=${view}${sp.unit ? `&unit=${sp.unit}` : ''}&page=${n}`;
   const tabs = ['open', 'overdue', 'paid', 'all'] as const;
   const cur = summary.currency;
 
@@ -88,6 +94,13 @@ export default async function RentPage({ searchParams }: { searchParams: Promise
           </tbody>
         </Table>
       )}
+      {page > 1 || hasNext ? (
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          {page > 1 ? <Link href={pageHref(page - 1)} className="rounded-md bg-gray-100 px-3 py-1.5 hover:bg-gray-200">← {t('prevPage')}</Link> : <span />}
+          <span className="font-mono text-xs text-gray-400">{t('pageN', { n: page })}</span>
+          {hasNext ? <Link href={pageHref(page + 1)} className="rounded-md bg-gray-100 px-3 py-1.5 hover:bg-gray-200">{t('nextPage')} →</Link> : <span />}
+        </div>
+      ) : null}
     </div>
   );
 }

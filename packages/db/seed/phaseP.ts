@@ -399,7 +399,7 @@ export async function seedPhaseP(prisma: PrismaClient): Promise<void> {
   const accountNo = '20208840900000770101';
   let account = await prisma.bankAccount.findFirst({ where: { tenantId, accountMasked: maskAccount(accountNo) } });
   if (!account) account = await prisma.bankAccount.create({ data: { tenantId, bankName: 'Капиталбанк', mfo: '01088', accountMasked: maskAccount(accountNo), accountEncrypted: encryptSecret(accountNo, bankKey), currency: 'USD', openingBalanceMinor: 25_000_000n, openingBalanceDate: new Date('2026-06-01') } });
-  const generated = await generateRentCharges(tenantId);
+  const generated = await generateRentCharges(tenantId, new Date(), { fromMonth: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 2, 1)) }); // последние 3 месяца, только юниты под управлением
   // Оплаты: детерминированно — по каждому третьему начислению прошлых месяцев приходит поступление и зачитывается (PAID только через транзакцию)
   const charges = await prisma.rentCharge.findMany({ where: { tenantId, status: 'DUE' }, include: { lease: { select: { occupantName: true } }, unit: { select: { unitNo: true } } }, orderBy: [{ periodStart: 'asc' }, { unitId: 'asc' }] });
   const finance = (await prisma.userTenantRole.findFirst({ where: { tenantId, role: 'FINANCE_OPS_LEAD' }, select: { userId: true } }))?.userId ?? reporter ?? null;

@@ -80,7 +80,7 @@ export async function getOwnerPortal(ctx: TenantContext, today = new Date()) {
     const rent = v.lease!.rentMinor;
     const fee = v.managedByPlatform ? (rent * BigInt(feeBp)) / 10_000n : 0n;
     const c = monthCharges.get(v.id) ?? null;
-    return { unitNo: v.unitNo, rentMinor: rent, feeMinor: fee, payoutMinor: rent - fee, currency: v.lease!.currency, managed: v.managedByPlatform, receivedMinor: c ? c.receivedMinor : null, outstandingMinor: c ? (c.status === 'PAID' ? 0n : c.amountMinor - c.receivedMinor) : null, chargeStatus: c?.status ?? null };
+    return { unitNo: v.unitNo, rentMinor: rent, feeMinor: fee, payoutMinor: rent - fee, currency: v.lease!.currency, managed: v.managedByPlatform, receivedMinor: c ? c.receivedMinor : null, outstandingMinor: c ? (c.status === 'PAID' ? 0n : c.amountMinor - c.receivedMinor) : null, chargeStatus: c?.status ?? (v.managedByPlatform ? null : 'DIRECT') };
   });
   const totals = statement.reduce((a, l) => ({ rent: a.rent + l.rentMinor, fee: a.fee + l.feeMinor, payout: a.payout + l.payoutMinor }), { rent: 0n, fee: 0n, payout: 0n });
   const requests = await prisma.workOrder.findMany({ where: { tenantId: ctx.tenantId, unitId: { in: units.map((u) => u.id) } }, orderBy: { createdAt: 'desc' }, take: 20, include: { unit: { select: { unitNo: true } } } });

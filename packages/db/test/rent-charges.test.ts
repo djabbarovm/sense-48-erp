@@ -29,6 +29,10 @@ beforeAll(async () => {
   await prisma.propertyOwner.update({ where: { id: ownerId }, data: { userId: ownerUserId } });
   unitId = (await createUnit(ctx(['COMMERCIAL_MANAGER']), { floorId: f.id, unitNo: '901', type: 'APARTMENT', areaM2: 80, ownerId, managedByPlatform: true })).id;
   unit2Id = (await createUnit(ctx(['COMMERCIAL_MANAGER']), { floorId: f.id, unitNo: '902', type: 'APARTMENT', areaM2: 80 })).id;
+  // брокеридж: юнит НЕ под управлением — аренда идёт собственнику напрямую, ORDO не начисляет (BR-P40)
+  const brokered = (await createUnit(ctx(['COMMERCIAL_MANAGER']), { floorId: f.id, unitNo: '903', type: 'APARTMENT', areaM2: 80, managedByPlatform: false })).id;
+  const bl = await createLease(ctx(['COMMERCIAL_MANAGER']), { unitId: brokered, type: 'LTR', occupantName: 'Direct Tenant', startAt: d('2026-01-01'), endAt: null, rentMinor: 500_000n });
+  await activateLease(ctx(['COMMERCIAL_MANAGER']), bl.id, d('2026-01-01'));
   // договор c 16 июля 2026 по 15 октября 2026, $3 000/мес
   const lease = await createLease(ctx(['COMMERCIAL_MANAGER']), { unitId, type: 'LTR', occupantName: 'CityNet', startAt: d('2026-07-16'), endAt: d('2026-10-15'), rentMinor: 300_000n, currency: 'USD' } as never);
   await activateLease(ctx(['COMMERCIAL_MANAGER']), lease.id, d('2026-07-16'));
@@ -39,7 +43,7 @@ beforeAll(async () => {
 });
 afterAll(async () => prisma.$disconnect());
 
-describe('Аренда и дебиторка (BR-P37/P38/P39)', () => {
+describe('Аренда и дебиторка (BR-P37/P38/P39/P40)', () => {
   it('BR-P38: начисления по месяцам c пропорцией, идемпотентно; OWNER_USE не начисляется; RC-номера и audit', async () => {
     expect(await generateRentCharges(tenantId, d('2026-09-10'))).toBe(3); // июль (16 дн), август, сентябрь
     expect(await generateRentCharges(tenantId, d('2026-09-10'))).toBe(0);
@@ -52,6 +56,8 @@ describe('Аренда и дебиторка (BR-P37/P38/P39)', () => {
     expect(rows[0]!.number).toMatch(/^RC-\d{4}-\d{6}$/);
     expect(rows[0]!.dueAt.toISOString().slice(0, 10)).toBe('2026-07-21'); // старт периода + 5 дней льготы
     expect(await prisma.rentCharge.count({ where: { tenantId, unitId: unit2Id } })).toBe(0);
+    expect(await prisma.rentCharge.count({ where: { tenantId, lease: { occupantName: 'Direct Tenant' } } })).toBe(0); // BR-P40
+    expect(await generateRentCharges(tenantId, d('2026-09-10'), { fromMonth: d('2026-09-01') })).toBe(0); // fromMonth не даёт дублей
     await expect(listRentCharges(ctx(['BROKER']))).rejects.toThrow(PermissionDeniedError);
     expect(await prisma.auditLog.count({ where: { tenantId, objectType: 'rent_charge', action: 'rent_charge.create' } })).toBe(3);
   });

@@ -21,14 +21,19 @@ async function graceDays(tenantId: string): Promise<number> {
   return Number.isFinite(v) && v >= 0 ? v : DEFAULT_RENT_GRACE_DAYS;
 }
 
-/** Джоб rent-charges: для каждого действующего договора (не OWNER_USE, rent > 0) начислить месяцы до текущего включительно. */
-export async function generateRentCharges(tenantId: string, now = new Date()): Promise<number> {
+/**
+ * Джоб rent-charges: начислить месяцы до текущего включительно по действующим договорам (не OWNER_USE, rent > 0)
+ * ТОЛЬКО для юнитов под управлением (BR-P40): при брокеридже (LTR/офисы, бизнес-модель Tower §2.1) аренда идёт
+ * собственнику напрямую, ORDO её не собирает и дебиторку не ведёт. `fromMonth` — не начислять периоды раньше (seed/миграция).
+ */
+export async function generateRentCharges(tenantId: string, now = new Date(), opts: { fromMonth?: Date } = {}): Promise<number> {
   const grace = await graceDays(tenantId);
-  const leases = await prisma.leaseContract.findMany({ where: { tenantId, status: { in: ['ACTIVE', 'EXPIRING'] }, type: { not: 'OWNER_USE' }, rentMinor: { gt: 0n } }, include: { unit: { select: { ownerId: true, unitNo: true } } } });
+  const leases = await prisma.leaseContract.findMany({ where: { tenantId, status: { in: ['ACTIVE', 'EXPIRING'] }, type: { not: 'OWNER_USE' }, rentMinor: { gt: 0n }, unit: { managedByPlatform: true } }, include: { unit: { select: { ownerId: true, unitNo: true } } } });
   let n = 0;
   for (const l of leases) {
     const existing = new Set((await prisma.rentCharge.findMany({ where: { leaseId: l.id }, select: { periodStart: true } })).map((c) => c.periodStart.toISOString().slice(0, 10)));
     for (const p of rentPeriods(l.rentMinor, l.startAt, l.endAt, now)) {
+      if (opts.fromMonth && p.periodStart < opts.fromMonth) continue;
       const key = p.periodStart.toISOString().slice(0, 10);
       if (existing.has(key)) continue;
       await withAudit({ tenantId }, async (tx) => {
@@ -103,7 +108,7 @@ export interface RentChargeRow extends RentCharge {
   daysOverdue: number;
 }
 
-export async function listRentCharges(ctx: TenantContext, filter: { status?: RentChargeStatus[]; unitId?: string; leaseId?: string; ownerId?: string; periodFrom?: Date; periodTo?: Date } = {}, now = new Date()): Promise<RentChargeRow[]> {
+export async function listRentCharges(ctx: TenantContext, filter: { status?: RentChargeStatus[]; unitId?: string; leaseId?: string; ownerId?: string; periodFrom?: Date; periodTo?: Date; take?: number; skip?: number } = {}, now = new Date()): Promise<RentChargeRow[]> {
   if (!filter.ownerId) requirePermission(ctx, 'rent.view');
   const where: Prisma.RentChargeWhereInput = { tenantId: ctx.tenantId };
   if (filter.status) where.status = { in: filter.status };
@@ -111,7 +116,7 @@ export async function listRentCharges(ctx: TenantContext, filter: { status?: Ren
   if (filter.leaseId) where.leaseId = filter.leaseId;
   if (filter.ownerId) where.ownerId = filter.ownerId;
   if (filter.periodFrom || filter.periodTo) where.periodStart = { ...(filter.periodFrom ? { gte: filter.periodFrom } : {}), ...(filter.periodTo ? { lte: filter.periodTo } : {}) };
-  const rows = await prisma.rentCharge.findMany({ where, include: { unit: { select: { unitNo: true } }, lease: { select: { occupantName: true } } }, orderBy: [{ dueAt: 'asc' }, { unitId: 'asc' }] });
+  const rows = await prisma.rentCharge.findMany({ where, include: { unit: { select: { unitNo: true } }, lease: { select: { occupantName: true } } }, orderBy: [{ dueAt: 'asc' }, { unitId: 'asc' }], ...(filter.take ? { take: filter.take } : {}), ...(filter.skip ? { skip: filter.skip } : {}) });
   return rows.map(({ unit, lease, ...c }) => ({ ...c, unitNo: unit.unitNo, occupantName: lease.occupantName, outstandingMinor: outstandingOf(c), daysOverdue: OPEN_RENT_STATUSES.includes(c.status) ? Math.max(0, Math.floor((now.getTime() - c.dueAt.getTime()) / 86_400_000)) : 0 }));
 }
 
