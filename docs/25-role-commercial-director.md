@@ -1,8 +1,10 @@
-# Профиль должности №3 — Коммерческий директор (`COMMERCIAL_DIRECTOR`, Камила)
+# Профиль должности №3 — Коммерческий директор (`COMMERCIAL_DIRECTOR`, Камила) · Operating Model v1
 
-> **Статус:** источник истины по роли `COMMERCIAL_DIRECTOR`. Дополняет `docs/22-ordo-tower-tz.md`, `docs/23-role-call-center.md`, `docs/24-role-broker.md`.
-> Интерим: 3 из 4 профилей (Мурад — далее). Реальность кода сверена с `docs/SYSTEM_MAP.md` — см. раздел **R**.
-> **В seed Камилы нет — надо завести** (не в этот заход). **Не строить** новые сущности/миграции из профиля, пока не придёт полный набор. Гардрейлы: миграции с откатом; в `main` без полного диффа не вливать.
+> **Статус: подтверждено как Operating Model v1 Камилы.** Источник истины по роли `COMMERCIAL_DIRECTOR`.
+> Хребет: `docs/22-ordo-tower-tz.md` + `docs/SYSTEM_MAP.md`. Дополняет `docs/23-role-call-center.md`, `docs/24-role-broker.md`.
+> **В seed Камилы нет — надо завести** (не в этот заход). Руководитель — Мурад (`CEO`/`OWNER` — не фиксируем, профиль №4).
+> **Не строить** новые сущности/миграции из профиля, пока не придёт полный набор. Гардрейлы: миграции с откатом; в `main` без полного диффа не вливать.
+> Реальность кода сверена с `docs/SYSTEM_MAP.md` — см. раздел **R**. **Implementation status — только из кода** (требование Operating Model ≠ «построено»).
 
 ---
 
@@ -20,7 +22,8 @@
 
 ## 4. Камила видит ВСЁ здание (не только активные листинги)
 Property/Commercial view = весь Tower: квартиры · офисы · **parking · storage/кладовые · depo** · ownership · occupancy · commercial status · owner intent/discovery · активные листинги · простаивающие · неизвестные собственники · сдано/продано/используется собственником · где нет данных.
-- **Parking / storage / depo — часть asset inventory Tower.** Коммерческую механику этих типов расширим позже. **Master inventory обязан включать эти типы, а не только квартиры/офисы.**
+- **Parking / storage / depo — обязательная часть будущего master inventory Tower.** По каждому asset в итоге знать: **asset type · identifier · owner · ownership link · status · occupancy/use · commercial intent.** Коммерческую механику этих типов расширим позже. **Master inventory Property обязан включать эти типы, а не только квартиры/офисы.**
+  > *Это требование к будущему инвентарю. Implementation status этих сущностей/экранов брать ТОЛЬКО из кода — не помечать `РЕАЛЬНО`, пока их нет (см. §14).*
 
 ## 5. Команда: drill-down + QA + нагрузка + планы
 - **Drill-down без переключения в чужой профиль.** По Умару: очередь · карточки · звонки · результаты · записи · owner discovery · handoffs · возвраты · история · KPI · follow-up. По Азизу: сделки · карточка · клиент · собственник · листинг · показы · звонки · история · документы · next actions · cash custody · договор · handoff · KPI · bonus.
@@ -29,9 +32,10 @@ Property/Commercial view = весь Tower: квартиры · офисы · **p
 - **Планы сотрудникам** (meaningful outputs). Умар: актуализированные собственники · qualified handoffs · SLA · owner discovery. Брокеры: сделки · показы · закрытия · listings.
 
 ## 6. Деньги — managerial control, не исполнение
-- **Cash custody (подтверждено).** `клиент → Азиз получил cash → передал Камиле → Камила внесла в кассу → после фактической сдачи settlement → PAID`. Статусы: `EXPECTED → RECEIVED_BY_BROKER → HANDED_TO_KAMILA → DEPOSITED_TO_CASH_DESK → PAID`. На каждом этапе: сумма · сделка · **кто физически держит деньги** · когда получил/передал/кому · история custody. **PAID нельзя, пока деньги просто у Азиза или у Камилы.** Это **новое право/действие Камилы (Phase 3), отдельно от `rent.match`.**
+- **Cash custody (цепочка подтверждена, последний шаг OPEN).** `Client → Broker received → Handed to Kamila → Kamila handed/deposited to Cash Desk → final receipt confirmation → PAID`. Статусы: `EXPECTED → RECEIVED_BY_BROKER → HANDED_TO_KAMILA → DEPOSITED_TO_CASH_DESK → PAID`. На каждом этапе: сумма · сделка · **кто физически держит деньги** · когда получил/передал/кому · история custody. **PAID нельзя, пока деньги просто у Азиза или у Камилы.** Это **новое действие (Phase 3), отдельно от `rent.match`.**
+  > **DECISION NEEDED (не фиксировать):** кто подтверждает **final receipt** — Камила или отдельный cashier/accounting actor. **Self-confirmation Камилы не фиксировать, пока не определён Cash Desk** (§15.B).
 - **Безнал:** факт поступления подтверждает **банк/финансы** (bank-match), не Камила. Два пути settlement — **BANK и CASH**, bank-match не ломать.
-- **Дебиторка = прежде всего неоплаченные комиссии ORDO.** Обычную LTR-аренду ORDO в брокеридже не собирает — **не показывать как коммерческую дебиторку Камилы.** Показывать: комиссии ожидаются · просрочены · cash в custody · безнал ожидается.
+- **«Комиссии к получению» (вместо абстрактной «Дебиторки»).** Главный денежный блок UX Камилы — комиссии ORDO с состояниями: `ожидается · просрочено · cash у брокера · cash у Камилы · передано в кассу · безнал ожидается · подтверждено`. **Не смешивать с RentCharge собственника по обычному brokerage-LTR** — эту аренду ORDO не собирает и как коммерческую дебиторку Камилы не показывать.
 - **Внешний брокер:** Азиз ничего по split не обещает. Условия определяет **Камила**: `involvement → proposal → approval Камилы → согласовано`. Отдельный approval.
 - **Бонусы = managerial quality gate.** Камила подтверждает бонус/KPI и **вправе не подтвердить**, если сделка формально закрыта, но не выполнена обязательная часть (нет документов/акта/фото/handoff, неполные данные, нарушен процесс). **CLOSED DEAL ≠ AUTOMATIC BONUS.** **Фактическую выплату Камиле не отдавать** (`bonus.pay` — Finance/OWNER).
 
@@ -60,35 +64,38 @@ Property/Commercial view = весь Tower: квартиры · офисы · **p
 Камилу **не геймифицируем как продавца.** Видит результаты команды и контролирует правила/результаты; сотрудничья геймификация — отдельный слой позже.
 
 ## 13. Права в системе (реальная матрица + новое)
-- **Реально (matrix.ts):** `deal.view/manage` (все сделки), `deal.contact.view`, `lease.view/manage`, `commission.view/manage`, `bonus.view/confirm_kpi`, `owner.activity`, `unit.publish`, `unit.pricing.edit`, `property.view`, `rent.view`, `mall.manage`, `crmAnalytics` (экран). — часть этих (mall/pricing/rent) требует пересмотра/границы, см. R.
-- **Новое (Phase 3):** подтвердить **cash-settlement → PAID** (после сдачи в кассу; отдельно от `rent.match`); **QA-доступ**; **drill-down** в работу Умара/Азиза; **постановка планов**.
+- **Реально (по SYSTEM_MAP / `matrix.ts`):** `deal.view/manage` (все сделки), `deal.contact.view`, **`lease.view/manage`**, **`commission.view/manage`**, `bonus.view/confirm_kpi`, `owner.activity`, `unit.publish`, `unit.pricing.edit`, `rent.view`, `mall.manage`, `property.view`, `crmAnalytics` (экран).
+- **RECONCILIATION NEEDED (тех. право есть, но operating workflow его не использует — не удалять молча):**
+  - **`lease.manage`** — технически есть, но обычный workflow **не предполагает ведение договоров вместо брокера**. Позже: оставить как **managerial fallback** или убрать.
+  - **`commission.manage`** — наличие permission **не означает**, что Камила вручную меняет авторассчитанную комиссию ORDO. Её денежные действия: **external broker split · bonus/KPI quality gate · cash custody/settlement · exceptions**. Авторассчитанную экономику **не превращать в свободно редактируемое поле директора**. Позже — область permission.
+- **Новое (Phase 3):** подтвердить **cash-settlement → PAID** (после сдачи в кассу; отдельно от `rent.match`; актор final receipt — §6/§15.B); **QA-доступ**; **drill-down** в работу Умара/Азиза; **постановка планов**.
 - **Пересмотреть:** `unit.pricing.edit` — цену ставит собственник (§7).
 - **Убрать из Tower-профиля (UX-граница, не право):** `mall.manage` (§9).
 - **Нет:** `rent.match` (банк — финансы), `bonus.pay` (выплата — финансы/OWNER).
-- **Дебиторка = комиссии** (§6), не LTR-аренда.
+- **Денежный UX = «Комиссии к получению»** (§6), не LTR-аренда собственника.
 
 ## 14. Что уже есть в коде vs строить (сверено с SYSTEM_MAP)
 | Возможность | Статус | Комментарий |
 |---|---|---|
-| Роль `COMMERCIAL_DIRECTOR` (надзор, ADR-038) | `РЕАЛЬНО` (право) | **в seed Камилы нет — завести** |
+| Роль `COMMERCIAL_DIRECTOR` (надзор, ADR-038) | `РЕАЛЬНО` (право) | **в seed Камилы нет** — завести |
 | Control Room «сегодня», `crmAnalytics` | `РЕАЛЬНО` | но **«Пульта: где факапнем» (§3) нет** |
 | Комиссии/бонусы, confirm KPI | `РЕАЛЬНО` | `commissions.ts`, `assertKpiConfirmable` |
 | Пульт-приоритет «исключения/вмешательство» | `НЕ ПОСТРОЕНО` | §3, §2 |
-| Building-wide view (parking/storage/depo, owner intent) | `ТОНКО/НЕ ПОСТРОЕНО` | §4; `UnitType` уже есть PARKING/STORAGE, `depo` нет; owner intent — нет |
+| Building-wide view + parking/storage/depo как сущности/экраны | `НЕ ПОСТРОЕНО` | §4 — требование к инвентарю; `UnitType` имеет PARKING/STORAGE, но building-wide view Камилы, `depo`, owner intent — нет |
 | Drill-down в работу Умара/Азиза | `НЕ ПОСТРОЕНО` | §5 |
-| QA / записи звонков + оценка | `ТОНКО` | `UnitActivity.recordingUrl`/`durationSec` есть (телефония), QA-оценки нет |
+| QA / записи звонков + оценка | `НЕ ПОСТРОЕНО` | §5 (телефонные `recordingUrl`/`durationSec` в `UnitActivity` есть, QA-экрана/оценки нет) |
 | Workload по брокерам + LOW/NORMAL/HIGH | `НЕ ПОСТРОЕНО` | §5 |
 | Планы сотрудникам | `НЕ ПОСТРОЕНО` | §5 |
-| Cash-settlement → PAID (custody-статусы) | `НЕ ПОСТРОЕНО` | §6, Phase 3 (BANK/CASH) |
-| Дебиторка = комиссии (не LTR) | `ТОНКО` | `getReceivablesSummary` RentCharge-центрична |
-| Сплит внешнему брокеру — approval | `ТОНКО` | `externalShareBp` в данных есть, approval-действия нет |
-| Bonus как quality-gate (отказать) | `ТОНКО` | KPI-confirm есть; «не подтвердить по неполному handoff/пакету» не смоделировано |
-| Авто-ротация договора + exception | `ТОНКО/НЕ ПОСТРОЕНО` | §8; `markExpiringLeases` job есть, exception-надзор — нет |
+| Cash-settlement → PAID (custody-статусы) | `НЕ ПОСТРОЕНО` | §6, Phase 3 (BANK/CASH); актор final receipt — DECISION NEEDED |
+| «Комиссии к получению» (не LTR RentCharge) | `ТОНКО` | сейчас RentCharge-центрично; переориентировать на комиссии |
+| Сплит внешнему брокеру — approval | `ТОНКО` | `externalShareBp` в данных есть, действия approval нет |
+| Bonus как quality-gate (отказать) | `ТОНКО` | confirm есть, «не подтвердить по качеству» — уточнить |
+| Авто-ротация договора + exception | `НЕ ПОСТРОЕНО` | §8 (`markExpiringLeases` job есть, надзорный exception — нет) |
 | STR backlog / Mall вне Tower / Marketing вне подчинения | `КОНФИГ/ГРАНИЦА` | §9 |
 
 ## 15. Открытые решения (НЕ фиксировать без Мурада)
-- **A. Главный месячный KPI Камилы — не выбран** (closed deals · commission · commercialized assets · occupancy · overall result). Решаем в связке с профилем №4.
-- **B. Кто физически «касса» (CASH DESK)** и каким документом закрывается передача наличных — не зафиксировано, не придумывать.
+- **A. Главный месячный KPI Камилы — не выбран** (closed deals · ORDO commission · commercialized assets · occupancy · overall commercial result). Решаем осознанно, в связке с профилем №4.
+- **B. Кто физически «касса» (CASH DESK)** и каким документом закрывается передача наличных — **не зафиксировано, не придумывать.**
 - **C. Точные escalation-пороги к Мураду** — профиль CEO.
 
 ---
@@ -96,41 +103,47 @@ Property/Commercial view = весь Tower: квартиры · офисы · **p
 ## R. Реконсиляция с кодом (проверено — деструктивно сейчас НЕ переделывать)
 
 ### R0. Камилы нет в seed — **ФАКТ** (завести отдельно)
-`phaseP.ts` не создаёт пользователя с ролью `COMMERCIAL_DIRECTOR`. Роль в RBAC есть (ADR-038), но живого юзера нет. Чтобы Камила могла войти/тестироваться — добавить seed-запись (мелкая правка seed, **не в этот заход**; согласовать имя/email).
+`phaseP.ts` не создаёт пользователя `COMMERCIAL_DIRECTOR`. Роль в RBAC есть (ADR-038), живого юзера нет. Для входа/тестов — добавить seed-запись (мелкая правка, **не в этот заход**; согласовать имя/email).
 
 ### R1. «Пульт: где факапнем» — **НЕ ПОСТРОЕНО** (есть смежное)
-`controlRoom.ts` + `/property/today` собирают «сегодня» (today/commercial/owners/operations), `crmAnalytics` — воронка/скорость. Но **exception-first пульта директора** (§3, приоритет «требуют внимания → вмешательство») нет. Строить в Phase 3/4 (пересекается с CEO-пультом исключений §5.4 ТЗ — но у директора шире, включает команду и коучинг).
+`controlRoom.ts` + `/property/today` собирают «сегодня»; `crmAnalytics` — воронка/скорость. Exception-first пульта директора (§3, «требуют внимания → вмешательство», команда+коучинг) нет. Строить в Phase 3/4; шире, чем CEO-пульт исключений (§5.4 ТЗ).
 
-### R2. Cash-settlement → PAID как новое право — **НЕ ПОСТРОЕНО** (Phase 3)
-Сейчас PAID только через `matchCommissionReceipt` (`rent.match` = финансы). У Камилы `rent.match` **нет** и не должно быть. Нужно **новое действие/право** «подтвердить сдачу наличных в кассу → PAID» с custody-статусами (`EXPECTED→RECEIVED_BY_BROKER→HANDED_TO_KAMILA→DEPOSITED_TO_CASH_DESK→PAID`). Это второй settlement-путь (CASH) рядом с BANK. **Bank-match не ломать.** Открытый вопрос §15.B (кто «касса») блокирует финальную модель — пока не придумывать.
+### R2. Cash-settlement → PAID — **НЕ ПОСТРОЕНО, актор final receipt OPEN**
+PAID только через `matchCommissionReceipt` (`rent.match` = финансы). У Камилы `rent.match` нет и не должно быть. Нужно **новое действие** «подтвердить сдачу наличных → PAID» с custody-статусами (`EXPECTED→RECEIVED_BY_BROKER→HANDED_TO_KAMILA→DEPOSITED_TO_CASH_DESK→PAID`) — второй путь (CASH) рядом с BANK. **Bank-match не ломать.** **Кто подтверждает final receipt (Камила / отдельный cashier) — НЕ фиксировать** (§15.B) → self-confirm Камилы пока не закладывать.
 
-### R3. `unit.pricing.edit` у Камилы — **КОНФЛИКТ владения решением**
-Код: `unit.pricing.edit` = OWNER/COMMERCIAL_MANAGER/COMMERCIAL_DIRECTOR (`matrix.ts:104`) — у Камилы **есть**. Профиль (§7): цену определяет собственник, Камила не утверждает обычную цену. Т.е. техническое право есть, но бизнес-владелец решения = собственник. **Реконсиляция:** оставить право как «внести/зафиксировать», но UX не подаёт это как «директор утверждает цену»; нужна история цены (её нет — см. профиль брокера R2). Матрицу сейчас не менять.
+### R3. `commission.manage` — **RECONCILIATION NEEDED** (право шире workflow)
+Код: `commission.manage` = OWNER/CM/COMMERCIAL_DIRECTOR (`matrix.ts:139`) — у Камилы есть. Комиссия ORDO рассчитывается авто (`computeCommission`/`accrueCommission`). Профиль (§13): наличие права ≠ ручное редактирование авторасчёта; денежные действия Камилы — split-approval, bonus quality-gate, cash-settlement, exceptions. **Реконсиляция:** не подавать авторассчитанную комиссию как свободно редактируемое поле директора; позже сузить область `commission.manage` (или гейтить конкретные действия). Матрицу сейчас не менять.
 
-### R4. `mall.manage` у Камилы — **ГРАНИЦА, не код-правка сейчас**
-Код: `mall.manage` = OWNER/CM/COMMERCIAL_DIRECTOR (`matrix.ts:147`) — есть. Профиль (§9): Mall — отдельный контур, убрать из Tower-профиля. **Реконсиляция:** это UX/навигационная граница (не показывать Mall в Tower-профиле Камилы), а не снятие права — Mall реально её контур в другом месте. Отдельного удаления права не делаем.
+### R4. `lease.manage` — **RECONCILIATION NEEDED** (managerial fallback vs убрать)
+Код: `lease.manage` = OWNER/CM/COMMERCIAL_DIRECTOR/BROKER (`matrix.ts:112`) — у Камилы есть. Профиль (§13): обычный workflow не предполагает ведение договоров вместо брокера. **Реконсиляция:** решить позже — оставить как managerial fallback (аварийно) или убрать из профиля. Сейчас не трогать.
 
-### R5. Дебиторка = комиссии, не LTR — **ТОНКО** (совпадает по намерению)
-Код: `getReceivablesSummary` считает из `RentCharge` (только под управлением); брокеридж LTR дебиторку не создаёт (ADR-043). Профиль просит показывать директору **комиссии (ожидаются/просрочены) + cash custody + безнал**, а не LTR-дебиторку. **Реконсиляция:** нужен агрегат «комиссионная дебиторка» (из `Commission.outstanding`) для пульта — сейчас есть только per-row в `listCommissions`. Строить с пультом (R1).
+### R5. `unit.pricing.edit` у Камилы — **КОНФЛИКТ владения решением**
+Код: у Камилы есть (`matrix.ts:104`). Профиль (§7): цену определяет собственник, Камила не утверждает обычную цену. **Реконсиляция:** право оставить как «зафиксировать», UX не «директор утверждает цену»; нужна история цены (её нет — профиль брокера R2). Матрицу не менять.
 
-### R6. Bonus quality-gate (право не подтвердить) — **ТОНКО**
-Код: `confirmKpi`/`assertKpiConfirmable` проверяют KPI-чеклист (5 пунктов) и self-confirm. Но «не подтвердить бонус, потому что нет акта/фото/handoff-пакета» — это шире KPI-чеклиста и **не смоделировано** (handover-пакета в коде вообще нет — см. профиль брокера R6). **Реконсиляция:** quality-gate завязать на полноту handover/contract-пакета, когда он появится (Phase 3). `bonus.pay` у Камилы нет — **совпадает** (выплата = финансы/OWNER).
+### R6. `mall.manage` у Камилы — **ГРАНИЦА, не код-правка сейчас**
+Код: есть (`matrix.ts:147`). Профиль (§9): Mall — отдельный контур, убрать из Tower-профиля. **Реконсиляция:** UX/навигационная граница (не показывать Mall в Tower-профиле), не снятие права — Mall её контур в другом месте.
 
-### R7. Внешний брокер split-approval — **ТОНКО**
-`Deal.externalBrokerName`/`externalShareBp` + вычет в `Commission.netMinor` есть; **approval-действия Камилы нет**. Добавить approval-флоу (`involvement → proposal → approval`) в Phase 3.
+### R7. «Комиссии к получению» = комиссии, не LTR — **ТОНКО** (совпадает по намерению)
+`getReceivablesSummary` считает из `RentCharge` (только под управлением); brokerage-LTR дебиторку не создаёт (ADR-043). Профиль (§6): показывать комиссии (ожидается/просрочено/cash-custody/безнал/подтверждено). **Реконсиляция:** нужен агрегат «комиссии к получению» из `Commission` (сейчас — только per-row `outstanding` в `listCommissions`). Строить с пультом (R1).
 
-### R8. Авто-ротация договора + exception-надзор — **ТОНКО/НЕ ПОСТРОЕНО**
-`markExpiringLeases` (job) переводит договоры в EXPIRING и создаёт задачи. Но «renewal-задача Азизу + всплытие как exception Камиле при непроработке» — надзорной части нет. Строить с пультом.
+### R8. Bonus quality-gate (право не подтвердить) — **ТОНКО**
+`confirmKpi`/`assertKpiConfirmable` проверяют 5-пунктовый KPI-чеклист + self-confirm. «Не подтвердить, потому что нет акта/фото/handoff-пакета» шире и **не смоделировано** (handover-пакета в коде нет — профиль брокера R6). **Реконсиляция:** quality-gate завязать на полноту handover/contract-пакета (Phase 3). `bonus.pay` у Камилы нет — **совпадает**.
 
-### R9. Building-wide inventory (parking/storage/depo + owner intent) — **ТОНКО/НЕ ПОСТРОЕНО**
-`UnitType` уже содержит `PARKING`, `STORAGE` (и `COMMON`/`TECHNICAL`); **`depo`/`DEPO` как тип нет** — уточнить, отдельный тип или подвид STORAGE. Owner intent/discovery-слой — нет (пересекается с Intent из ТЗ §3, профиль КЦ R6). Property view существует; «весь Tower с этими типами и intent» — расширять после загрузки реального master inventory (профиль КЦ R4).
+### R9. Внешний брокер split-approval — **ТОНКО**
+`Deal.externalBrokerName`/`externalShareBp` + вычет в `Commission.netMinor` есть; approval-действия Камилы (`involvement→proposal→approval`) нет. Строить в Phase 3.
 
-### R10. Drill-down / QA / workload / планы — **НЕ ПОСТРОЕНО** (QA-хуки частично)
-Drill-down в чужую работу из своего профиля, workload LOW/NORMAL/HIGH, планы сотрудникам — нет. QA: `UnitActivity` уже хранит `recordingUrl`/`durationSec`/`callDirection` (телефония P-26), т.е. записи привязываются — но экрана прослушки/оценки нет. Строить в фазе пульта.
+### R10. Авто-ротация договора + exception-надзор — **НЕ ПОСТРОЕНО** (частично)
+`markExpiringLeases` (job) переводит договоры в EXPIRING и создаёт задачи. «renewal-задача Азизу + всплытие как exception Камиле при непроработке» — надзорной части нет. Строить с пультом.
 
-### R11. Права `COMMERCIAL_DIRECTOR` — **в основном СОВПАДАЕТ** (с 2 границами)
-Есть всё из §13 «Реально» плюс `lease.manage`, `rent.view`, `mall.manage`, `unit.pricing.edit`. Нет `rent.match`, `bonus.pay` — **совпадает** с профилем. Две границы к пересмотру (не сейчас): `unit.pricing.edit` (R3) и `mall.manage` (R4). Область видимости «видит всю команду» — доменная (ADR-038), не матрица; drill-down (R10) её реализует.
+### R11. Building-wide inventory (parking/storage/**depo** + owner intent) — **НЕ ПОСТРОЕНО**
+`UnitType` содержит `PARKING`, `STORAGE`, `COMMON`, `TECHNICAL`; **`DEPO`/`depo` типа нет** — уточнить (отдельный тип или подвид STORAGE). Building-wide commercial view Камилы и owner intent/discovery-слой — нет (intent пересекается с Intent из ТЗ §3, профиль КЦ R6). Расширять после загрузки реального master inventory (профиль КЦ R4). **Статус берём из кода — `РЕАЛЬНО` не помечать, пока сущностей/экранов нет.**
+
+### R12. Drill-down / QA / workload / планы — **НЕ ПОСТРОЕНО** (QA-хуки частично)
+Drill-down в чужую работу, workload LOW/NORMAL/HIGH, планы — нет. QA: `UnitActivity` хранит `recordingUrl`/`durationSec`/`callDirection` (P-26), записи привязываются, но экрана прослушки/оценки нет. Строить в фазе пульта.
+
+### R13. Права `COMMERCIAL_DIRECTOR` — **в основном СОВПАДАЕТ** (3 reconciliation-пункта)
+Есть всё из §13 «Реально» + `lease.manage`, `rent.view`, `mall.manage`, `unit.pricing.edit`. Нет `rent.match`, `bonus.pay` — **совпадает**. К пересмотру (не сейчас): `commission.manage` (R3), `lease.manage` (R4), `unit.pricing.edit` (R5); граница `mall.manage` (R6). Область видимости «вся команда» — доменная (ADR-038), реализуется drill-down (R12).
 
 ---
 
-*Профиль №3 — финальная подтверждённая версия, записан как источник. Следующий и последний — №4 Мурад: осознанно `CEO` vs `OWNER`, escalation-пороги, главный KPI Камилы (§15.A), «касса» (§15.B). После №4 — сведём 4 профиля в единый набор и синхронизируем SYSTEM_MAP + план фаз/M3.*
+*Профиль №3 — **зафиксирован как Operating Model v1**, записан как источник. Открытые: §15.A (главный KPI), §15.B (Cash Desk + документ) и §6 (актор final receipt), §15.C (пороги эскалации) — под профиль №4. RECONCILIATION NEEDED: `commission.manage`, `lease.manage`, `unit.pricing.edit`, граница `mall.manage`. Профиль №4 (Мурад) — не начинаю, жду отдельных вводных. После №4 — сведём 4 профиля и синхронизируем SYSTEM_MAP + план фаз/M3.*
