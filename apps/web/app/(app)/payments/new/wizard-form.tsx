@@ -10,6 +10,7 @@ export interface SourceOption {
   type: 'INVOICE' | 'PR' | 'CONTRACT';
   id: string;
   label: string;
+  ref: string; // готовое назначение платежа — подставляется в «Назначение», чтобы не печатать вручную
 }
 
 const EMPTY: WizardState = {
@@ -52,7 +53,18 @@ export function PaymentWizard({ sources }: { sources: SourceOption[] }) {
           </div>
           <div>
             <Label htmlFor="pw-source">{t('sourceObject')}</Label>
-            <Select id="pw-source" name="sourceId" required defaultValue={values.sourceId}>
+            <Select
+              id="pw-source"
+              name="sourceId"
+              required
+              defaultValue={values.sourceId}
+              onChange={(e) => {
+                // Автоподстановка назначения из выбранного объекта, если поле пустое (без перезаписи ручного ввода)
+                const opt = options.find((s) => s.id === e.target.value);
+                const purposeEl = document.getElementById('pw-purpose') as HTMLInputElement | null;
+                if (opt && purposeEl && !purposeEl.value) purposeEl.value = opt.ref;
+              }}
+            >
               <option value="">—</option>
               {options.map((s) => (
                 <option key={s.id} value={s.id}>

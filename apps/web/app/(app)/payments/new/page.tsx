@@ -47,16 +47,19 @@ export default async function NewPaymentPage() {
       type: 'INVOICE' as const,
       id: i.id,
       label: `${i.number} · ${name(i.vendorId)} · ${formatMoney(money(i.amountGrossMinor, i.currency))}`,
+      ref: `Оплата СФ ${i.number}${name(i.vendorId) ? ' · ' + name(i.vendorId) : ''}`,
     })),
     ...prs.map((p) => ({
       type: 'PR' as const,
       id: p.id,
       label: `${p.number} · ${p.what} · ${formatMoney(money(p.totalMinor, 'UZS'))}`,
+      ref: `${p.number} · ${p.what}`,
     })),
     ...contracts.map((c) => ({
       type: 'CONTRACT' as const,
       id: c.id,
       label: `${c.number} · ${name(c.vendorId)}`,
+      ref: `Оплата по договору ${c.number}${name(c.vendorId) ? ' · ' + name(c.vendorId) : ''}`,
     })),
   ];
 
