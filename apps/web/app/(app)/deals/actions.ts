@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { DealLostReason, DealProduct, DealSource, TenantCategory, UnitActivityKind } from '@finance-os/db';
+import type { DealLostReason, DealProduct, DealSource, TenantCategory, UnitActivityKind, ReturnReason } from '@finance-os/db';
 import { NotFoundError, PermissionDeniedError, ValidationError, IllegalTransitionError } from '@finance-os/core';
-import { activateLease, addDealActivity, closeSale, confirmKpi, createDeal, createLease, createProposal, markChecklistItem, moveDeal, updateDeal } from '@finance-os/db';
+import { activateLease, addDealActivity, closeSale, confirmKpi, createDeal, createLease, createProposal, markChecklistItem, moveDeal, returnToQualification, updateDeal } from '@finance-os/db';
 import { KPI_CHECKLIST_ITEMS } from '@finance-os/core';
 import { requireTenantContext } from '@/lib/session';
 
@@ -150,4 +150,13 @@ export async function createProposalAction(formData: FormData): Promise<void> {
   const id = String(formData.get('dealId'));
   const unitIds = formData.getAll('unitIds').map(String).filter(Boolean);
   await run(`/deals/${id}`, () => createProposal(ctx, id, { unitIds, note: str(formData, 'note') ?? null, validDays: Number(str(formData, 'validDays') ?? 7) || 7 }).then(() => undefined));
+}
+
+/** Slice 2: брокер возвращает сделку на переквалификацию с типизированной причиной (docs/24 §1). */
+export async function returnToQualificationAction(formData: FormData): Promise<void> {
+  const ctx = await requireTenantContext();
+  const id = String(formData.get('dealId'));
+  const reason = str(formData, 'reason') as ReturnReason | undefined;
+  const note = str(formData, 'note');
+  await run(`/deals/${id}`, () => returnToQualification(ctx, id, { reason: reason as ReturnReason, ...(note ? { note } : {}) }).then(() => undefined));
 }

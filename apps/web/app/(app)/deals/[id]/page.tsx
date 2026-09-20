@@ -3,11 +3,11 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle, ArrowLeft, ArrowRight, BadgePercent, Building2, CheckCircle2, Circle, FileText, MessageSquare, RotateCcw, XCircle } from 'lucide-react';
 import { DEAL_LOST_REASONS, DEAL_PRODUCTS, DEAL_SOURCES, LEASE_TYPES, NotFoundError, SALE_PRODUCTS, TENANT_CATEGORIES, can } from '@finance-os/core';
-import { getDeal, getDealCommission, listDealManagers, listProposals, listUnits } from '@finance-os/db';
+import { getDeal, getDealCommission, listDealManagers, listProposals, listUnits, RETURN_REASONS } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select } from '@/components/ui';
 import { fmtDate, fmtRate } from '@/components/property';
-import { addDealActivityAction, checklistAction, closeSaleAction, confirmKpiAction, createLeaseFromDealAction, createProposalAction, moveDealAction, updateDealAction } from '../actions';
+import { addDealActivityAction, checklistAction, closeSaleAction, confirmKpiAction, createLeaseFromDealAction, createProposalAction, moveDealAction, returnToQualificationAction, updateDealAction } from '../actions';
 import { BONUS_TONE, COMMISSION_TONE } from '../../commissions/tones';
 
 function Row({ k, v }: { k: string; v: React.ReactNode }) {
@@ -65,6 +65,15 @@ export default async function DealPage({ params, searchParams }: { params: Promi
             ) : null}
           </div>
           {deal.stage === 'CONTRACT' || deal.stage === 'MOVE_IN' ? <p className="mt-2 text-xs text-gray-500">{t('winHint')}</p> : null}
+          {!closed && deal.stage !== 'NEW' ? (
+            <form action={returnToQualificationAction} className="mt-2 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2">
+              <input type="hidden" name="dealId" value={deal.id} />
+              <span className="text-xs text-gray-500">{t('returnToQualification')}</span>
+              <Select name="reason" required aria-label={t('returnReason')} className="w-52"><option value="">{t('returnReason')}</option>{RETURN_REASONS.map((r) => (<option key={r} value={r}>{t(`returnReasonKind.${r}`)}</option>))}</Select>
+              <Input name="note" placeholder={t('returnNote')} className="w-48" aria-label={t('returnNote')} />
+              <Button type="submit" variant="outline" size="sm"><RotateCcw className="h-3.5 w-3.5" />{t('returnBtn')}</Button>
+            </form>
+          ) : null}
         </Card>
       ) : null}
 

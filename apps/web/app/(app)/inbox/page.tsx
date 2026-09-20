@@ -5,8 +5,9 @@ import { PhoneCall, UserSearch, AlertCircle, ArrowRight } from 'lucide-react';
 import { can } from '@finance-os/core';
 import { listDeals, getOwnerPipeline, type DealRow } from '@finance-os/db';
 import { requireTenantContext } from '@/lib/session';
-import { Badge, Card, PageHeader, cn } from '@/components/ui';
+import { Badge, Button, Card, PageHeader, cn } from '@/components/ui';
 import { fmtDate } from '@/components/property';
+import { handoffAction } from './actions';
 
 /*
  * Инбокс колл-центра (профиль CALL_CENTER, docs/23). REUSE-first: собран из существующих
@@ -16,28 +17,39 @@ import { fmtDate } from '@/components/property';
  * в карточку сделки, где назначается менеджер). Собственная intake-воронка — OPEN A (Intake vs Deal).
  */
 
-function DealLine({ d, t }: { d: DealRow; t: Awaited<ReturnType<typeof getTranslations>> }) {
+function DealLine({ d, t, canHandoff }: { d: DealRow; t: Awaited<ReturnType<typeof getTranslations>>; canHandoff: boolean }) {
   return (
-    <Link href={`/deals/${d.id}`} className="flex items-center gap-3 border-t border-gray-100 px-3 py-2.5 first:border-t-0 hover:bg-gray-50">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gray-100 text-gray-500"><PhoneCall className="h-4 w-4" /></span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="truncate text-[13.5px] font-semibold text-gray-900">{d.company ?? d.contactName}</span>
-          {d.attention.length ? <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" aria-label={t('inbox.attention')} /> : null}
+    <div className="flex items-center gap-3 border-t border-gray-100 px-3 py-2.5 first:border-t-0 hover:bg-gray-50">
+      <Link href={`/deals/${d.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gray-100 text-gray-500"><PhoneCall className="h-4 w-4" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate text-[13.5px] font-semibold text-gray-900">{d.company ?? d.contactName}</span>
+            {d.attention.length ? <AlertCircle className="h-3.5 w-3.5 shrink-0 text-red-500" aria-label={t('inbox.attention')} /> : null}
+          </span>
+          <span className="block truncate text-[11px] text-gray-500">
+            {t(`deals.source.${d.source}`)} · {t(`deals.stage.${d.stage}`)}
+            {d.nextAction ? ` · ${fmtDate(d.nextActionAt)}: ${d.nextAction}` : ` · ${t('inbox.noNextAction')}`}
+          </span>
         </span>
-        <span className="block truncate text-[11px] text-gray-500">
-          {t(`deals.source.${d.source}`)} · {t(`deals.stage.${d.stage}`)}
-          {d.nextAction ? ` · ${fmtDate(d.nextActionAt)}: ${d.nextAction}` : ` · ${t('inbox.noNextAction')}`}
-        </span>
-      </span>
-      <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" />
-    </Link>
+      </Link>
+      {canHandoff ? (
+        <form action={handoffAction}>
+          <input type="hidden" name="dealId" value={d.id} />
+          <input type="hidden" name="back" value="/inbox" />
+          <Button type="submit" size="sm" variant="outline">{t('inbox.handoff')}</Button>
+        </form>
+      ) : (
+        <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" />
+      )}
+    </div>
   );
 }
 
 export default async function InboxPage() {
   const ctx = await requireTenantContext();
   if (!can(ctx, 'deal.manage')) notFound();
+  const canHandoff = can(ctx, 'deal.manage');
   const t = await getTranslations();
 
   const [deals, ownerPipe] = await Promise.all([
@@ -84,7 +96,7 @@ export default async function InboxPage() {
             <Link href="/deals" className="text-xs text-brand-600 hover:underline">{t('inbox.openBoard')}</Link>
           </div>
           <div>
-            {incoming.length === 0 ? <p className="px-3 py-6 text-center text-[12px] text-gray-400">{t('inbox.empty')}</p> : incoming.map((d) => <DealLine key={d.id} d={d} t={t} />)}
+            {incoming.length === 0 ? <p className="px-3 py-6 text-center text-[12px] text-gray-400">{t('inbox.empty')}</p> : incoming.map((d) => <DealLine key={d.id} d={d} t={t} canHandoff={canHandoff} />)}
           </div>
         </Card>
 
@@ -93,7 +105,7 @@ export default async function InboxPage() {
             <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-800"><AlertCircle className="h-4 w-4 text-gray-400" />{t('inbox.attentionTitle')}</h2>
           </div>
           <div>
-            {attention.length === 0 ? <p className="px-3 py-6 text-center text-[12px] text-gray-400">{t('inbox.empty')}</p> : attention.map((d) => <DealLine key={d.id} d={d} t={t} />)}
+            {attention.length === 0 ? <p className="px-3 py-6 text-center text-[12px] text-gray-400">{t('inbox.empty')}</p> : attention.map((d) => <DealLine key={d.id} d={d} t={t} canHandoff={canHandoff} />)}
           </div>
         </Card>
       </div>

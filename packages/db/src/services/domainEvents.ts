@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import type { NotificationAdapter } from '@finance-os/adapters';
 import { prisma } from '../client.js';
 
-export type DomainEventType = 'unit.status.changed' | 'lease.activated' | 'lease.expiring' | 'lease.terminated' | 'deal.stage.changed' | 'work_order.created' | 'work_order.status.changed' | 'work_order.overdue' | 'service_order.created' | 'service_order.status.changed' | 'service_order.overdue' | 'rent.overdue' | 'rent.paid' | 'commission.accrued' | 'commission.paid' | 'mall.mandate.changed' | 'house.charge.overdue'
+export type DomainEventType = 'unit.status.changed' | 'lease.activated' | 'lease.expiring' | 'lease.terminated' | 'deal.stage.changed' | 'deal.handoff' | 'deal.returned' | 'work_order.created' | 'work_order.status.changed' | 'work_order.overdue' | 'service_order.created' | 'service_order.status.changed' | 'service_order.overdue' | 'rent.overdue' | 'rent.paid' | 'commission.accrued' | 'commission.paid' | 'mall.mandate.changed' | 'house.charge.overdue'
   | 'owner.stage.changed'
   | 'owner.followup.overdue';
 
@@ -33,7 +33,11 @@ export async function deliverDomainEvents(tenantId: string, now = new Date(), no
   for (const e of events) {
     const p = e.payload as Record<string, string | number>;
     if (notifier) {
-      for (const r of recipients) {
+      // Handoff/return адресны: уведомляем назначенного (payload.to), а не роль-бродкаст.
+      const targeted = (e.type === 'deal.handoff' || e.type === 'deal.returned') && typeof p.to === 'string' && p.to
+        ? [{ userId: p.to as string }]
+        : recipients;
+      for (const r of targeted) {
         await notifier.send({
           userId: r.userId,
           template: 'PROPERTY_EVENT',
