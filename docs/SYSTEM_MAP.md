@@ -337,4 +337,30 @@ ADR в `DECISIONS.md`: **040** (SPEC v1, алиас/флаги/настройк�
 
 ---
 
+---
+
+## 4. Operating Model overlay (профили ролей + Tower chain)
+
+> Добавлено фактически: где Operating Model уточнила понимание и появились **подтверждённые conflicts/gaps**. Статусы реализации в §1–§3 **не меняются** — OM-решения ещё не в коде.
+
+**Документы Operating Model (не код, требования):**
+- `docs/23-role-call-center.md` — `CALL_CENTER` (Умар)
+- `docs/24-role-broker.md` — `BROKER` (Азиз)
+- `docs/25-role-commercial-director.md` — `COMMERCIAL_DIRECTOR` (Камила), OM v1
+- `docs/26-role-ceo.md` — `CEO` (Мурад)
+- `docs/27-tower-operating-chain.md` — сводная цепочка `Умар→Азиз→Камила→CEO`
+
+**Подтверждённые CONFLICT (код ≠ Operating Model) — к пересмотру, деструктивно не тронуто:**
+- `BROKER_MAX_STAGE = LOI` vs брокер полного цикла (OM: до `MOVE_IN`; `WON` из события — уже совпадает).
+- `CALL_CENTER_MAX_STAGE = VIEWING` + `scheduleViewing` vs «КЦ не назначает показы» (техническое решение зависит от Intake vs Deal — OPEN).
+- `unit.pricing.edit` у CM/директора vs «финальную цену ставит собственник» + отсутствие истории цены.
+- `commission.manage` у директора — право шире workflow (сузить до view; авто-экономику не редактировать руками).
+- `lease.manage` у директора — reconcile: managerial fallback или убрать.
+
+**Новые confirmed GAP (OM требует — в коде нет):** CASH-settlement путь + Cash Desk actor (OPEN) · Handover/move-in record · Protected documents (restricted class) · Marketing handoff / Listing-объект · Reservation-объект · Owner discovery / commercial intent (пересекается с Intent M3) · external-broker split-approval · пульт директора (drill-down/QA/workload/планы) · CEO Home / portfolio rollup · Exception/Escalation для Tower · тип актива `DEPO` · Камила в seed · CEO-дефолт-UX поверх OWNER-прав.
+
+**Не менять без отдельного решения:** M3-дизайн (пересматривается позже под chain), state machines, матрица прав, зеркалирование `Unit↔LeaseContract`, bank-match.
+
+---
+
 *Карта отражает состояние кода на ветке `claude/own-it-product-w1ij9b` на дату сборки. При изменении схемы/матрицы/сервисов — обновлять этот файл в том же коммите.*
