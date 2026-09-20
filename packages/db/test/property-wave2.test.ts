@@ -69,13 +69,12 @@ describe('Wave 2 — сделки (BR-P20/P21/P22/P23)', () => {
     await expect(getDeal(other(), dealId)).rejects.toThrow(NotFoundError);
   });
 
-  it('BR-P11: брокер не выше LOI; lose требует причину; воронка и сводка', async () => {
+  it('BR-P11/FIXED-1: брокер полного цикла ведёт до CONTRACT/MOVE_IN; lose требует причину; воронка и сводка', async () => {
     await moveDeal(broker(), dealId, 'advance'); // OFFER
     await moveDeal(broker(), dealId, 'advance'); // NEGOTIATION
     await moveDeal(broker(), dealId, 'advance'); // LOI
     expect((await getUnitCard(cm(), unitA)).unit.commercialStatus).toBe('LOI');
-    await expect(moveDeal(broker(), dealId, 'advance')).rejects.toThrow(/BROKER_STAGE_LIMIT/);
-    await moveDeal(cm(), dealId, 'advance'); // CONTRACT — коммерческий менеджер
+    await moveDeal(broker(), dealId, 'advance'); // CONTRACT — брокер полного цикла (FIXED-1), раньше блокировалось
     expect((await getUnitCard(cm(), unitA)).unit.commercialStatus).toBe('CONTRACTED');
     await expect(moveDeal(cm(), dealId, 'lose')).rejects.toThrow(/LOST_REASON_REQUIRED/);
     const summary = await getPipelineSummary(cm());

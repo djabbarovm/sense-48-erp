@@ -39,7 +39,7 @@ test('доска сделок: сводка, колонки, карточка; a
   await expect(page.getByText('deal.stage.change').first()).toBeVisible();
 });
 
-test('брокер: видит только свои сделки, договорные стадии недоступны; маркетинг не создаёт сделки', async ({ page }) => {
+test('брокер: видит только свои сделки (полный цикл, FIXED-1); маркетинг не создаёт сделки', async ({ page }) => {
   await login(page, 'broker@piramit.test');
   await page.goto('/deals');
   await expect(page.getByText('Бекзод Тураев').first()).toBeVisible();

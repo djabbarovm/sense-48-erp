@@ -21,8 +21,12 @@ const STAGE_INDEX = Object.fromEntries(DEAL_STAGES.map((s, i) => [s, i])) as Rec
 export const stageIndex = (s: DealStage) => STAGE_INDEX[s];
 export const isActiveStage = (s: DealStage) => ACTIVE_DEAL_STAGES.includes(s);
 
-/** Стадии, до которых брокер двигает сделку сам (BR-P11/P21): договорные — коммерческий менеджер. */
-export const BROKER_MAX_STAGE: DealStage = 'LOI';
+/**
+ * Стадии, до которых брокер двигает сделку сам. Tower OM (FIXED-1, docs/24 §0/§4): Азиз — брокер
+ * полного цикла и ведёт сделку до CONTRACT/MOVE_IN. WON остаётся производным от бизнес-события
+ * (аренда → activateLease, продажа → closeSale), а не ручной стадией.
+ */
+export const BROKER_MAX_STAGE: DealStage = 'MOVE_IN';
 /** BR-P62: колл-центр ведёт сделку до показа включительно, дальше — менеджер. */
 export const CALL_CENTER_MAX_STAGE: DealStage = 'VIEWING';
 
@@ -67,7 +71,8 @@ export const dealMachine = new StateMachine<DealStage, DealTrigger, DealPayload>
       if (payload.isSale) {
         if (!payload.hasSalePrice) throw new ValidationError('SALE_PRICE_REQUIRED', 'SALE_PRICE_REQUIRED: закрытие продажи требует цену сделки');
       } else if (!payload.hasLease) throw new ValidationError('DEAL_WIN_REQUIRES_LEASE', 'DEAL_WIN_REQUIRES_LEASE: сделка выигрывается активацией договора аренды (BR-P23)');
-      if (payload.brokerOnly) throw new ValidationError('BROKER_STAGE_LIMIT');
+      // FIXED-1: брокер полного цикла закрывает сам — WON приходит только из бизнес-события
+      // (activateLease / closeSale), ручного win-триггера в moveDeal нет, поэтому brokerOnly не блокируем.
     },
   },
 });

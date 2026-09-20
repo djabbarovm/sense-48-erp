@@ -35,7 +35,7 @@ test('Building View → Floor View → Unit Card ≤ 2 действия, фил�
   await expect(page.locator('svg polygon').first()).toBeVisible();
 });
 
-test('брокер: PII собственника скрыт, договорные стадии недоступны; маркетинг не меняет статусы', async ({ page }) => {
+test('брокер: PII собственника скрыт; маркетинг не меняет статусы', async ({ page }) => {
   await login(page, 'broker@piramit.test');
   await page.goto('/property?q=1203');
   await clickTo(page, page.locator('a[href^="/property/units/"]'), /\/property\/units\//);

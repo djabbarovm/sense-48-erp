@@ -28,10 +28,15 @@ describe('BR-P11/P21/P23 воронка сделки', () => {
     expect(() => dealMachine.assert(ctx('COMMERCIAL_MANAGER'), 'PROPERTY_SELECTED', 'advance', { brokerOnly: false, hasUnit: false })).toThrow(/DEAL_UNIT_REQUIRED/);
     expect(dealMachine.assert(ctx('COMMERCIAL_MANAGER'), 'PROPERTY_SELECTED', 'advance', { brokerOnly: false, hasUnit: true })).toBe('QUALIFIED'); // формальный to, реальная цель nextStage
   });
-  it('брокер не выше LOI и не выигрывает; WON только c договором', () => {
-    expect(() => dealMachine.assert(ctx('BROKER'), 'LOI', 'advance', { brokerOnly: true, hasUnit: true })).toThrow(/BROKER_STAGE_LIMIT/);
-    expect(dealMachine.can(ctx('BROKER'), 'NEGOTIATION', 'advance', { brokerOnly: true, hasUnit: true })).toBe(true);
-    expect(() => dealMachine.assert(ctx('COMMERCIAL_MANAGER'), 'MOVE_IN', 'win', { brokerOnly: false, hasUnit: true, hasLease: false })).toThrow(/DEAL_WIN_REQUIRES_LEASE/);
+  it('брокер полного цикла: ведёт до CONTRACT/MOVE_IN; WON только из бизнес-события (FIXED-1)', () => {
+    // Азиз доводит сам договорные стадии
+    expect(dealMachine.can(ctx('BROKER'), 'LOI', 'advance', { brokerOnly: true, hasUnit: true })).toBe(true); // LOI→CONTRACT
+    expect(dealMachine.can(ctx('BROKER'), 'CONTRACT', 'advance', { brokerOnly: true, hasUnit: true })).toBe(true); // CONTRACT→MOVE_IN
+    // из MOVE_IN «advance» уже нет (WON не ставится вручную)
+    expect(() => dealMachine.assert(ctx('BROKER'), 'MOVE_IN', 'advance', { brokerOnly: true, hasUnit: true })).toThrow();
+    // WON — только через win (activateLease/closeSale), брокеру теперь тоже доступно, но с договором
+    expect(() => dealMachine.assert(ctx('BROKER'), 'MOVE_IN', 'win', { brokerOnly: true, hasUnit: true, hasLease: false })).toThrow(/DEAL_WIN_REQUIRES_LEASE/);
+    expect(dealMachine.assert(ctx('BROKER'), 'MOVE_IN', 'win', { brokerOnly: true, hasUnit: true, hasLease: true })).toBe('WON');
     expect(dealMachine.assert(ctx('COMMERCIAL_MANAGER'), 'MOVE_IN', 'win', { brokerOnly: false, hasUnit: true, hasLease: true })).toBe('WON');
     expect(dealMachine.assert(ctx('BROKER'), 'VIEWING', 'lose', { brokerOnly: true, hasUnit: true })).toBe('LOST');
     expect(dealMachine.can(ctx('MARKETING'), 'NEW', 'advance', { brokerOnly: false, hasUnit: false })).toBe(false); // нет deal.manage
