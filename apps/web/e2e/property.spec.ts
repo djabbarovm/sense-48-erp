@@ -19,7 +19,7 @@ async function login(page: Page, email: string) {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Пароль').fill('Passw0rd!');
   await page.getByRole('button', { name: 'Войти' }).click();
-  await expect(page).toHaveURL(/\/(property\/today)?$/); // роли недвижимости попадают на «Пульт»
+  await expect(page).not.toHaveURL(/\/login/); // логин прошёл; посадочная зависит от роли (брокер → /me)
 }
 
 test('Building View → Floor View → Unit Card ≤ 2 действия, фильтр по URL, легенда видна', async ({ page }) => {
