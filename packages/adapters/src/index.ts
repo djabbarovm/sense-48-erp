@@ -14,3 +14,4 @@ export * from './ksp/index.js';
 export * from './property/floorplan.js';
 export * from './workbot/index.js';
 export * from './telephony/index.js';
+export * from './amocrm/index.js';
