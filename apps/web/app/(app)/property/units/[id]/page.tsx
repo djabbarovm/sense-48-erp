@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { AlertTriangle, ArrowLeft, Building2, Coins, Eye, EyeOff, FileSignature, Handshake, History, MessageSquare, Wrench } from 'lucide-react';
 import { COMMERCIAL_STATUSES, LEASE_STATUSES, LEASE_TYPES, NotFoundError, OCCUPANCY_STATUSES, OPERATIONAL_STATUSES, READINESS_STATUSES, RENTAL_MODES, BROKER_ALLOWED_COMMERCIAL, TENANT_CATEGORIES, can, hasRole } from '@finance-os/core';
 import { createStorageFromEnv } from '@finance-os/adapters';
-import { getUnitCard, getUnitFinance, listDeals, listDocumentsFor, listLeases, listMandates, listWorkOrders } from '@finance-os/db';
+import { getUnitCard, getUnitFinance, getListingStatus, listDeals, listDocumentsFor, listLeases, listMandates, listWorkOrders } from '@finance-os/db';
 import { createMandateAction, transitionMandateAction } from '../../../mall/actions';
 import { MANDATE_TONE } from '../../../mall/tones';
 import { setUnitCadastreAction } from '../../../house/actions';
@@ -13,7 +13,7 @@ import { requireTenantContext } from '@/lib/session';
 import { Badge, Button, Card, Input, Label, PageHeader, Select, cn } from '@/components/ui';
 import { COLOR_BG, fmtDate, fmtRate } from '@/components/property';
 import { LiveRefresh } from '@/components/property/live';
-import { addUnitActivityAction, changeUnitStatusAction, setUnitPublishedAction, updateUnitPricingAction } from '../../actions';
+import { addUnitActivityAction, changeUnitStatusAction, setUnitPublishedAction, updateUnitPricingAction, requestMarketingMediaAction, markMediaReadyAction, recordPriceDecisionAction } from '../../actions';
 
 /* MDS Property — Unit Card (docs/20 §7.3): identity, статусы, собственник, коммерция, договор, активности, аудит. */
 
@@ -38,6 +38,8 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
   }
   const { unit, building, floor, owner, activities, audit, auditVisible, permissions } = card;
   const finance = can(ctx, 'unit.finance.view') ? await getUnitFinance(ctx, unit.id) : null;
+  const listing = await getListingStatus(ctx, unit.id);
+  const canMarketing = can(ctx, 'unit.publish');
   const isMall = building.kind === 'MALL' || unit.type === 'RETAIL';
   const mandates = isMall && can(ctx, 'mall.view') ? await listMandates(ctx, { unitId: unit.id }) : [];
   const mandate = mandates.find((m) => m.status !== 'TERMINATED') ?? null;
@@ -170,6 +172,46 @@ export default async function UnitCardPage({ params, searchParams }: { params: P
                 {unit.publishedAt ? t('unpublish') : t('publish')}
               </Button>
             </form>
+          ) : null}
+        </Card>
+
+        {/* Slice 4: Листинг / фонд */}
+        <Card>
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-sm font-semibold">{t('listing.title')}</h3>
+            {listing.stale ? <Badge tone="red">{t('listing.stale')}</Badge> : listing.published ? <Badge tone="green">{t('listing.published')}</Badge> : <Badge tone="gray">{t('listing.notPublished')}</Badge>}
+          </div>
+          <dl className="mt-3 space-y-1.5">
+            <Row k={t('listing.daysOnMarket')} v={listing.daysOnMarket != null ? `${listing.daysOnMarket}` : '—'} />
+            <Row k={t('listing.media')} v={listing.mediaReady ? t('listing.mediaReady') : listing.mediaRequested ? t('listing.mediaRequested') : t('listing.mediaNone')} />
+          </dl>
+          {canMarketing ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <form action={requestMarketingMediaAction}><input type="hidden" name="unitId" value={unit.id} /><Button type="submit" variant="outline" size="sm">{t('listing.requestMedia')}</Button></form>
+              <form action={markMediaReadyAction}><input type="hidden" name="unitId" value={unit.id} /><Button type="submit" variant="outline" size="sm">{t('listing.markMediaReady')}</Button></form>
+            </div>
+          ) : null}
+          {canMarketing && !permissions.pricing ? (
+            <form action={recordPriceDecisionAction} className="mt-4 space-y-2 border-t border-gray-100 pt-3">
+              <input type="hidden" name="unitId" value={unit.id} />
+              <h4 className="text-[13px] font-semibold text-gray-800">{t('listing.ownerPrice')}</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label htmlFor="op-ask">{t('askingRateUsd')}</Label><Input id="op-ask" name="askingRate" type="number" min="0" step="0.01" defaultValue={usd(unit.askingRateMinor)} /></div>
+                <div><Label htmlFor="op-note">{t('listing.note')}</Label><Input id="op-note" name="note" placeholder={t('listing.notePlaceholder')} /></div>
+              </div>
+              <Button type="submit" size="sm" variant="outline">{t('listing.recordPrice')}</Button>
+              <p className="text-[11px] text-gray-400">{t('listing.ownerPriceHint')}</p>
+            </form>
+          ) : null}
+          {listing.priceHistory.length ? (
+            <div className="mt-4 border-t border-gray-100 pt-3">
+              <h4 className="text-[13px] font-semibold text-gray-800">{t('listing.priceHistory')}</h4>
+              <ul className="mt-1.5 space-y-1">
+                {listing.priceHistory.slice(0, 5).map((h, i) => (
+                  <li key={i} className="text-[11px] text-gray-500"><span className="font-mono text-gray-400">{fmtDate(h.at)}</span> · {h.note.replace(/^PRICE:/, '')}</li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </Card>
 

@@ -88,3 +88,32 @@ export async function addUnitActivityAction(formData: FormData): Promise<void> {
     }).then(() => undefined),
   );
 }
+
+// ── Slice 4: listing / marketing handoff / owner-agreed price ──
+export async function recordPriceDecisionAction(formData: FormData): Promise<void> {
+  const { recordPriceDecision } = await import('@finance-os/db');
+  const ctx = await requireTenantContext();
+  const unitId = String(formData.get('unitId'));
+  await run(unitId, () =>
+    recordPriceDecision(ctx, unitId, {
+      ...(usdMinor(formData, 'askingRate') !== undefined ? { askingRateMinor: usdMinor(formData, 'askingRate') ?? null } : {}),
+      ...(usdMinor(formData, 'salePrice') !== undefined ? { salePriceMinor: usdMinor(formData, 'salePrice') ?? null } : {}),
+      source: 'OWNER',
+      ...(str(formData, 'note') ? { note: str(formData, 'note')! } : {}),
+    }).then(() => undefined),
+  );
+}
+
+export async function requestMarketingMediaAction(formData: FormData): Promise<void> {
+  const { requestMarketingMedia } = await import('@finance-os/db');
+  const ctx = await requireTenantContext();
+  const unitId = String(formData.get('unitId'));
+  await run(unitId, () => requestMarketingMedia(ctx, unitId, str(formData, 'note')).then(() => undefined));
+}
+
+export async function markMediaReadyAction(formData: FormData): Promise<void> {
+  const { markMediaReady } = await import('@finance-os/db');
+  const ctx = await requireTenantContext();
+  const unitId = String(formData.get('unitId'));
+  await run(unitId, () => markMediaReady(ctx, unitId, str(formData, 'note')).then(() => undefined));
+}
