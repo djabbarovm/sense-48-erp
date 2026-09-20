@@ -2811,3 +2811,42 @@ model RewardRedemption {
   @@index([tenantId, status])
   @@map("reward_redemption")
 }
+
+// ── Внешние интеграции: стабильные ссылки на записи внешних систем (amoCRM и др.) ──
+// «Ничего не терять» + идемпотентность: одна внешняя запись ↔ одна строка (upsert по уникальному ключу).
+// Общая таблица (не колонка на тип) — reversible. Хранит raw-запись источника + провенанс времени.
+enum ExternalProvider {
+  AMOCRM
+}
+
+enum ExternalRefStatus {
+  LINKED // сопоставлено с DMS-сущностью
+  IMPORTED // импортировано, DMS-сущности может не быть (pipeline/status/user)
+  CONFLICT // неоднозначное сопоставление — нужен ручной разбор
+  NEEDS_REVIEW // требует решения (напр. неизвестное custom-field/маппинг)
+}
+
+model ExternalReference {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  provider       ExternalProvider
+  account        String // subdomain/account id внешней системы (напр. rooftophall)
+  entityType     String            @map("entity_type") // lead|contact|company|user|pipeline|status|task|note|custom_field
+  externalId     String            @map("external_id") // id во внешней системе (строкой)
+  dmsType        String?           @map("dms_type") // deal|contact|unit|property_owner|... (если сопоставлено)
+  dmsId          String?           @map("dms_id") @db.Uuid // id DMS-сущности (nullable — не всё маппится)
+  status         ExternalRefStatus @default(IMPORTED)
+  raw            Json? // оригинальная запись источника (raw+normalized: не теряем провенанс)
+  note           String? // причина конфликта/ревью
+  sourceCreatedAt DateTime?        @map("source_created_at") // created_at во внешней системе (occurred/source time)
+  sourceUpdatedAt DateTime?        @map("source_updated_at") // updated_at во внешней системе
+  syncedAt       DateTime          @default(now()) @map("synced_at") // когда DMS получил/обновил
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  @@unique([tenantId, provider, entityType, externalId])
+  @@index([tenantId, provider, entityType])
+  @@index([tenantId, dmsType, dmsId])
+  @@index([tenantId, status])
+  @@map("external_reference")
+}
