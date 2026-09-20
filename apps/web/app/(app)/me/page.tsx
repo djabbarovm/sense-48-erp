@@ -115,20 +115,20 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
       {/* Новые лиды */}
       <section>
         <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><Sparkles className="h-3.5 w-3.5" />{t('leads.title')} · {day.newLeads.length}</h2>
-        {day.newLeads.length === 0 ? <p className="text-sm text-gray-400">{t('leads.none')}</p> : <ul className="space-y-2">{day.newLeads.map((d) => <DealItem key={d.id} d={d} manage={manage} t={t} tD={tD} kind="lead" />)}</ul>}
+        {day.newLeads.length === 0 ? <p className="text-sm text-gray-400">{t('leads.none')}</p> : <ul className="space-y-2">{day.newLeads.map((d) => <DealItem key={d.id} d={d} manage={manage} seesAll={day.seesAll} t={t} tD={tD} kind="lead" />)}</ul>}
       </section>
 
       {/* Просроченные и без шага */}
       <section>
         <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><Clock className="h-3.5 w-3.5" />{t('overdue.title')} · {day.overdue.length + day.noNextAction.length}</h2>
-        {day.overdue.length + day.noNextAction.length === 0 ? <p className="text-sm text-gray-400">{t('overdue.none')}</p> : <ul className="space-y-2">{[...day.overdue, ...day.noNextAction].map((d) => <DealItem key={d.id} d={d} manage={manage} t={t} tD={tD} kind={d.nextAction ? 'overdue' : 'nonext'} />)}</ul>}
+        {day.overdue.length + day.noNextAction.length === 0 ? <p className="text-sm text-gray-400">{t('overdue.none')}</p> : <ul className="space-y-2">{[...day.overdue, ...day.noNextAction].map((d) => <DealItem key={d.id} d={d} manage={manage} seesAll={day.seesAll} t={t} tD={tD} kind={d.nextAction ? 'overdue' : 'nonext'} />)}</ul>}
       </section>
 
       {/* Сегодня по плану */}
       {day.dueToday.length ? (
         <section>
           <h2 className="mb-2 flex items-center gap-2 font-mono text-[11px] tracking-widest text-gray-500 uppercase"><CheckCircle2 className="h-3.5 w-3.5" />{t('dueToday.title')} · {day.dueToday.length}</h2>
-          <ul className="space-y-2">{day.dueToday.map((d) => <DealItem key={d.id} d={d} manage={manage} t={t} tD={tD} kind="due" />)}</ul>
+          <ul className="space-y-2">{day.dueToday.map((d) => <DealItem key={d.id} d={d} manage={manage} seesAll={day.seesAll} t={t} tD={tD} kind="due" />)}</ul>
         </section>
       ) : null}
 
@@ -206,12 +206,12 @@ type T = Awaited<ReturnType<typeof getTranslations<'me'>>>;
 type TD = Awaited<ReturnType<typeof getTranslations<'deals'>>>;
 type Deal = Awaited<ReturnType<typeof getMyDay>>['newLeads'][number];
 
-function DealItem({ d, manage, t, tD, kind }: { d: Deal; manage: boolean; t: T; tD: TD; kind: 'lead' | 'overdue' | 'nonext' | 'due' }) {
+function DealItem({ d, manage, seesAll, t, tD, kind }: { d: Deal; manage: boolean; seesAll?: boolean; t: T; tD: TD; kind: 'lead' | 'overdue' | 'nonext' | 'due' }) {
   const tone = kind === 'lead' ? 'ring-brand-200' : kind === 'overdue' ? 'ring-red-200' : kind === 'nonext' ? 'ring-amber-200' : 'ring-gray-100';
   return (
     <li className={cn('rounded-lg bg-white p-3 shadow-sm ring-1', tone)}>
       <div className="flex items-center justify-between gap-2 text-sm">
-        <span><Link href={`/deals/${d.id}`} className="font-medium text-ink-900">{d.contactName}</Link>{d.company ? <span className="ml-1 text-xs text-gray-500">{d.company}</span> : null}{d.unitNo ? <span className="ml-2 font-mono text-xs">{d.unitNo}</span> : null}</span>
+        <span><Link href={`/deals/${d.id}`} className="font-medium text-ink-900">{d.contactName}</Link>{d.company ? <span className="ml-1 text-xs text-gray-500">{d.company}</span> : null}{d.unitNo ? <span className="ml-2 font-mono text-xs">{d.unitNo}</span> : null}{seesAll && d.managerName ? <span className="ml-2 text-xs text-gray-400">· {d.managerName}</span> : null}</span>
         <span className="flex items-center gap-1.5"><Badge tone={kind === 'lead' ? 'blue' : 'gray'}>{tD(`stage.${d.stage}`)}</Badge>{d.contactPhone ? <a href={`tel:${d.contactPhone}`} className="rounded-full bg-emerald-50 p-1.5 text-emerald-700" aria-label={t('call.call')}><Phone className="h-4 w-4" /></a> : null}</span>
       </div>
       <p className="mt-0.5 text-xs text-gray-500">{tD(`source.${d.source}`)}{d.expectedRateMinor != null ? ` · ${fmtRate(d.expectedRateMinor, 'USD')}` : ''}{d.nextAction ? ` · ${d.nextAction}` : kind === 'nonext' ? ` · ${t('overdue.noNext')}` : ''}{d.nextActionAt ? ` · ${fmtDate(d.nextActionAt)}` : ''}</p>
