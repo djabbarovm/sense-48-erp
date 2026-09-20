@@ -117,3 +117,33 @@ export async function markMediaReadyAction(formData: FormData): Promise<void> {
   const unitId = String(formData.get('unitId'));
   await run(unitId, () => markMediaReady(ctx, unitId, str(formData, 'note')).then(() => undefined));
 }
+
+// ── Slice 5: handover / move-in package + services handoff ──
+export async function recordHandoverAction(formData: FormData): Promise<void> {
+  const { recordHandover } = await import('@finance-os/db');
+  const ctx = await requireTenantContext();
+  const unitId = String(formData.get('unitId'));
+  const leaseId = String(formData.get('leaseId'));
+  const moveIn = str(formData, 'moveInDate');
+  await run(unitId, () =>
+    recordHandover(ctx, leaseId, {
+      actSigned: formData.get('actSigned') === 'on',
+      conditionPhotos: Number(str(formData, 'conditionPhotos') ?? '0') || 0,
+      ...(str(formData, 'meters') ? { meters: str(formData, 'meters')! } : {}),
+      keysCount: Number(str(formData, 'keysCount') ?? '0') || 0,
+      accessCards: Number(str(formData, 'accessCards') ?? '0') || 0,
+      moveInDate: moveIn ? new Date(moveIn) : null,
+      passportOnFile: formData.get('passportOnFile') === 'on',
+      requisitesOnFile: formData.get('requisitesOnFile') === 'on',
+      ...(str(formData, 'note') ? { note: str(formData, 'note')! } : {}),
+    }).then(() => undefined),
+  );
+}
+
+export async function recordServicesHandoffAction(formData: FormData): Promise<void> {
+  const { recordServicesHandoff } = await import('@finance-os/db');
+  const ctx = await requireTenantContext();
+  const unitId = String(formData.get('unitId'));
+  const leaseId = String(formData.get('leaseId'));
+  await run(unitId, () => recordServicesHandoff(ctx, leaseId, str(formData, 'note')).then(() => undefined));
+}

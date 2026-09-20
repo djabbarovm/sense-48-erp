@@ -47,6 +47,7 @@ export * from './services/leases.js';
 export * from './services/deals.js';
 export * from './services/dealHandoff.js';
 export * from './services/listing.js';
+export * from './services/handover.js';
 export * from './services/controlRoom.js';
 export * from './services/actionDrafts.js';
 export * from './services/workOrders.js';
