@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { AlertTriangle, Building2, CalendarClock, CheckCircle2, Clock, Flame, Gift, Phone, Plus, Send, Sparkles, Target, Trophy, UserPlus } from 'lucide-react';
-import { DEAL_LOST_REASONS, DEAL_SOURCES, can } from '@finance-os/core';
+import { DEAL_LOST_REASONS, DEAL_SOURCES, can, hasRole } from '@finance-os/core';
 import { getGamificationState, getMyDay, listMyRedemptions, listRewards, prisma } from '@finance-os/db';
 import { requireSessionUser, requireTenantContext } from '@/lib/session';
 import { Badge, Button, Input, Select, cn } from '@/components/ui';
@@ -27,6 +27,8 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
   const tg = await prisma.user.findUnique({ where: { id: user.id }, select: { telegramChatId: true, telegramLinkCode: true, telegramLinkedAt: true } });
   const botName = process.env.TELEGRAM_BOT_USERNAME ?? null;
   const manage = can(ctx, 'deal.manage');
+  // Геймификация — для сотрудников продаж, а не для надзора/владельца (они видят факты команды, не «очки»).
+  const showGame = hasRole(ctx, 'CALL_CENTER', 'COMMERCIAL_MANAGER', 'BROKER') && !hasRole(ctx, 'COMMERCIAL_DIRECTOR', 'CEO', 'OWNER', 'ADMIN');
   const now = new Date();
   const inOneHour = new Date(now.getTime() + 3600_000);
   const hour = Number(now.toLocaleTimeString('ru-RU', { hour: '2-digit', hour12: false, timeZone: 'Asia/Tashkent' }).slice(0, 2));
@@ -49,7 +51,8 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
       </div>
       {attention ? <p className="flex items-center gap-1.5 text-sm text-amber-700"><Flame className="h-4 w-4" />{t('attention', { n: attention })}</p> : <p className="flex items-center gap-1.5 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />{t('allClear')}</p>}
 
-      {/* Прогресс дня (геймификация, ТЗ §12-13) */}
+      {/* Прогресс дня (геймификация) — только сотрудникам продаж, не надзору/владельцу */}
+      {showGame && (
       <section className="rounded-xl bg-gradient-to-br from-ink-900 to-ink-700 p-4 text-white shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2"><Trophy className="h-5 w-5 text-amber-300" /><div><p className="font-display text-base font-bold leading-none">{game.level.current.name}</p><p className="mt-0.5 text-[11px] text-white/60">{t('game.level', { n: game.level.current.level })} · {game.totalXp} XP</p></div></div>
@@ -69,6 +72,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           </ul>
         ) : null}
       </section>
+      )}
 
       {/* Быстрый лид */}
       {manage ? (
@@ -160,8 +164,8 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
           </ul>
         </section>
       ) : null}
-      {/* Награды (ТЗ §18) */}
-      {rewards.length ? (
+      {/* Награды (ТЗ §18) — вместе c геймификацией: только сотрудникам продаж */}
+      {showGame && rewards.length ? (
         <section className="rounded-lg bg-white p-3 shadow-sm ring-1 ring-gray-100">
           <h2 className="flex items-center gap-2 text-sm font-semibold"><Gift className="h-4 w-4 text-fuchsia-500" />{t('rewards.title')}</h2>
           {nextReward ? <p className="mt-1 text-xs text-gray-500">{t('rewards.next', { name: nextReward.name, n: nextReward.costXp - game.totalXp })}</p> : <p className="mt-1 text-xs text-emerald-700">{t('rewards.allOpen')}</p>}
