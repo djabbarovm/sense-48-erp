@@ -147,7 +147,9 @@ export async function confirmKpi(ctx: TenantContext, dealId: string, now = new D
     if (!kpi) throw new NotFoundError('KPI_BONUS_NOT_FOUND');
     if (kpi.status === 'WITHHELD' || kpi.status === 'PAID') throw new ValidationError('KPI_CLOSED');
     const items = await tx.dealChecklistItem.findMany({ where: { dealId } });
-    assertKpiConfirmable({ doneItems: items.filter((i) => i.doneAt).map((i) => i.item), confirmerId: ctx.userId, salespersonId: deal.managerId, deadline: kpi.kpiDeadline ?? now, now });
+    // DUE_DILIGENCE — гейт этапа перед CONTRACT (ТЗ §5.1), НЕ пункт KPI-бонуса: исключаем из проверки чек-листа
+    const doneItems = items.filter((i) => i.doneAt && (KPI_CHECKLIST_ITEMS as readonly string[]).includes(i.item)).map((i) => i.item as KpiChecklistItem);
+    assertKpiConfirmable({ doneItems, confirmerId: ctx.userId, salespersonId: deal.managerId, deadline: kpi.kpiDeadline ?? now, now });
     const commission = await tx.commission.findUniqueOrThrow({ where: { id: kpi.commissionId } });
     const status = deriveBonusStatus({ kind: 'KPI', current: kpi.status, commissionStatus: commission.status, kpiConfirmed: true, kpiDeadlinePassed: false });
     const after = await tx.salesBonus.update({ where: { id: kpi.id }, data: { kpiConfirmedAt: now, kpiConfirmedBy: ctx.userId, status, ...(status === 'PAYABLE' ? { payableAt: now } : {}) } });

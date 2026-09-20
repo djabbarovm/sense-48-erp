@@ -2431,6 +2431,23 @@ enum KpiChecklistItem {
   INTERNET
   CLEANING
   HANDOVER_SERVICES
+  // Tower ТЗ §5.1 (M1): гейт due diligence перед CONTRACT (юр.чистота/кадастр/финансирование).
+  // Исключён из бонус-чеклиста (KPI_CHECKLIST_ITEMS в core) — это гейт этапа, не KPI-пункт.
+  DUE_DILIGENCE
+}
+
+// Tower ТЗ §8/§10 (M2): пороги алертов (§7) и ставки — редактируемые настройки per-tenant.
+// ОТДЕЛЬНО от ApprovalPolicy (та — для аппрувов/four-eyes). Значения по умолчанию — в коде
+// (core/config towerSettings); строка здесь переопределяет дефолт. key-value (JSON).
+model TowerSetting {
+  tenantId  String   @map("tenant_id") @db.Uuid
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@id([tenantId, key])
+  @@map("tower_setting")
 }
 
 model DealChecklistItem {

@@ -82,12 +82,13 @@ describe('A-06 RBAC matrix (docs/05)', () => {
 
   it('ADR-041 (Tower SPEC §2.2/§3.1): селективный мёрж CM→BROKER — SoD не течёт на BROKER', () => {
     const broker = ctxWith('BROKER');
-    // BROKER ПОЛУЧАЕТ: владение договором/lease, дебиторку (view), листинг
-    for (const code of ['lease.manage', 'lease.view', 'rent.view', 'unit.publish', 'deal.manage', 'unit.status.commercial'] as const) {
+    // BROKER ПОЛУЧАЕТ: владение договором/lease, листинг (SPEC §2.2/§3.1/§3.2)
+    for (const code of ['lease.manage', 'lease.view', 'unit.publish', 'deal.manage', 'unit.status.commercial'] as const) {
       expect(can(broker, code), `BROKER должен иметь ${code}`).toBe(true);
     }
     // BROKER НЕ ПОЛУЧАЕТ (ядро SoD — остаётся у COMMERCIAL_DIRECTOR/финансов):
     for (const code of [
+      'rent.view', // ТЗ §1/§6.2: у брокериджа ORDO не ведёт аренду — дебиторка не брокеру
       'mall.manage', // мандаты ТРЦ — Камила
       'commission.manage', // подтверждение комиссии — директор
       'unit.pricing.edit', // утверждение цены/ставки — директор

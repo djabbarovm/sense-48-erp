@@ -130,9 +130,9 @@ export const PERMISSION_MATRIX = {
   'service.verify': ['OWNER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR'],
   'service.catalog': ['OWNER', 'ADMIN', 'OPERATIONS_MANAGER'],
   // Аренда и дебиторка (docs/20 §11.9): просмотр начислений и зачёт банковских поступлений
-  // ADR-041 (Tower SPEC §1.1/§2.2): BROKER видит дебиторку (contracts/receivables full) и
-  // фиксирует факт первой оплаты; зачёт банковских поступлений (rent.match) — финансы, НЕ брокер.
-  'rent.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO', 'BROKER'],
+  // ADR-043 (Tower ТЗ §1/§6.2): у брокериджа ORDO НЕ ведёт аренду — брокер дебиторку не видит.
+  // Дебиторка = только комиссии + паркинг-пул (директор/финансы). Зачёт поступлений (rent.match) — финансы.
+  'rent.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO'],
   'rent.match': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
   // Комиссии ORDO и бонусы (docs/20 §11.10): комиссия — деньги ORDO; бонус видит владелец/финансы/коммерция, свой — продажник
   'commission.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO'],

@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import type { DealLostReason, DealProduct, DealSource, KpiChecklistItem, TenantCategory, UnitActivityKind } from '@finance-os/db';
+import type { DealLostReason, DealProduct, DealSource, TenantCategory, UnitActivityKind } from '@finance-os/db';
 import { NotFoundError, PermissionDeniedError, ValidationError, IllegalTransitionError } from '@finance-os/core';
 import { activateLease, addDealActivity, closeSale, confirmKpi, createDeal, createLease, createProposal, markChecklistItem, moveDeal, updateDeal } from '@finance-os/db';
+import { KPI_CHECKLIST_ITEMS } from '@finance-os/core';
 import { requireTenantContext } from '@/lib/session';
 
 const str = (fd: FormData, k: string): string | undefined => {
@@ -76,7 +77,10 @@ export async function closeSaleAction(formData: FormData): Promise<void> {
 export async function checklistAction(formData: FormData): Promise<void> {
   const ctx = await requireTenantContext();
   const dealId = String(formData.get('dealId'));
-  await run(`/deals/${dealId}`, () => markChecklistItem(ctx, dealId, String(formData.get('item')) as KpiChecklistItem, formData.get('done') === '1', str(formData, 'note') ?? null).then(() => undefined));
+  const item = String(formData.get('item'));
+  // DUE_DILIGENCE — гейт этапа перед CONTRACT (ТЗ §5.1), не отмечается как KPI-пункт: принимаем только 5 KPI-пунктов
+  if (!(KPI_CHECKLIST_ITEMS as readonly string[]).includes(item)) return;
+  await run(`/deals/${dealId}`, () => markChecklistItem(ctx, dealId, item as (typeof KPI_CHECKLIST_ITEMS)[number], formData.get('done') === '1', str(formData, 'note') ?? null).then(() => undefined));
 }
 
 export async function confirmKpiAction(formData: FormData): Promise<void> {

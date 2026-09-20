@@ -58,9 +58,8 @@ describe('Аренда и дебиторка (BR-P37/P38/P39/P40)', () => {
     expect(await prisma.rentCharge.count({ where: { tenantId, unitId: unit2Id } })).toBe(0);
     expect(await prisma.rentCharge.count({ where: { tenantId, lease: { occupantName: 'Direct Tenant' } } })).toBe(0); // BR-P40
     expect(await generateRentCharges(tenantId, d('2026-09-10'), { fromMonth: d('2026-09-01') })).toBe(0); // fromMonth не даёт дублей
-    // ADR-041 (Tower SPEC §1.1): BROKER видит дебиторку (receivables full); роль без rent.view (колл-центр) — отказ
-    expect(Array.isArray(await listRentCharges(ctx(['BROKER'])))).toBe(true);
-    await expect(listRentCharges(ctx(['CALL_CENTER']))).rejects.toThrow(PermissionDeniedError);
+    // ADR-043 (Tower ТЗ §1/§6.2): у брокериджа ORDO не ведёт аренду — BROKER дебиторку не видит
+    await expect(listRentCharges(ctx(['BROKER']))).rejects.toThrow(PermissionDeniedError);
     expect(await prisma.auditLog.count({ where: { tenantId, objectType: 'rent_charge', action: 'rent_charge.create' } })).toBe(3);
   });
 
@@ -114,9 +113,8 @@ describe('Аренда и дебиторка (BR-P37/P38/P39/P40)', () => {
     expect(cr.finance?.outstandingMinor).toBe(300_000n);
     expect(cr.finance?.topDebtors[0]?.unitNo).toBe('901');
     expect(cr.finance?.collectionPct).toBe(0);
-    // ADR-041: BROKER имеет rent.view → видит сводку дебиторки (read-only); роль без rent.view — null
-    expect((await getControlRoom(ctx(['BROKER']), d('2026-09-12'))).finance).not.toBeNull();
-    expect((await getControlRoom(ctx(['CALL_CENTER']), d('2026-09-12'))).finance).toBeNull();
+    // ADR-043: BROKER без rent.view → сводку дебиторки в control-room не видит (director/finance only)
+    expect((await getControlRoom(ctx(['BROKER']), d('2026-09-12'))).finance).toBeNull();
     const portal = await getOwnerPortal(ctx(['PROPERTY_OWNER'], ownerUserId), d('2026-09-12'));
     expect(portal.statement[0]).toMatchObject({ unitNo: '901', receivedMinor: 0n, outstandingMinor: 300_000n, chargeStatus: 'OVERDUE' });
     // октябрь начислен (1–15) и списан при прекращении 20 сентября
