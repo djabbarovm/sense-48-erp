@@ -5,7 +5,6 @@ import { ArrowRight } from 'lucide-react';
 import { can, formatMoney, money } from '@finance-os/core';
 import {
   HEALTH_ZONES,
-  computeKpis,
   getApAging,
   getArAging,
   getCashForecast,
@@ -30,7 +29,7 @@ export default async function OwnerDashboardPage() {
   const now = new Date();
   const today = new Date(now.toISOString().slice(0, 10));
 
-  const [cash, forecast, batches, apAging, arAging, taxes, events, health, kpi, budget, advancesNoDocs] =
+  const [cash, forecast, batches, apAging, arAging, taxes, events, health, budget, advancesNoDocs] =
     await Promise.all([
       getCashPosition(ctx),
       getCashForecast(ctx),
@@ -40,7 +39,6 @@ export default async function OwnerDashboardPage() {
       listTaxObligations(ctx, { status: ['PLANNED', 'CALCULATED', 'APPROVED', 'OVERDUE'] }),
       listEvents(ctx, { status: ['CONFIRMED', 'IN_PROGRESS', 'HELD', 'SETTLING'] }),
       getDocumentHealth(ctx),
-      computeKpis(ctx),
       listBudgetMatrix(ctx, now.toISOString().slice(0, 7)),
       prisma.advance.count({ where: { tenantId: ctx.tenantId, status: { in: ['OVERDUE'] } } }),
     ]);
@@ -223,27 +221,10 @@ export default async function OwnerDashboardPage() {
         <Link href="/documents/health">
           <StatCard label={t('docIssues')} value={docIssues} tone={docIssues > 0 ? 'warning' : 'success'} hint={t('docHint')} />
         </Link>
-        {/* 8. Controls */}
-        <Card title={t('controls')} className="card-lift">
-          <ul className="space-y-1 text-sm">
-            <li className="flex justify-between">
-              <span>{t('urgentPct')}</span>
-              <span className={`tnum font-semibold ${kpi.urgentPct30d > 10 ? 'text-red-600' : 'text-volt-700'}`}>{kpi.urgentPct30d}%</span>
-            </li>
-            <li className="flex justify-between">
-              <span>{t('dupPrevented')}</span>
-              <span className="tnum font-semibold">{kpi.duplicatesPrevented30d}</span>
-            </li>
-            <li className="flex justify-between">
-              <span>{t('openHolds')}</span>
-              <Link href="/payments" className="tnum font-semibold hover:underline">{kpi.openHolds}</Link>
-            </li>
-            <li className="flex justify-between">
-              <span>{t('exceptions')}</span>
-              <span className="tnum font-semibold">{kpi.exceptionsApproved30d}</span>
-            </li>
-          </ul>
-        </Card>
+        {/* 8. Controls — полный набор KPI живёт на /controls, здесь только вход (без дубля поверхности) */}
+        <Link href="/controls">
+          <StatCard label={t('controls')} value="→" tone="default" hint={t('controlsHint')} />
+        </Link>
         {/* 9. Budget */}
         <Card title={t('budget')} className="card-lift">
           <ul className="space-y-2">
