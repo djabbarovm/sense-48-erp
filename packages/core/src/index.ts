@@ -1,5 +1,6 @@
 export const CORE_VERSION = '0.1.0';
 export * from './audit/index.js';
+export * from './config/index.js';
 export * from './auth/index.js';
 export * from './context/index.js';
 export * from './crypto/index.js';

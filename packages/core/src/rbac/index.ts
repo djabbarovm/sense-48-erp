@@ -1,13 +1,16 @@
-import type { TenantContext } from '../context/index.js';
+import { expandRoles, type TenantContext } from '../context/index.js';
 import { PermissionDeniedError } from '../errors/index.js';
 import { PERMISSION_MATRIX, type PermissionCode } from './matrix.js';
 
 export * from './matrix.js';
 
-/** true, если хотя бы одна роль контекста имеет право. */
+/**
+ * true, если хотя бы одна роль контекста (с учётом deprecated-алиасов, ADR-040)
+ * имеет право. Алиасы раскрываются через expandRoles: COMMERCIAL_MANAGER ≡ BROKER.
+ */
 export function can(ctx: TenantContext, permission: PermissionCode): boolean {
-  const allowed = PERMISSION_MATRIX[permission];
-  return ctx.roles.some((role) => (allowed as readonly string[]).includes(role));
+  const allowed = PERMISSION_MATRIX[permission] as readonly string[];
+  return expandRoles(ctx.roles).some((role) => allowed.includes(role));
 }
 
 /** Бросает PermissionDeniedError (→403 PERMISSION_DENIED:<code>), если права нет. */

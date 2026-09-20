@@ -31,6 +31,31 @@ export const ROLE_CODES = [
 
 export type RoleCode = (typeof ROLE_CODES)[number];
 
+/**
+ * ADR-040 (Tower SPEC §1): COMMERCIAL_MANAGER — deprecated-алиас BROKER.
+ * По SPEC отдельного «менеджера аренды» больше нет: он слит в BROKER. В Phase 1
+ * это ОБРАТИМЫЙ, ОДНОНАПРАВЛЕННЫЙ алиас без миграции: контекст с COMMERCIAL_MANAGER
+ * дополнительно распознаётся как BROKER (CM ⇒ BROKER). Права BROKER при этом НЕ
+ * расширяются (BROKER ⊆ CM, поэтому для can() это no-op) — расширение BROKER до
+ * полного цикла и жёсткий мёрж (переназначение ролей в БД) идут отдельной задачей
+ * позже (Phase 2, §3.1/§2.2). Откат алиаса — очистить ROLE_ALIASES.
+ * Живых пользователей-CM нет (только сид).
+ */
+export const ROLE_ALIASES: Partial<Record<RoleCode, readonly RoleCode[]>> = {
+  COMMERCIAL_MANAGER: ['BROKER'],
+};
+
+/** Расширяет набор ролей их deprecated-алиасами (однонаправленно) для проверок доступа. */
+export function expandRoles(roles: readonly RoleCode[]): readonly RoleCode[] {
+  if (roles.length === 0) return roles;
+  let extra: RoleCode[] | null = null;
+  for (const r of roles) {
+    const targets = ROLE_ALIASES[r];
+    if (targets) for (const t of targets) if (!roles.includes(t)) (extra ??= []).push(t);
+  }
+  return extra ? [...new Set([...roles, ...extra])] : roles;
+}
+
 declare const tenantContextBrand: unique symbol;
 
 export interface TenantContext {
@@ -52,5 +77,6 @@ export function unsafeCreateTenantContext(input: {
 }
 
 export function hasRole(ctx: TenantContext, ...roles: RoleCode[]): boolean {
-  return ctx.roles.some((r) => roles.includes(r));
+  const effective = expandRoles(ctx.roles);
+  return effective.some((r) => roles.includes(r));
 }
