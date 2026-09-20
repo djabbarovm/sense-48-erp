@@ -44,6 +44,7 @@ import {
   Home,
   Users,
   Sun,
+  PhoneCall,
   BarChart3 } from 'lucide-react';
 import { can, type PermissionCode } from '@finance-os/core';
 import { listUserTenants } from '@finance-os/db';
@@ -68,6 +69,7 @@ const SECTION_ORDER: Section[] = ['daily', 'commercial', 'property', 'finance', 
 // группировка и «фокус» ниже только меняют ПОДАЧУ, доступ не расширяют и не сужают.
 const NAV: NavItem[] = [
   // ── Мой день / обзоры ──
+  { key: 'inbox', href: '/inbox', icon: <PhoneCall className={ICON} />, section: 'daily', permission: 'deal.manage' },
   { key: 'me', href: '/me', icon: <Sun className={ICON} />, section: 'daily', permission: 'deal.view' },
   { key: 'ceoMorning', href: '/ceo', icon: <Sunrise className={ICON} />, section: 'daily', permission: 'dashboard.owner' },
   { key: 'controlRoom', href: '/property/today', icon: <Activity className={ICON} />, section: 'daily', permission: 'property.view' },
@@ -124,10 +126,10 @@ const NAV: NavItem[] = [
 const BROAD_ROLES = new Set(['OWNER', 'ADMIN']);
 const PRIMARY_NAV: Record<string, string[]> = {
   // коммерция
-  CALL_CENTER: ['me', 'deals', 'contacts', 'tasks'],
+  CALL_CENTER: ['inbox', 'deals', 'contacts', 'tasks'],
   COMMERCIAL_MANAGER: ['me', 'deals', 'contacts', 'property', 'tasks'],
-  BROKER: ['me', 'deals', 'contacts', 'property'],
-  COMMERCIAL_DIRECTOR: ['me', 'deals', 'contacts', 'crmAnalytics', 'commissions'],
+  BROKER: ['me', 'deals', 'property', 'contacts', 'leases'],
+  COMMERCIAL_DIRECTOR: ['controlRoom', 'deals', 'crmAnalytics', 'commissions', 'property', 'contacts'],
   MARKETING: ['property', 'deals', 'mall', 'crmAnalytics'],
   // эксплуатация
   OPERATIONS_MANAGER: ['controlRoom', 'workorders', 'services', 'property', 'tasks'],

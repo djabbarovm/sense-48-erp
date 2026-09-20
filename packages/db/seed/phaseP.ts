@@ -21,6 +21,7 @@ const USERS: { email: string; fullName: string; roles: RoleCode[]; telegramChatI
   { email: 'owner@piramit.test', fullName: 'Мурад Джаббаров', roles: ['OWNER'], telegramChatId: 'demo-owner' },
   { email: 'commercial@piramit.test', fullName: 'Алия Сафарова', roles: ['COMMERCIAL_MANAGER'], telegramChatId: 'demo-commercial' },
   { email: 'broker@piramit.test', fullName: 'Бекзод Тураев', roles: ['BROKER'], telegramChatId: 'demo-broker' },
+  { email: 'director@piramit.test', fullName: 'Камила Рахимова', roles: ['COMMERCIAL_DIRECTOR'], telegramChatId: 'demo-director' },
   { email: 'callcenter@piramit.test', fullName: 'Малика Юсупова', roles: ['CALL_CENTER'], telegramChatId: 'demo-callcenter' },
   { email: 'ops@piramit.test', fullName: 'Шерзод Мирзаев', roles: ['OPERATIONS_MANAGER'], telegramChatId: 'demo-ops' },
   { email: 'marketing@piramit.test', fullName: 'Нигора Абдуллаева', roles: ['MARKETING'] },
