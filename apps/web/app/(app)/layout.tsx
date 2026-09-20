@@ -119,16 +119,25 @@ const NAV: NavItem[] = [
   { key: 'admin', href: '/admin', icon: <Settings className={ICON} />, section: 'admin', permission: 'tenant.settings' },
 ];
 
-// Роли с узким операционным контуром: им показываем компактный «фокус» + сворачиваемый полный список.
-// Широкие роли (владелец, финансы, админ) видят полный сгруппированный список сразу.
-const FOCUSED_ROLES = new Set(['CALL_CENTER', 'COMMERCIAL_MANAGER', 'BROKER', 'COMMERCIAL_DIRECTOR', 'OPERATIONS_MANAGER', 'MARKETING', 'PROPERTY_OWNER', 'CEO']);
+// Каждой роли — свой узкий контур («Главное») + сворачиваемый полный список.
+// Только владелец и админ видят полный сгруппированный список сразу (им нужна вся ширина).
+const BROAD_ROLES = new Set(['OWNER', 'ADMIN']);
 const PRIMARY_NAV: Record<string, string[]> = {
+  // коммерция
   CALL_CENTER: ['me', 'deals', 'contacts', 'tasks'],
   COMMERCIAL_MANAGER: ['me', 'deals', 'contacts', 'property', 'tasks'],
   BROKER: ['me', 'deals', 'contacts', 'property'],
   COMMERCIAL_DIRECTOR: ['me', 'deals', 'contacts', 'crmAnalytics', 'commissions'],
-  OPERATIONS_MANAGER: ['controlRoom', 'workorders', 'services', 'property', 'tasks'],
   MARKETING: ['property', 'deals', 'mall', 'crmAnalytics'],
+  // эксплуатация
+  OPERATIONS_MANAGER: ['controlRoom', 'workorders', 'services', 'property', 'tasks'],
+  // финансы — каждый видит свой финансовый контур, а не все 44 пункта
+  FINANCE_OPS_LEAD: ['approvals', 'payments', 'bank', 'ap', 'ar'],
+  ACCOUNTANT: ['bank', 'ap', 'ar', 'onec', 'tax'],
+  JUNIOR_FINANCE: ['payments', 'pr', 'ap', 'ar', 'bank'],
+  DOCUMENT_CONTROLLER: ['contracts', 'invoices', 'documents', 'vendors', 'pr'],
+  REQUESTER: ['pr', 'approvals', 'vendors', 'contracts'],
+  // собственник / руководитель
   PROPERTY_OWNER: ['ownerPortal'],
   CEO: ['ceoMorning', 'controlRoom', 'deals', 'payments', 'audit'],
 };
@@ -139,13 +148,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const tenants = await listUserTenants(user.id);
   const t = await getTranslations('nav');
   const tAuth = await getTranslations('auth');
+  const tRoles = await getTranslations('roles');
 
   const items = NAV.filter((item) => !item.permission || can(ctx, item.permission));
   const byKey = new Map(items.map((i) => [i.key, i]));
   const sections = SECTION_ORDER.map((s) => ({ s, list: items.filter((i) => i.section === s) })).filter((g) => g.list.length);
 
-  // «Фокус»: пользователь только с узкими ролями получает короткое меню + сворачиваемый полный список.
-  const isFocused = ctx.roles.length > 0 && ctx.roles.every((r) => FOCUSED_ROLES.has(r));
+  // «Фокус»: все, кроме владельца/админа, получают компактное «Главное» под свой контур
+  // + сворачиваемый полный список. Владелец/админ видят сгруппированные разделы сразу.
+  const isFocused = ctx.roles.length > 0 && !ctx.roles.some((r) => BROAD_ROLES.has(r));
   const focusKeys = isFocused
     ? [...new Set(ctx.roles.flatMap((r) => PRIMARY_NAV[r] ?? []))].filter((k) => byKey.has(k))
     : [];
@@ -217,7 +228,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </nav>
         <div className="border-t border-ink-800 px-5 py-4">
           <p className="font-mono text-[11px] tracking-[0.18em] text-volt-600 uppercase">{ctx.tenantSlug}</p>
-          <p className="mt-0.5 truncate text-xs text-slate-400">{ctx.roles.join(' · ')}</p>
+          <p className="mt-0.5 truncate text-xs text-slate-400">{ctx.roles.map((r) => tRoles(r)).join(' · ')}</p>
         </div>
       </aside>
 

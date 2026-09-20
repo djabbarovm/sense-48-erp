@@ -8,9 +8,16 @@ test('login → shell с навигацией по роли → tenant switcher'
   await page.getByRole('button', { name: 'Войти' }).click();
 
   await expect(page).toHaveURL('/');
-  // Lead видит операционную навигацию, но не админку
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Поставщики' })).toBeVisible();
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Администрирование' })).toHaveCount(0);
+  const nav = page.getByRole('navigation').first();
+  // Руководитель финансов — фокус-роль: компактное «Главное» под финансовый контур
+  await expect(nav.getByText('Главное', { exact: true })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Платежи' })).toBeVisible();
+  // Полный список — под «Все разделы»; «Поставщики» доступны после разворота, админки нет вовсе
+  const summary = nav.locator('summary', { hasText: 'Все разделы' });
+  await expect(summary).toBeVisible();
+  await summary.click();
+  await expect(nav.getByRole('link', { name: 'Поставщики' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Администрирование' })).toHaveCount(0);
   // Портфель: lead имеет 3 tenant в переключателе
   const options = page.locator('select[name="tenant"] option');
   await expect(options).toHaveCount(3);

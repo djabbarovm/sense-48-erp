@@ -34,6 +34,7 @@ export default async function AdminPage() {
   const ctx = await requireTenantContext();
   if (!can(ctx, 'tenant.settings')) notFound();
   const t = await getTranslations('admin');
+  const tRoles = await getTranslations('roles');
 
   const [tenant, users, costCenters, categories, telephony] = await Promise.all([
     prisma.tenant.findUniqueOrThrow({ where: { id: ctx.tenantId } }),
@@ -150,7 +151,7 @@ export default async function AdminPage() {
                       <form key={role} action={revokeRoleAction} className="inline-flex items-center gap-1">
                         <input type="hidden" name="userId" value={u.user.id} />
                         <input type="hidden" name="role" value={role} />
-                        <Badge tone="blue">{role}</Badge>
+                        <Badge tone="blue">{tRoles(role)}</Badge>
                         <Button type="submit" variant="ghost" className="px-1 py-0 text-xs">
                           ×
                         </Button>
@@ -172,7 +173,7 @@ export default async function AdminPage() {
             <Select id="grant-role" name="role">
               {ROLE_CODES.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {tRoles(r)}
                 </option>
               ))}
             </Select>
@@ -200,7 +201,7 @@ export default async function AdminPage() {
           <div>
             <Label htmlFor="cu-role">{t('role')}</Label>
             <Select id="cu-role" name="newRole">
-              {ROLE_CODES.map((r) => (<option key={r} value={r}>{r}</option>))}
+              {ROLE_CODES.map((r) => (<option key={r} value={r}>{tRoles(r)}</option>))}
             </Select>
           </div>
           <div className="col-span-2">
