@@ -80,6 +80,30 @@ describe('A-06 RBAC matrix (docs/05)', () => {
     expect(ROLE_ALIASES).toEqual({ COMMERCIAL_MANAGER: ['BROKER'] });
   });
 
+  it('ADR-041 (Tower SPEC §2.2/§3.1): селективный мёрж CM→BROKER — SoD не течёт на BROKER', () => {
+    const broker = ctxWith('BROKER');
+    // BROKER ПОЛУЧАЕТ: владение договором/lease, дебиторку (view), листинг
+    for (const code of ['lease.manage', 'lease.view', 'rent.view', 'unit.publish', 'deal.manage', 'unit.status.commercial'] as const) {
+      expect(can(broker, code), `BROKER должен иметь ${code}`).toBe(true);
+    }
+    // BROKER НЕ ПОЛУЧАЕТ (ядро SoD — остаётся у COMMERCIAL_DIRECTOR/финансов):
+    for (const code of [
+      'mall.manage', // мандаты ТРЦ — Камила
+      'commission.manage', // подтверждение комиссии — директор
+      'unit.pricing.edit', // утверждение цены/ставки — директор
+      'owner.activity', // онбординг/ведение собственника — директор (брокер только intake объекта)
+      'bonus.confirm_kpi', // подтверждение KPI — директор
+      'rent.match', // зачёт банковских поступлений — финансы
+      'property.manage', // структурное управление фондом — владелец/директор/админ
+    ] as const) {
+      expect(can(broker, code), `SoD-протечка: BROKER НЕ должен иметь ${code}`).toBe(false);
+    }
+    // BROKER ⊆ COMMERCIAL_MANAGER сохраняется (алиас CM⇒BROKER остаётся no-op для can())
+    for (const code of PERMISSION_CODES) {
+      if (can(broker, code)) expect(can(ctxWith('COMMERCIAL_MANAGER'), code), `BROKER⊄CM на ${code}`).toBe(true);
+    }
+  });
+
   it('инварианты docs/05: Admin вне финансового workflow, Owner не готовит платежи', () => {
     const admin = ctxWith('ADMIN');
     for (const code of PERMISSION_CODES.filter((c) => c.startsWith('payment.') && c !== 'payment.view')) {

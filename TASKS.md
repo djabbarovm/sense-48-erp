@@ -151,7 +151,11 @@
 
 ## Tower (реализация утверждённого SPEC v1.0)
 - [x] TWR-01 Phase 1 (ADR-040): роли/доступ/флаги/настройки — обратимо, без миграций. CM ⇒ BROKER однонаправленный deprecated-алиас (`ROLE_ALIASES`/`expandRoles`, core); фиче-флаги STR/MALL/POOL_COMMISSIONS (`core/config/features.ts`, дефолты off); настройки Tower (`core/config/towerSettings.ts`: пороги §7 + пул-комиссии §4 HYPOTHESIS за флагом); §4-ставки уже в `property/commission.ts` (не дублировать, тест на соответствие). ApprovalPolicy не расширять. Тесты core + config зелёные; lint/typecheck ок; полный прогон без регрессий (2 my-day теста — пре-существующие, date-sensitive, падают и на baseline)
-- [ ] TWR-02 Phase 2: воронка сделки §3.1 (forward-only + откат COMMERCIAL_DIRECTOR, DUE_DILIGENCE-гейт перед CONTRACT — миграция enum), экран CALL_CENTER «Очередь входящих» (§5.1), приведение доски BROKER (§5.2), расширение BROKER до полного цикла
+- [~] TWR-02 Phase 2: воронка сделки §3.1 (forward-only + откат COMMERCIAL_DIRECTOR, DUE_DILIGENCE-гейт перед CONTRACT — миграция enum), экран CALL_CENTER «Очередь входящих» (§5.1), приведение доски BROKER (§5.2), расширение BROKER до полного цикла
+  - [x] 2a: селективный мёрж CM→BROKER (ADR-041) — BROKER получил lease.view/lease.manage/rent.view/unit.publish; SoD не протёк (mall/commission/pricing/owner-onboarding/rent.match/property.manage — не брокеру); setLeaseTenantCategory→mall.manage. Тесты обновлены, 539 зелёных
+  - [ ] 2b: миграции (DUE_DILIGENCE enum, settings-таблица) — показать + план отката, применить после утверждения
+  - [ ] 2c: воронка §3.1 (DUE_DILIGENCE-гейт перед CONTRACT, forward-only, откат=директор) + экран CALL_CENTER «Очередь входящих»
+- [x] TWR-BUG (ADR-042): 2 date-sensitive теста «Моего дня» починены в корне — быстрые действия штампуют логическое now (addDealActivity.happenedAt, createDeal.createdAt, quickCall(now))
 - [ ] TWR-03 Phase 3: комиссии из настроек + подтверждения денег (SoD §2.2: закрывающий ≠ подтверждающий), пульт COMMERCIAL_DIRECTOR (§5.3), settings-таблица (миграция)
 - [ ] TWR-04 Phase 4: движок алертов §6 + пороги §7 из настроек, пульт исключений CEO (§5.4)
 - [ ] TWR-05 Phase 5: листинг §3.2 + онбординг в управление §3.3 + пулы (за фиче-флагом HYPOTHESIS)

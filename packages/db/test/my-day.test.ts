@@ -45,7 +45,7 @@ describe('«Мой день» (docs/21 §5; BR-P60/P61)', () => {
 
   it('звонок → активность CALL и следующий шаг; показ → VIEWING c датой (в прошлое нельзя), стадия и «провести показ»', async () => {
     const d = (await getMyDay(ctx(), NOW)).dueToday[0]!;
-    await quickCall(ctx(), d.id, { note: 'Уточнил бюджет', nextAction: 'Отправить подборку', nextActionAt: new Date('2026-09-20T05:00:00Z') });
+    await quickCall(ctx(), d.id, { note: 'Уточнил бюджет', nextAction: 'Отправить подборку', nextActionAt: new Date('2026-09-20T05:00:00Z') }, NOW);
     await expect(scheduleViewing(ctx(), d.id, { at: new Date('2026-09-18T10:00:00Z') }, NOW)).rejects.toBeInstanceOf(ValidationError);
     const noUnit = await quickLead(ctx(), { contactName: 'Без юнита', contactPhone: '+998971112233' }, NOW);
     await expect(scheduleViewing(ctx(), noUnit.id, { at: new Date('2026-09-19T10:00:00Z') }, NOW)).rejects.toThrow(/DEAL_UNIT_REQUIRED/);

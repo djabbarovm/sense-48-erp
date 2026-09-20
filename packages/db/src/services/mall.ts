@@ -97,7 +97,9 @@ export async function listMandates(ctx: TenantContext, filter: { buildingId?: st
 // ── Категория арендатора (tenant mix) ──
 
 export async function setLeaseTenantCategory(ctx: TenantContext, leaseId: string, category: TenantCategory | null) {
-  requirePermission(ctx, 'lease.manage');
+  // ADR-041: tenant mix (категория арендатора ТРЦ) — решение Mall, право mall.manage
+  // (остаётся у COMMERCIAL_DIRECTOR/OWNER), НЕ утекает на BROKER через lease.manage.
+  requirePermission(ctx, 'mall.manage');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const before = await findScopedOr404(tx.leaseContract, ctx, leaseId);
     const after = await tx.leaseContract.update({ where: { id: leaseId }, data: { tenantCategory: category, updatedBy: ctx.userId } });

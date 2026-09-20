@@ -13,7 +13,10 @@ describe('Договор аренды — state machine (docs/20 §11.1)', () =>
     expect(() => leaseMachine.assert(ctx('COMMERCIAL_MANAGER'), 'ACTIVE', 'terminate', p)).toThrow(/TERMINATE_REASON_REQUIRED/);
     expect(leaseMachine.assert(ctx('COMMERCIAL_MANAGER'), 'ACTIVE', 'terminate', { ...p, reason: 'выезд' })).toBe('TERMINATED');
     expect(leaseMachine.assert(null, 'ACTIVE', 'mark_expiring', p)).toBe('EXPIRING');
-    expect(leaseMachine.can(ctx('BROKER'), 'DRAFT', 'activate', p)).toBe(false);
+    // ADR-041 (Tower SPEC §2.2/§3.1): BROKER владеет договором и активирует lease
+    expect(leaseMachine.can(ctx('BROKER'), 'DRAFT', 'activate', p)).toBe(true);
+    // роль вне коммерции договор не активирует
+    expect(leaseMachine.can(ctx('ACCOUNTANT'), 'DRAFT', 'activate', p)).toBe(false);
   });
   it('юнит — зеркало договора', () => {
     const active = unitPatchFromLease({ type: 'LTR', status: 'ACTIVE', occupantName: 'CityNet', endAt: new Date('2027-01-01'), rentMinor: 100n });

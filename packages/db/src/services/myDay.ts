@@ -67,8 +67,8 @@ export async function getMyDay(ctx: TenantContext, now = new Date()): Promise<My
 // ── Быстрые действия (BR-P60/P61: показ — событие c датой, после действия — следующий шаг) ──
 
 /** Звонок по сделке: активность CALL + следующий шаг. */
-export async function quickCall(ctx: TenantContext, dealId: string, input: { note: string; nextAction?: string | null; nextActionAt?: Date | null }) {
-  await addDealActivity(ctx, dealId, { kind: 'CALL', note: input.note, followUpAt: input.nextActionAt ?? null });
+export async function quickCall(ctx: TenantContext, dealId: string, input: { note: string; nextAction?: string | null; nextActionAt?: Date | null }, now = new Date()) {
+  await addDealActivity(ctx, dealId, { kind: 'CALL', note: input.note, followUpAt: input.nextActionAt ?? null, happenedAt: now });
   if (input.nextAction !== undefined || input.nextActionAt !== undefined) await updateDeal(ctx, dealId, { nextAction: input.nextAction ?? null, nextActionAt: input.nextActionAt ?? null });
 }
 
@@ -82,7 +82,7 @@ export async function scheduleViewing(ctx: TenantContext, dealId: string, input:
   if (input.unitNo && !unitId) throw new ValidationError('UNIT_NOT_FOUND', `UNIT_NOT_FOUND: ${input.unitNo}`);
   if (!deal.unitId && !unitId) throw new ValidationError('DEAL_UNIT_REQUIRED', 'DEAL_UNIT_REQUIRED: для показа укажите юнит');
   if (unitId && unitId !== deal.unitId) await updateDeal(ctx, dealId, { unitId });
-  await addDealActivity(ctx, dealId, { kind: 'VIEWING', note: input.note?.trim() || `Показ ${input.at.toISOString().slice(0, 16).replace('T', ' ')}`, followUpAt: input.at });
+  await addDealActivity(ctx, dealId, { kind: 'VIEWING', note: input.note?.trim() || `Показ ${input.at.toISOString().slice(0, 16).replace('T', ' ')}`, followUpAt: input.at, happenedAt: now });
   const order = ['NEW', 'QUALIFIED', 'PROPERTY_SELECTED', 'VIEWING'];
   let stage = deal.stage as string;
   while (order.indexOf(stage) >= 0 && order.indexOf(stage) < 3) { await moveDeal(ctx, dealId, 'advance', {}, now); stage = order[order.indexOf(stage) + 1]!; }
@@ -116,8 +116,8 @@ export async function viewingResult(ctx: TenantContext, dealId: string, input: {
 /** Быстрый лид c телефона: имя, телефон, потребность → сделка NEW co следующим шагом «связаться». */
 export async function quickLead(ctx: TenantContext, input: { contactName: string; contactPhone?: string | null; note?: string | null; unitNo?: string | null; source?: 'WEBSITE' | 'TELEGRAM' | 'INSTAGRAM' | 'REFERRAL' | 'BROKER' | 'WALK_IN' | 'OTHER'; managerId?: string | null }, now = new Date()) {
   const unit = input.unitNo ? await prisma.unit.findFirst({ where: { tenantId: ctx.tenantId, unitNo: { equals: input.unitNo.trim(), mode: 'insensitive' } }, select: { id: true, askingRateMinor: true } }) : null;
-  const deal = await createDeal(ctx, { contactName: input.contactName, contactPhone: input.contactPhone ?? null, source: input.source ?? 'WALK_IN', purpose: input.note ?? null, unitId: unit?.id ?? null, expectedRateMinor: unit?.askingRateMinor ?? null, nextAction: 'Связаться c клиентом', nextActionAt: new Date(now.getTime() + 15 * 60_000), ...(input.managerId ? { managerId: input.managerId } : {}) });
-  if (input.note?.trim()) await addDealActivity(ctx, deal.id, { kind: 'NOTE', note: input.note.trim() });
+  const deal = await createDeal(ctx, { contactName: input.contactName, contactPhone: input.contactPhone ?? null, source: input.source ?? 'WALK_IN', purpose: input.note ?? null, unitId: unit?.id ?? null, expectedRateMinor: unit?.askingRateMinor ?? null, nextAction: 'Связаться c клиентом', nextActionAt: new Date(now.getTime() + 15 * 60_000), createdAt: now, ...(input.managerId ? { managerId: input.managerId } : {}) });
+  if (input.note?.trim()) await addDealActivity(ctx, deal.id, { kind: 'NOTE', note: input.note.trim(), happenedAt: now });
   return deal;
 }
 

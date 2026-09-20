@@ -31,13 +31,12 @@ describe('P-12 WorkBot: draft → preview → confirm → commit → audit (BR-P
     expect(d.kind).toBe('UNIT_VACATE');
     expect(d.preview).toMatch(/расторгнуть действующий договор/);
     expect(d.unitId).toBe(unitId);
-    // брокер создал черновик, но подтвердить не может (нужно lease.manage) — 403, статус не меняется
-    await expect(confirmActionDraft(ctx(['BROKER']), d.id)).rejects.toThrow(PermissionDeniedError);
-    expect((await prisma.actionDraft.findUniqueOrThrow({ where: { id: d.id } })).status).toBe('DRAFT');
-    const ok = await confirmActionDraft(ctx(['COMMERCIAL_MANAGER'], cmId), d.id);
+    // ADR-041 (Tower SPEC §2.2/§3.2): BROKER владеет договором (lease.manage) и листингом
+    // (unit.publish) — расторгает договор и публикует сам (роль без права — 403, см. тест ниже c ACCOUNTANT).
+    const ok = await confirmActionDraft(ctx(['BROKER']), d.id);
     expect(ok.status).toBe('CONFIRMED');
     expect(ok.resultRef).toBe(`/property/units/${unitId}`);
-    const card = await getUnitCard(ctx(['COMMERCIAL_MANAGER'], cmId), unitId);
+    const card = await getUnitCard(ctx(['BROKER']), unitId);
     expect(card.unit).toMatchObject({ occupancy: 'VACANT', leaseStatus: 'TERMINATED', commercialStatus: 'AVAILABLE' });
     expect(card.unit.publishedAt).not.toBeNull();
     expect(card.unit.view.color).toBe('RED');
@@ -45,7 +44,7 @@ describe('P-12 WorkBot: draft → preview → confirm → commit → audit (BR-P
     expect(actions).toEqual(['action_draft.create', 'action_draft.confirm']);
     // rawText не попадает в audit
     expect(JSON.stringify((await prisma.auditLog.findMany({ where: { tenantId, objectType: 'action_draft' }, select: { before: true, after: true } })))).not.toContain('можно выставлять');
-    await expect(confirmActionDraft(ctx(['COMMERCIAL_MANAGER'], cmId), d.id)).rejects.toThrow(/DRAFT_NOT_CONFIRMABLE/);
+    await expect(confirmActionDraft(ctx(['BROKER']), d.id)).rejects.toThrow(/DRAFT_NOT_CONFIRMABLE/);
   });
 
   it('«1704 показали X Company, хотят 35 долларов за метр» → сделка на стадии «Показ», ставка × площадь, стадия юнита VIEWING', async () => {

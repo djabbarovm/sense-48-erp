@@ -100,11 +100,13 @@ describe('Wave 2 — сделки (BR-P20/P21/P22/P23)', () => {
   });
 
   it('BR-P23: WON только через активацию договора; договор — источник истины юнита (LEASE_IS_SOURCE); 403/404', async () => {
-    await expect(createLease(broker(), { unitId: unitA, type: 'LTR', occupantName: 'x', startAt: new Date('2026-10-01'), rentMinor: 1n })).rejects.toThrow(PermissionDeniedError);
-    const lease = await createLease(cm(), { unitId: unitA, type: 'LTR', occupantName: 'Рустам Каримов', occupantContact: '+998901112233', startAt: new Date('2026-10-01'), endAt: new Date('2027-09-30'), rentMinor: 140_000n, depositMinor: 140_000n, depositReceived: true, dealId });
+    // ADR-041 (Tower SPEC §2.2/§3.1): BROKER владеет договором — заводит и активирует lease;
+    // роль вне коммерции (бухгалтер) — отказ.
+    await expect(createLease(ctx(['ACCOUNTANT']), { unitId: unitA, type: 'LTR', occupantName: 'x', startAt: new Date('2026-10-01'), rentMinor: 1n })).rejects.toThrow(PermissionDeniedError);
+    const lease = await createLease(broker(), { unitId: unitA, type: 'LTR', occupantName: 'Рустам Каримов', occupantContact: '+998901112233', startAt: new Date('2026-10-01'), endAt: new Date('2027-09-30'), rentMinor: 140_000n, depositMinor: 140_000n, depositReceived: true, dealId });
     expect(lease.status).toBe('DRAFT');
     await expect(activateLease(other(), lease.id)).rejects.toThrow(NotFoundError);
-    const active = await activateLease(cm(), lease.id);
+    const active = await activateLease(broker(), lease.id);
     expect(active.status).toBe('ACTIVE');
     const card = await getUnitCard(cm(), unitA);
     expect(card.unit).toMatchObject({ occupancy: 'OCCUPIED', rentalMode: 'LTR', leaseStatus: 'ACTIVE', occupantName: 'Рустам Каримов', commercialStatus: 'CONTRACTED', monthlyRentMinor: 140_000n });
@@ -123,7 +125,9 @@ describe('Wave 2 — сделки (BR-P20/P21/P22/P23)', () => {
     // PII арендатора — только c правом
     expect((await listLeases(ctx(['OPERATIONS_MANAGER'])))[0]?.occupantContact).toBeNull();
     expect((await listLeases(cm(), { unitId: unitA, status: ['ACTIVE'] }))[0]?.occupantContact).toBe('+998901112233');
-    await expect(listLeases(broker())).rejects.toThrow(PermissionDeniedError);
+    // BROKER видит договоры (SPEC §1.1 contracts full); роль без lease.view (колл-центр) — отказ
+    expect((await listLeases(broker(), { unitId: unitA })).length).toBeGreaterThan(0);
+    await expect(listLeases(ctx(['CALL_CENTER']))).rejects.toThrow(PermissionDeniedError);
     const leaseAudit = await prisma.auditLog.findMany({ where: { tenantId, objectType: 'lease_contract', objectId: lease.id } });
     expect(JSON.stringify(leaseAudit.map((a) => a.after))).not.toContain('998901112233');
   });

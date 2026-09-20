@@ -99,14 +99,17 @@ export const PERMISSION_MATRIX = {
   'unit.status.commercial': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'BROKER'],
   'unit.status.operational': ['OWNER', 'OPERATIONS_MANAGER'],
   'unit.status.override': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR'],
-  'unit.publish': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'MARKETING'],
+  // ADR-041 (Tower SPEC §3.2): BROKER ведёт листинг — публикует объект в фонд
+  'unit.publish': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'MARKETING', 'BROKER'],
   'unit.pricing.edit': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR'],
   'unit.owner.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CALL_CENTER', 'CEO'],
   'unit.finance.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO'],
   'unit.activity.create': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'BROKER', 'OPERATIONS_MANAGER'],
   // ── MDS Property Wave 2 (docs/20 §11) ──
-  'lease.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'OPERATIONS_MANAGER', 'CEO'],
-  'lease.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR'],
+  // ADR-041 (Tower SPEC §2.2/§3.1): BROKER владеет договором — заводит и активирует lease.
+  // Продления (renewals) — область COMMERCIAL_DIRECTOR (нюанс по действию, а не по праву; enforce в домене).
+  'lease.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'OPERATIONS_MANAGER', 'CEO', 'BROKER'],
+  'lease.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'BROKER'],
   'deal.view': ['OWNER', 'FINANCE_OPS_LEAD', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'BROKER', 'MARKETING', 'CALL_CENTER', 'CEO'],
   'deal.manage': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'BROKER', 'CALL_CENTER'],
   'deal.contact.view': ['OWNER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'BROKER', 'CALL_CENTER', 'CEO'],
@@ -127,7 +130,9 @@ export const PERMISSION_MATRIX = {
   'service.verify': ['OWNER', 'OPERATIONS_MANAGER', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR'],
   'service.catalog': ['OWNER', 'ADMIN', 'OPERATIONS_MANAGER'],
   // Аренда и дебиторка (docs/20 §11.9): просмотр начислений и зачёт банковских поступлений
-  'rent.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO'],
+  // ADR-041 (Tower SPEC §1.1/§2.2): BROKER видит дебиторку (contracts/receivables full) и
+  // фиксирует факт первой оплаты; зачёт банковских поступлений (rent.match) — финансы, НЕ брокер.
+  'rent.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO', 'BROKER'],
   'rent.match': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE'],
   // Комиссии ORDO и бонусы (docs/20 §11.10): комиссия — деньги ORDO; бонус видит владелец/финансы/коммерция, свой — продажник
   'commission.view': ['OWNER', 'FINANCE_OPS_LEAD', 'JUNIOR_FINANCE', 'ACCOUNTANT', 'ADMIN', 'COMMERCIAL_MANAGER', 'COMMERCIAL_DIRECTOR', 'CEO'],

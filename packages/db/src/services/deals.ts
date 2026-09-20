@@ -56,6 +56,8 @@ export interface DealInput {
   externalBrokerName?: string | null;
   externalShareBp?: number;
   tenantCategory?: TenantCategory | null;
+  /** Переопределение createdAt (логическое now из быстрых действий); по умолчанию — now() БД. */
+  createdAt?: Date;
 }
 
 const brokerOnly = (ctx: TenantContext) => hasRole(ctx, 'BROKER') && !hasRole(ctx, 'OWNER', 'COMMERCIAL_MANAGER');
@@ -109,6 +111,7 @@ export async function createDeal(ctx: TenantContext, input: DealInput): Promise<
         stage: input.unitId ? 'PROPERTY_SELECTED' : 'NEW', nextAction: input.nextAction ?? null, nextActionAt: input.nextActionAt ?? null,
         expectedRateMinor: input.expectedRateMinor ?? null, reservedUntil: input.reservedUntil ?? null, depositReceived: input.depositReceived ?? false, createdBy: ctx.userId,
         product: input.product ?? 'LEASE_LTR', salePriceMinor: input.salePriceMinor ?? null, commissionRateBp: input.commissionRateBp ?? null, externalBrokerName: input.externalBrokerName ?? null, externalShareBp: validShare(input.externalShareBp), tenantCategory: input.tenantCategory ?? null,
+        ...(input.createdAt ? { createdAt: input.createdAt } : {}),
       },
     });
     if (created.unitId) await recomputeUnitCommercialStatus(tx, ctx.tenantId, created.unitId);
@@ -320,13 +323,15 @@ export async function getDeal(ctx: TenantContext, id: string, today = new Date()
   };
 }
 
-export async function addDealActivity(ctx: TenantContext, dealId: string, input: { kind: UnitActivityKind; note: string; expectedRateMinor?: bigint | null; followUpAt?: Date | null }) {
+export async function addDealActivity(ctx: TenantContext, dealId: string, input: { kind: UnitActivityKind; note: string; expectedRateMinor?: bigint | null; followUpAt?: Date | null; happenedAt?: Date | null }) {
   requirePermission(ctx, 'deal.manage');
   if (!input.note.trim()) throw new ValidationError('NOTE_REQUIRED');
   return withAudit({ tenantId: ctx.tenantId, userId: ctx.userId }, async (tx) => {
     const deal = await loadOwnDeal(tx, ctx, dealId);
     const created = await tx.unitActivity.create({
-      data: { tenantId: ctx.tenantId, dealId, unitId: deal.unitId, kind: input.kind, note: input.note.trim(), expectedRateMinor: input.expectedRateMinor ?? null, followUpAt: input.followUpAt ?? null, actorId: ctx.userId },
+      // happenedAt по умолчанию — now() БД; передаётся из быстрых действий, чтобы «сегодня» в «Моём дне»
+      // считалось относительно логического now (детерминированно в тестах, без изменения прод-поведения)
+      data: { tenantId: ctx.tenantId, dealId, unitId: deal.unitId, kind: input.kind, note: input.note.trim(), expectedRateMinor: input.expectedRateMinor ?? null, followUpAt: input.followUpAt ?? null, actorId: ctx.userId, ...(input.happenedAt ? { happenedAt: input.happenedAt } : {}) },
     });
     // follow-up активности становится следующим действием сделки (BR-P22)
     if (input.followUpAt) await tx.deal.update({ where: { id: dealId }, data: { nextAction: input.note.trim().slice(0, 120), nextActionAt: input.followUpAt, ...(input.expectedRateMinor != null ? { expectedRateMinor: input.expectedRateMinor } : {}) } });
