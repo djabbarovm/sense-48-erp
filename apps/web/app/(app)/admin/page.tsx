@@ -53,7 +53,10 @@ export default async function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{t('title')}</h1>
-        {can(ctx, 'apikey.manage') ? <Link href="/admin/api-keys" className="text-sm font-medium text-brand-600 hover:underline">{t('apiKeys')}</Link> : null}
+        <div className="flex items-center gap-4">
+          <Link href="/admin/integrations" className="text-sm font-medium text-brand-600 hover:underline">{t('integrations')}</Link>
+          {can(ctx, 'apikey.manage') ? <Link href="/admin/api-keys" className="text-sm font-medium text-brand-600 hover:underline">{t('apiKeys')}</Link> : null}
+        </div>
       </div>
 
       <Card>

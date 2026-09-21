@@ -72,3 +72,28 @@ export async function listExternalRefs(ctx: TenantContext, filter: ExternalRefFi
     take: limit,
   });
 }
+
+export interface ExternalRefsSummary {
+  total: number;
+  byEntity: { entityType: string; count: number }[];
+  byStatus: { status: ExternalRefStatus; count: number }[];
+  lastSyncedAt: Date | null;
+}
+
+/** Сводка внешних ссылок для админ-экрана (right after import / dry-run). tenant.settings + изоляция. */
+export async function summarizeExternalRefs(ctx: TenantContext, provider?: ExternalProvider): Promise<ExternalRefsSummary> {
+  requirePermission(ctx, 'tenant.settings');
+  const where = { tenantId: ctx.tenantId, ...(provider ? { provider } : {}) };
+  const [total, byEntityRaw, byStatusRaw, last] = await Promise.all([
+    prisma.externalReference.count({ where }),
+    prisma.externalReference.groupBy({ by: ['entityType'], where, _count: { _all: true } }),
+    prisma.externalReference.groupBy({ by: ['status'], where, _count: { _all: true } }),
+    prisma.externalReference.findFirst({ where, orderBy: { syncedAt: 'desc' }, select: { syncedAt: true } }),
+  ]);
+  return {
+    total,
+    byEntity: byEntityRaw.map((r) => ({ entityType: r.entityType, count: r._count._all })).sort((a, b) => b.count - a.count),
+    byStatus: byStatusRaw.map((r) => ({ status: r.status, count: r._count._all })),
+    lastSyncedAt: last?.syncedAt ?? null,
+  };
+}

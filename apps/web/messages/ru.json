@@ -147,7 +147,8 @@
       "none": "ещё не было",
       "save": "Сохранить телефонию",
       "saved": "Сохранено"
-    }
+    },
+    "integrations": "Интеграции"
   },
   "vendors": {
     "title": "Поставщики",
@@ -3347,5 +3348,30 @@
     "CALL_CENTER": "Колл-центр",
     "CEO": "CEO",
     "PROPERTY_OWNER": "Собственник"
+  },
+  "integrations": {
+    "title": "Интеграции",
+    "intro": "Внешние источники данных. amoCRM подключается только на чтение: система забирает воронки, контакты и сделки, ничего не записывая обратно.",
+    "connected": "Подключено",
+    "notConfigured": "Не настроено",
+    "mode": "Режим",
+    "readonly": "Только чтение",
+    "subdomain": "Поддомен",
+    "tokenStatus": "Токен",
+    "tokenPresent": "Задан в секретах сервера",
+    "tokenMissing": "Не задан",
+    "lastSync": "Последняя синхронизация",
+    "setupHint": "Добавьте секреты AMOCRM_SUBDOMAIN и AMOCRM_LONG_TOKEN (GitHub → Settings → Secrets) и запустите деплой — токен попадёт в окружение сервера. Значение токена в коде и логах не хранится.",
+    "importedTitle": "Импортировано из amoCRM",
+    "importedIntro": "Стабильные ссылки на записи amoCRM (идемпотентно, без дублей): {total} шт.",
+    "importedEmpty": "Пока ничего не импортировано. Сначала — dry-run, затем импорт.",
+    "entity": "Сущность",
+    "status": "Статус",
+    "count": "Кол-во",
+    "dryRunTitle": "Проверочный прогон (dry-run)",
+    "dryRunIntro": "Читает каталог воронок/полей/пользователей, объёмы и качество данных. Ничего не пишет. Выполняется в GitHub Actions (у раннера есть доступ к amoCRM).",
+    "dryRunStep1": "GitHub → вкладка Actions → «amoCRM Dry-Run».",
+    "dryRunStep2": "Run workflow → ветка claude/own-it-product-w1ij9b → Run.",
+    "dryRunStep3": "В логах — каталог воронок (в т.ч. ID воронки банкетов), кастом-поля, объёмы и отчёт качества; JSON — в артефактах прогона."
   }
 }

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PermissionDeniedError, unsafeCreateTenantContext, type RoleCode } from '@finance-os/core';
 import { prisma } from '../src/client.js';
-import { upsertExternalRef, findExternalRef, setExternalRefStatus, countExternalRefs, listExternalRefs } from '../src/services/externalRefs.js';
+import { upsertExternalRef, findExternalRef, setExternalRefStatus, countExternalRefs, listExternalRefs, summarizeExternalRefs } from '../src/services/externalRefs.js';
 
 let tenantId: string; let otherTenantId: string; let adminId: string;
 const ctx = (roles: RoleCode[], tid = tenantId) => unsafeCreateTenantContext({ tenantId: tid, tenantSlug: 'er', userId: adminId, roles });
@@ -50,5 +50,15 @@ describe('ExternalReference — идемпотентность, dedup, изол�
 
   it('UI-чтение требует право tenant.settings', async () => {
     await expect(listExternalRefs(ctx(['BROKER']))).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+
+  it('summarizeExternalRefs: сводка по сущностям/статусам, tenant-изоляция, право tenant.settings', async () => {
+    await expect(summarizeExternalRefs(ctx(['BROKER']))).rejects.toBeInstanceOf(PermissionDeniedError);
+    const s = await summarizeExternalRefs(ctx(['ADMIN']), 'AMOCRM');
+    expect(s.total).toBe(2); // lead 555 + contact 555 в этом тенанте
+    expect(s.byEntity.find((e) => e.entityType === 'lead')?.count).toBe(1);
+    expect(s.byEntity.find((e) => e.entityType === 'contact')?.count).toBe(1);
+    expect(s.byStatus.find((x) => x.status === 'CONFLICT')?.count).toBe(1);
+    expect(s.lastSyncedAt).toBeInstanceOf(Date);
   });
 });
