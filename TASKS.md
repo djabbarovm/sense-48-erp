@@ -163,6 +163,16 @@
 - [ ] TWR-05 Phase 5: листинг §3.2 + онбординг в управление §3.3 + пулы (за фиче-флагом HYPOTHESIS)
 - [ ] TWR-BUG my-day.test.ts: 2 пре-существующих date-sensitive теста (быстрый лид / звонок+показ) падают вне зависимости от Tower-изменений — разобрать при работе над §5.2
 
+## amoCRM — внешний источник CRM (READ-ONLY)
+- [x] AMO-C adapter + OAuth: `packages/adapters/src/amocrm` — `AmoCrmClient` (инъекция fetch, Bearer, 429-ретрай, пагинация), OAuth + long-lived, типизированные READ-методы. Тест client.test (8). Секреты не в логах
+- [x] AMO-C.2 ExternalReference: таблица `external_reference` (идемпотентность + провенанс), сервис upsert/find/status/count/list. Миграция применена. Тест (изоляция/дедуп/идемпотентность)
+- [x] AMO-D dry-run + config + CI: конфиг из ENV; `dryRun.ts` (каталог воронок/полей/юзеров, объёмы, качество, маппинг воронка→DMS); `scripts/amocrm-dryrun.ts`; workflow `amocrm-dryrun.yml` (раннер имеет доступ к amocrm.ru); `deploy.yml` инъекция AMOCRM_* в .env.prod. Тесты (10 amoCRM зелёных)
+- [x] AMO-E админ-экран `/admin/integrations`: статус подключения (без секрета), сводка ExternalReference, how-to dry-run. `summarizeExternalRefs` (tenant.settings + изоляция)
+- [ ] AMO-RUN (действие владельца): GitHub → Actions → «amoCRM Dry-Run» → Run (ветка claude/own-it-product-w1ij9b). Проверка токена + каталог воронок (в т.ч. ID воронки банкетов Rooftop). Из dev-песочницы недоступно (egress-политика)
+- [ ] AMO-F нормализация + маппинг: слой нормализации raw→DMS, user mapping (report), pipeline/stage mapping report (MATCH/MAPPABLE/AMBIGUOUS/NO_EQUIVALENT), dedup контактов (external id → нормализованный телефон → иначе CONFLICT/NEEDS_REVIEW, не мёрж по имени). После dry-run
+- [ ] AMO-G импорт: идемпотентный upsert в DMS через ExternalReference (OPEN: Intake vs Deal — обратимо, не закрывать), аудит прогона целиком
+- [ ] AMO-H webhooks (после initial sync): подписка на изменения, БЕЗ write-back. Analytics event/snapshot слой (docs дополнение 17–32) — не раньше данных
+
 ## IP — принадлежность продукта
 - [x] IP-01 Правообладатель зафиксирован (ADR-015): LICENSE, docs/17-ip-ownership.md, package.json, README, git-идентичность владельца
 - [ ] IP-02 Юрист: задачи 6.1–6.9 из docs/17 (сверка имени, договор отчуждения, форма передачи, регистрация ПО/ТЗ, депонирование, шаблоны договоров c клиентами и подрядчиками, ПДн, соглашение по книге KSP)
