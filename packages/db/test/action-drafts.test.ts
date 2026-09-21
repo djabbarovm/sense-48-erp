@@ -40,7 +40,7 @@ describe('P-12 WorkBot: draft → preview → confirm → commit → audit (BR-P
     expect(card.unit).toMatchObject({ occupancy: 'VACANT', leaseStatus: 'TERMINATED', commercialStatus: 'AVAILABLE' });
     expect(card.unit.publishedAt).not.toBeNull();
     expect(card.unit.view.color).toBe('RED');
-    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectId: d.id }, select: { action: true } })).map((a) => a.action);
+    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectId: d.id }, orderBy: { seq: 'asc' }, select: { action: true } })).map((a) => a.action);
     expect(actions).toEqual(['action_draft.create', 'action_draft.confirm']);
     // rawText не попадает в audit
     expect(JSON.stringify((await prisma.auditLog.findMany({ where: { tenantId, objectType: 'action_draft' }, select: { before: true, after: true } })))).not.toContain('можно выставлять');

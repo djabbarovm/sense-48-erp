@@ -5,6 +5,15 @@
 name: amoCRM Dry-Run
 on:
   workflow_dispatch: {}
+  # workflow_dispatch показывает кнопку «Run» только для дефолтной ветки. Пока код живёт в
+  # feature-ветке, запускаем dry-run автоматически при изменении amoCRM-кода в этой ветке
+  # (READ-ONLY, безопасно). После мёржа в дефолтную ветку можно оставить только dispatch.
+  push:
+    branches: [claude/own-it-product-w1ij9b]
+    paths:
+      - 'scripts/amocrm-dryrun.ts'
+      - 'packages/adapters/src/amocrm/**'
+      - '.github/workflows/amocrm-dryrun.yml'
 
 jobs:
   dryrun:
@@ -13,8 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22

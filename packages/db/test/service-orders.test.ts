@@ -90,7 +90,7 @@ describe('Wave 5 — services marketplace (BR-P35/P36, BR-P32)', () => {
     const card = await getServiceOrder(ctx(['OPERATIONS_MANAGER'], ops2Id), orderId);
     expect(card.proofs).toHaveLength(1);
     expect(card.triggers).toEqual(['reopen']);
-    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectType: 'service_order', objectId: orderId }, select: { action: true, after: true } }));
+    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectType: 'service_order', objectId: orderId }, orderBy: { seq: 'asc' }, select: { action: true, after: true } }));
     expect(actions.map((a) => a.action)).toEqual(['service_order.create', 'service_order.accept', 'service_order.start', 'service_order.done', 'service_order.verify', 'service_order.rate']);
     expect(JSON.stringify(actions)).not.toContain('Нормально'); // комментарий не в audit
   });

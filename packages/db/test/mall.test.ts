@@ -63,7 +63,7 @@ describe('ORDO Mall — мандаты, tenant mix, линии актива (BR-
     expect(await generateRentCharges(tenantId, d('2026-09-15'), { fromMonth: d('2026-09-01') })).toBe(1); // только M1-01 (под управлением)
     const rows = await listMandates(ctx(['COMMERCIAL_MANAGER']), { buildingId: mallId });
     expect(rows.map((r) => [r.unitNo, r.status, r.ownerName, r.successFee])).toEqual([['M1-01', 'ACTIVE', 'Silk Road Retail', 0.5]]);
-    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectType: 'mall_mandate', objectId: mandateId }, select: { action: true } })).map((a) => a.action);
+    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectType: 'mall_mandate', objectId: mandateId }, orderBy: { seq: 'asc' }, select: { action: true } })).map((a) => a.action);
     expect(actions).toEqual(['mall_mandate.create', 'mall_mandate.sign', 'mall_mandate.activate']);
   });
 

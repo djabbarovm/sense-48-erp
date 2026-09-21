@@ -61,7 +61,7 @@ describe('Wave 4 — заявки (BR-P31/P32)', () => {
     const card = await getWorkOrder(ctx(['OPERATIONS_MANAGER'], ops2Id), woId);
     expect(card.proofs).toHaveLength(1);
     expect(card.triggers).toEqual(['reopen']);
-    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectType: 'work_order', objectId: woId }, select: { action: true } })).map((a) => a.action);
+    const actions = (await prisma.auditLog.findMany({ where: { tenantId, objectType: 'work_order', objectId: woId }, orderBy: { seq: 'asc' }, select: { action: true } })).map((a) => a.action);
     expect(actions).toEqual(['work_order.create', 'work_order.assign', 'work_order.start', 'work_order.done', 'work_order.verify']);
   });
 
