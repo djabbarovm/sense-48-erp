@@ -18,14 +18,28 @@ export class AmoCrmError extends Error {
 
 const OAUTH_PATH = '/oauth2/access_token';
 
-/** База API из поддомена. Никаких секретов в URL. */
-export function amoBaseUrl(subdomain: string): string {
-  const s = subdomain.replace(/\.amocrm\.ru$/i, '').trim();
-  return `https://${s}.amocrm.ru`;
+const AMO_DOMAINS = ['amocrm.ru', 'amocrm.com', 'kommo.com'];
+
+/**
+ * База API из поддомена/хоста. Никаких секретов в URL.
+ *  • полный хост ("rooftophall.amocrm.com" / "https://x.kommo.com") — используется как есть;
+ *  • голый поддомен ("rooftophall") — приклеивается domain (по умолчанию amocrm.ru).
+ * Домен важен: аккаунты Kommo/международные живут на .com, и запрос на .amocrm.ru даёт 401.
+ */
+export function amoBaseUrl(subdomain: string, domain = 'amocrm.ru'): string {
+  const raw = subdomain.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  // уже полный хост с известным amo-доменом?
+  if (AMO_DOMAINS.some((d) => new RegExp(`\\.${d.replace('.', '\\.')}$`, 'i').test(raw))) {
+    return `https://${raw}`;
+  }
+  const s = raw.replace(/\.(amocrm\.ru|amocrm\.com|kommo\.com)$/i, '');
+  return `https://${s}.${domain}`;
 }
 
 interface ClientOpts {
   subdomain: string;
+  /** домен аккаунта: amocrm.ru (умолч.) | amocrm.com | kommo.com. Игнорируется, если subdomain — полный хост. */
+  domain?: string;
   fetchImpl?: typeof fetch;
   /** максимум ретраев на 429 (по умолчанию 3). */
   maxRetries?: number;
@@ -43,7 +57,7 @@ export class AmoCrmClient {
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(opts: ClientOpts) {
-    this.base = amoBaseUrl(opts.subdomain);
+    this.base = amoBaseUrl(opts.subdomain, opts.domain ?? 'amocrm.ru');
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.maxRetries = opts.maxRetries ?? 3;
     this.retryBaseMs = opts.retryBaseMs ?? 500;
@@ -89,7 +103,15 @@ export class AmoCrmClient {
         attempt++;
         continue;
       }
-      if (res.status === 401) throw new AmoCrmError(401, 'AMOCRM_UNAUTHORIZED', 'AMOCRM_UNAUTHORIZED: токен недействителен/истёк');
+      if (res.status === 401) {
+        // тело ответа amoCRM (title/detail/hint) — это ЕГО ошибка, не наш секрет; помогает понять причину.
+        let hint = '';
+        try {
+          const t = (await res.text()).slice(0, 300).replace(/\s+/g, ' ').trim();
+          if (t) hint = ` · ответ amoCRM: ${t}`;
+        } catch { /* ignore */ }
+        throw new AmoCrmError(401, 'AMOCRM_UNAUTHORIZED', `AMOCRM_UNAUTHORIZED: токен недействителен/истёк или не тот аккаунт${hint}`);
+      }
       if (!res.ok) throw new AmoCrmError(res.status, 'AMOCRM_API_ERROR', `AMOCRM_API_ERROR: GET ${path} → HTTP ${res.status}`);
       return (await res.json()) as T;
     }
@@ -133,4 +155,6 @@ export class AmoCrmClient {
   listCustomFields(t: string, entity: 'leads' | 'contacts' | 'companies') { return this.all<AmoCustomField>(`/${entity}/custom_fields`, t, 'custom_fields'); }
   /** Проверка доступа/аккаунта (лёгкий запрос для health/connect). */
   account(t: string) { return this.get<{ id: number; name: string; subdomain: string }>('/account', t); }
+  /** Резолвнутый базовый хост (без секретов) — для диагностики: на какой домен реально идём. */
+  baseHost(): string { return this.base; }
 }

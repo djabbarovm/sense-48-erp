@@ -1,0 +1,54 @@
+# amoCRM HISTORICAL EXTRACT (READ-ONLY) — исторический экстракт + аналитика → скачиваемый пакет.
+# Runner GitHub Actions имеет доступ к amocrm.ru/.com (dev-песочница — нет). Только GET.
+# Строит scripts/out/amocrm-extract/ (JSON + csv/ + README), затем собирает единый XLSX (лист=таблица)
+# и грузит всё артефактом «amocrm-extract» (скачать: Actions → этот run → Artifacts).
+# Секреты: AMOCRM_SUBDOMAIN, AMOCRM_LONG_TOKEN, [AMOCRM_DOMAIN] (Settings → Secrets and variables → Actions).
+name: amoCRM Extract
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [claude/own-it-product-w1ij9b]
+    paths:
+      - 'scripts/amocrm-extract.ts'
+      - 'packages/adapters/src/amocrm/**'
+      - '.github/workflows/amocrm-extract.yml'
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pnpm install --frozen-lockfile
+      - name: Extract (только чтение)
+        env:
+          AMOCRM_SUBDOMAIN: ${{ secrets.AMOCRM_SUBDOMAIN }}
+          AMOCRM_LONG_TOKEN: ${{ secrets.AMOCRM_LONG_TOKEN }}
+          AMOCRM_DOMAIN: ${{ secrets.AMOCRM_DOMAIN }}
+        run: pnpm --filter @finance-os/db exec tsx "$GITHUB_WORKSPACE/scripts/amocrm-extract.ts"
+      - name: Собрать XLSX из csv/
+        if: always()
+        run: |
+          if [ -d scripts/out/amocrm-extract/csv ]; then
+            pip install --quiet openpyxl
+            python "$GITHUB_WORKSPACE/scripts/csv-to-xlsx.py" \
+              scripts/out/amocrm-extract/csv \
+              scripts/out/amocrm-extract/amocrm-extract.xlsx
+          else
+            echo "csv/ не создан (экстракт не дошёл до записи) — XLSX пропускаю"
+          fi
+      - name: Пакет (артефакт)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amocrm-extract
+          path: scripts/out/amocrm-extract/**
+          if-no-files-found: ignore
