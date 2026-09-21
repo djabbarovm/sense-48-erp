@@ -45,6 +45,8 @@ interface ClientOpts {
   maxRetries?: number;
   /** пауза между ретраями по умолчанию, мс (если нет Retry-After). */
   retryBaseMs?: number;
+  /** таймаут одного запроса, мс (по умолчанию 45000) — чтобы зависший сокет не валил всю выгрузку. */
+  requestTimeoutMs?: number;
   /** для тестов: не спать реально. */
   sleepImpl?: (ms: number) => Promise<void>;
 }
@@ -54,6 +56,7 @@ export class AmoCrmClient {
   private readonly fetchImpl: typeof fetch;
   private readonly maxRetries: number;
   private readonly retryBaseMs: number;
+  private readonly requestTimeoutMs: number;
   private readonly sleep: (ms: number) => Promise<void>;
 
   constructor(opts: ClientOpts) {
@@ -61,6 +64,7 @@ export class AmoCrmClient {
     this.fetchImpl = opts.fetchImpl ?? fetch;
     this.maxRetries = opts.maxRetries ?? 3;
     this.retryBaseMs = opts.retryBaseMs ?? 500;
+    this.requestTimeoutMs = opts.requestTimeoutMs ?? 45000;
     this.sleep = opts.sleepImpl ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   }
 
@@ -89,17 +93,40 @@ export class AmoCrmClient {
     return this.token({ client_id: cfg.clientId, client_secret: cfg.clientSecret, grant_type: 'refresh_token', refresh_token: refreshToken, redirect_uri: cfg.redirectUri });
   }
 
-  // ── низкоуровневый GET c Bearer + ретрай 429 ──
+  // ── низкоуровневый GET c Bearer + ретрай 429 + ретрай сетевых сбоев + таймаут запроса ──
   private async get<T = unknown>(path: string, accessToken: string, params: Record<string, string | number> = {}): Promise<T | null> {
     const url = new URL(`${this.base}/api/v4${path}`);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
     let attempt = 0;
     for (;;) {
-      const res = await this.fetchImpl(url.toString(), { headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' } });
+      // Таймаут на запрос: зависший сокет (amoCRM иногда «держит» тяжёлый /events) не должен
+      // ждать ~5 мин undici-таймаута и валить всю выгрузку — обрываем и ретраим.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), this.requestTimeoutMs);
+      let res: Response;
+      try {
+        res = await this.fetchImpl(url.toString(), { headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' }, signal: ctrl.signal });
+      } catch (e) {
+        // сетевой сбой (fetch failed / abort / reset): ретраим с backoff, иначе — понятная ошибка.
+        if (attempt < this.maxRetries) {
+          await this.sleep(this.retryBaseMs * (attempt + 1) * 2);
+          attempt++;
+          continue;
+        }
+        throw new AmoCrmError(0, 'AMOCRM_NETWORK', `AMOCRM_NETWORK: GET ${path} → ${(e as Error).name}: ${(e as Error).message}`);
+      } finally {
+        clearTimeout(timer);
+      }
       if (res.status === 204) return null; // amoCRM отдаёт 204 на пустую коллекцию
       if (res.status === 429 && attempt < this.maxRetries) {
         const ra = Number(res.headers.get('retry-after')) || 0;
         await this.sleep(ra > 0 ? ra * 1000 : this.retryBaseMs * (attempt + 1));
+        attempt++;
+        continue;
+      }
+      // 5xx — временная проблема amoCRM: тоже ретраим.
+      if (res.status >= 500 && attempt < this.maxRetries) {
+        await this.sleep(this.retryBaseMs * (attempt + 1) * 2);
         attempt++;
         continue;
       }

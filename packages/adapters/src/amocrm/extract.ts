@@ -91,22 +91,39 @@ function emailOf(c: AmoContact): string | null {
   return cfByCode(c.custom_fields_values, 'EMAIL');
 }
 
-// ── raw pull с учётом cap/truncation ──
-interface Pulled<T> { items: T[]; pages: number; truncated: boolean }
+// ── raw pull с учётом cap/truncation + изоляция сбоев ──
+// Пагинируем вручную (через client.page), чтобы сбой на N-й странице НЕ терял уже собранные
+// страницы и не валил всю выгрузку: сущность помечается errored/PARTIAL, пакет всё равно собирается.
+interface Pulled<T> { items: T[]; pages: number; truncated: boolean; errored: boolean; errorMsg?: string }
 async function pull<T>(
   client: AmoCrmClient, token: string, path: string, key: string,
   cap: number, opts: { with?: string; params?: Record<string, string | number> } = {},
 ): Promise<Pulled<T>> {
+  const items: T[] = [];
   let pages = 0;
-  const items = await client.all<T>(path, token, key, {
-    maxPages: cap,
-    ...(opts.with ? { with: opts.with } : {}),
-    ...(opts.params ? { params: opts.params } : {}),
-    onPage: (_i, p) => { pages = p; },
-  });
-  return { items, pages, truncated: pages >= cap };
+  let errored = false;
+  let errorMsg: string | undefined;
+  for (let page = 1; page <= cap; page++) {
+    let p;
+    try {
+      p = await client.page<T>(path, token, key, {
+        page, limit: 250,
+        ...(opts.with ? { with: opts.with } : {}),
+        ...(opts.params ? { params: opts.params } : {}),
+      });
+    } catch (e) {
+      errored = true;
+      errorMsg = `${(e as Error).name}: ${(e as Error).message}`;
+      break;
+    }
+    pages = page;
+    items.push(...p.items);
+    if (!p.hasNext || p.items.length === 0) break;
+  }
+  return { items, pages, truncated: pages >= cap, errored, ...(errorMsg ? { errorMsg } : {}) };
 }
-function availability(p: { truncated: boolean; count: number }): Availability {
+function availability(p: { truncated: boolean; count: number; errored: boolean }): Availability {
+  if (p.errored) return 'PARTIAL'; // часть собрана / чтение прервано — точно не полностью
   if (p.count === 0) return 'NOT_AVAILABLE';
   return p.truncated ? 'PARTIAL' : 'AVAILABLE';
 }
@@ -285,8 +302,8 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   const companiesRaw = await pull<AmoCompany>(client, token, '/companies', 'companies', cap);
   const tasksRaw = await pull<AmoTask>(client, token, '/tasks', 'tasks', cap);
 
-  let notesLeads: Pulled<AmoNote> = { items: [], pages: 0, truncated: false };
-  let notesContacts: Pulled<AmoNote> = { items: [], pages: 0, truncated: false };
+  let notesLeads: Pulled<AmoNote> = { items: [], pages: 0, truncated: false, errored: false };
+  let notesContacts: Pulled<AmoNote> = { items: [], pages: 0, truncated: false, errored: false };
   if (withNotes) {
     notesLeads = await pull<AmoNote>(client, token, '/leads/notes', 'notes', cap);
     notesContacts = await pull<AmoNote>(client, token, '/contacts/notes', 'notes', cap);
@@ -294,7 +311,7 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
     notes.push('Примечания/звонки не выгружались (withNotes=false).');
   }
 
-  let eventsRaw: Pulled<AmoEvent> = { items: [], pages: 0, truncated: false };
+  let eventsRaw: Pulled<AmoEvent> = { items: [], pages: 0, truncated: false, errored: false };
   if (withEvents) {
     eventsRaw = await pull<AmoEvent>(client, token, '/events', 'events', cap);
   } else {
@@ -532,7 +549,10 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   ];
 
   // ── объёмы ──
-  const vol = (entity: string, p: Pulled<unknown>): EntityVolume => ({ entity, count: p.items.length, pages: p.pages, truncated: p.truncated, availability: availability({ truncated: p.truncated, count: p.items.length }) });
+  const vol = (entity: string, p: Pulled<unknown>): EntityVolume => {
+    if (p.errored) notes.push(`Сущность «${entity}» выгружена частично (${p.items.length} записей за ${p.pages} стр.), чтение прервано: ${p.errorMsg}. Помечено PARTIAL — не выдумываем недостающее.`);
+    return { entity, count: p.items.length, pages: p.pages, truncated: p.truncated, availability: availability({ truncated: p.truncated, count: p.items.length, errored: p.errored }) };
+  };
   const volumes: EntityVolume[] = [
     vol('users', usersRaw), vol('pipelines', pipesRaw), vol('leads', leadsRaw), vol('contacts', contactsRaw),
     vol('companies', companiesRaw), vol('tasks', tasksRaw),

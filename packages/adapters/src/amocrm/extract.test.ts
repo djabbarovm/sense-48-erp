@@ -73,6 +73,48 @@ describe('amoBaseUrl / describeTokenShape', () => {
   });
 });
 
+describe('AmoCrmClient — устойчивость к сетевым сбоям', () => {
+  it('ретраит сетевой сбой (fetch failed) и затем успешно читает', async () => {
+    let calls = 0;
+    const flaky = (async () => {
+      calls++;
+      if (calls === 1) throw new TypeError('fetch failed');
+      return new Response(JSON.stringify({ id: 1, name: 'ok', subdomain: 'x' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    const client = new AmoCrmClient({ subdomain: 'x', fetchImpl: flaky, sleepImpl: async () => {}, retryBaseMs: 1 });
+    const acc = await client.account('t');
+    expect(acc).toEqual({ id: 1, name: 'ok', subdomain: 'x' });
+    expect(calls).toBe(2);
+  });
+});
+
+describe('amoCRM extract — изоляция сбоя сущности (PARTIAL, не теряем пакет)', () => {
+  it('сбой на 2-й странице лидов → собранное сохранено, сущность PARTIAL, пакет строится', async () => {
+    const body = (obj: unknown) => new Response(JSON.stringify(obj), { status: 200, headers: { 'content-type': 'application/json' } });
+    const fetchImpl = (async (input: string) => {
+      const u = new URL(String(input));
+      const path = u.pathname; const page = u.searchParams.get('page');
+      if (path.endsWith('/api/v4/account')) return body({ id: 1, name: 'X', subdomain: 'x' });
+      if (path.endsWith('/api/v4/users')) return body({ _embedded: { users: [{ id: 1, name: 'U' }] } });
+      if (path.endsWith('/api/v4/leads/pipelines')) return body({ _embedded: { pipelines: [{ id: 100, name: 'P', sort: 1, _embedded: { statuses: [{ id: 1000, name: 'Первичный контакт', sort: 1 }] } }] } });
+      if (path.endsWith('/api/v4/leads')) {
+        if (page === '1') return body({ _embedded: { leads: [{ id: 1, name: 'A', pipeline_id: 100, status_id: 1000, responsible_user_id: 1, created_at: 1700000000, _embedded: { contacts: [{ id: 9 }] } }] }, _links: { next: { href: 'x?page=2' } } });
+        throw new TypeError('fetch failed'); // 2-я страница обрывается
+      }
+      if (path.includes('/custom_fields')) return body({ _embedded: { custom_fields: [] } });
+      return new Response(null, { status: 204 });
+    }) as unknown as typeof fetch;
+
+    const client = new AmoCrmClient({ subdomain: 'x', fetchImpl, sleepImpl: async () => {}, retryBaseMs: 1, maxRetries: 1 });
+    const x = await runAmoExtract(client, 'secret-token');
+    expect(x.deals).toHaveLength(1); // страница 1 сохранена, несмотря на сбой страницы 2
+    const leadsVol = x.volumes.find((v) => v.entity === 'leads')!;
+    expect(leadsVol.availability).toBe('PARTIAL');
+    expect(x.notes.some((n) => n.includes('leads') && n.includes('прервано'))).toBe(true);
+    expect(buildAmoTables(x).find((t) => t.sheet === 'Deals')!.rows).toHaveLength(1);
+  });
+});
+
 describe('amoCRM extract — исторический экстракт (READ-ONLY, без выдумок)', () => {
   it('нормализует сделки с провенансом, временем и стадиями DMS', async () => {
     const client = new AmoCrmClient({ subdomain: 'rooftophall', fetchImpl: fakeAmo() });
