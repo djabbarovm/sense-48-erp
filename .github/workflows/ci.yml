@@ -31,6 +31,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Prisma 6 не генерирует клиент на install → генерируем явно, иначе typecheck/тесты видят заглушку
+      - run: pnpm --filter @finance-os/db exec prisma generate
       - run: pnpm --filter @finance-os/db exec prisma migrate deploy
       - run: pnpm lint
       - run: pnpm -r typecheck
