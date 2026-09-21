@@ -33,6 +33,8 @@ export interface ExtractOptions {
   withNotes?: boolean;
   /** тянуть ли события (история стадий/ответственных) — объёмно. По умолчанию да. */
   withEvents?: boolean;
+  /** бюджет времени на всю выгрузку, мс. По истечении текущая сущность обрывается (PARTIAL), пакет пишется. */
+  budgetMs?: number;
 }
 
 export interface EntityVolume {
@@ -94,16 +96,18 @@ function emailOf(c: AmoContact): string | null {
 // ── raw pull с учётом cap/truncation + изоляция сбоев ──
 // Пагинируем вручную (через client.page), чтобы сбой на N-й странице НЕ терял уже собранные
 // страницы и не валил всю выгрузку: сущность помечается errored/PARTIAL, пакет всё равно собирается.
-interface Pulled<T> { items: T[]; pages: number; truncated: boolean; errored: boolean; errorMsg?: string }
+interface Pulled<T> { items: T[]; pages: number; truncated: boolean; errored: boolean; errorMsg?: string; timedOut?: boolean }
 async function pull<T>(
   client: AmoCrmClient, token: string, path: string, key: string,
-  cap: number, opts: { with?: string; params?: Record<string, string | number> } = {},
+  cap: number, opts: { with?: string; params?: Record<string, string | number>; deadline?: number } = {},
 ): Promise<Pulled<T>> {
   const items: T[] = [];
   let pages = 0;
   let errored = false;
+  let timedOut = false;
   let errorMsg: string | undefined;
   for (let page = 1; page <= cap; page++) {
+    if (opts.deadline && Date.now() > opts.deadline) { timedOut = true; break; } // бюджет времени исчерпан
     let p;
     try {
       p = await client.page<T>(path, token, key, {
@@ -120,7 +124,7 @@ async function pull<T>(
     items.push(...p.items);
     if (!p.hasNext || p.items.length === 0) break;
   }
-  return { items, pages, truncated: pages >= cap, errored, ...(errorMsg ? { errorMsg } : {}) };
+  return { items, pages, truncated: pages >= cap || timedOut, errored, timedOut, ...(errorMsg ? { errorMsg } : {}) };
 }
 function availability(p: { truncated: boolean; count: number; errored: boolean }): Availability {
   if (p.errored) return 'PARTIAL'; // часть собрана / чтение прервано — точно не полностью
@@ -279,13 +283,19 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
     notes.push(`account недоступен: ${(e as Error).message}`);
   }
 
+  // Бюджет времени: гарантируем запись пакета до 30-мин лимита job. Порядок сущностей —
+  // от самых ценных (справочники, сделки, контакты) к самым тяжёлым/менее критичным (примечания, события),
+  // чтобы при исчерпании бюджета сначала обрывались именно последние.
+  const deadline = options.budgetMs ? Date.now() + options.budgetMs : undefined;
+  const dl = deadline ? { deadline } : {};
+
   // справочники
-  const usersRaw = await pull<{ id: number; name: string; email?: string }>(client, token, '/users', 'users', cap);
+  const usersRaw = await pull<{ id: number; name: string; email?: string }>(client, token, '/users', 'users', cap, { ...dl });
   const users = usersRaw.items.map((u) => ({ id: u.id, name: u.name, email: u.email ?? null }));
   const userName = new Map(users.map((u) => [u.id, u.name] as const));
 
   const pipesRaw = await pull<{ id: number; name: string; is_main?: boolean; _embedded?: { statuses?: { id: number; name: string; sort: number }[] } }>(
-    client, token, '/leads/pipelines', 'pipelines', cap,
+    client, token, '/leads/pipelines', 'pipelines', cap, { ...dl },
   );
   const pipelines = pipesRaw.items.map((p) => ({
     id: p.id, name: p.name, isMain: !!p.is_main,
@@ -296,33 +306,33 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   const statusPipeline = new Map<number, number>();
   for (const p of pipelines) for (const s of p.statuses) { statusName.set(s.id, s.name); statusPipeline.set(s.id, p.id); }
 
-  // сущности
-  const leadsRaw = await pull<AmoLead>(client, token, '/leads', 'leads', cap, { with: 'contacts,loss_reason' });
-  const contactsRaw = await pull<AmoContact>(client, token, '/contacts', 'contacts', cap, { with: 'companies' });
-  const companiesRaw = await pull<AmoCompany>(client, token, '/companies', 'companies', cap);
-  const tasksRaw = await pull<AmoTask>(client, token, '/tasks', 'tasks', cap);
+  // кастом-поля (каталог) — лёгкие, тянем рано, чтобы каталог всегда был в пакете
+  const cfRaw: { entity: 'leads' | 'contacts' | 'companies'; f: AmoCustomField }[] = [];
+  for (const entity of ['leads', 'contacts', 'companies'] as const) {
+    const list = await pull<AmoCustomField>(client, token, `/${entity}/custom_fields`, 'custom_fields', cap, { ...dl });
+    for (const f of list.items) cfRaw.push({ entity, f });
+  }
+
+  // сущности (ценные — раньше; тяжёлые примечания/события — в конце, под бюджет времени)
+  const leadsRaw = await pull<AmoLead>(client, token, '/leads', 'leads', cap, { with: 'contacts,loss_reason', ...dl });
+  const contactsRaw = await pull<AmoContact>(client, token, '/contacts', 'contacts', cap, { with: 'companies', ...dl });
+  const companiesRaw = await pull<AmoCompany>(client, token, '/companies', 'companies', cap, { ...dl });
+  const tasksRaw = await pull<AmoTask>(client, token, '/tasks', 'tasks', cap, { ...dl });
 
   let notesLeads: Pulled<AmoNote> = { items: [], pages: 0, truncated: false, errored: false };
   let notesContacts: Pulled<AmoNote> = { items: [], pages: 0, truncated: false, errored: false };
   if (withNotes) {
-    notesLeads = await pull<AmoNote>(client, token, '/leads/notes', 'notes', cap);
-    notesContacts = await pull<AmoNote>(client, token, '/contacts/notes', 'notes', cap);
+    notesLeads = await pull<AmoNote>(client, token, '/leads/notes', 'notes', cap, { ...dl });
+    notesContacts = await pull<AmoNote>(client, token, '/contacts/notes', 'notes', cap, { ...dl });
   } else {
     notes.push('Примечания/звонки не выгружались (withNotes=false).');
   }
 
   let eventsRaw: Pulled<AmoEvent> = { items: [], pages: 0, truncated: false, errored: false };
   if (withEvents) {
-    eventsRaw = await pull<AmoEvent>(client, token, '/events', 'events', cap);
+    eventsRaw = await pull<AmoEvent>(client, token, '/events', 'events', cap, { ...dl });
   } else {
     notes.push('События (история стадий) не выгружались (withEvents=false).');
-  }
-
-  // кастом-поля (каталог)
-  const cfRaw: { entity: 'leads' | 'contacts' | 'companies'; f: AmoCustomField }[] = [];
-  for (const entity of ['leads', 'contacts', 'companies'] as const) {
-    const list = await pull<AmoCustomField>(client, token, `/${entity}/custom_fields`, 'custom_fields', cap);
-    for (const f of list.items) cfRaw.push({ entity, f });
   }
 
   // ── нормализация сделок ──
@@ -551,6 +561,7 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   // ── объёмы ──
   const vol = (entity: string, p: Pulled<unknown>): EntityVolume => {
     if (p.errored) notes.push(`Сущность «${entity}» выгружена частично (${p.items.length} записей за ${p.pages} стр.), чтение прервано: ${p.errorMsg}. Помечено PARTIAL — не выдумываем недостающее.`);
+    else if (p.timedOut) notes.push(`Сущность «${entity}» оборвана по бюджету времени (${p.items.length} записей за ${p.pages} стр.). Помечено PARTIAL — увеличь budgetMs/maxPages для полной выгрузки.`);
     return { entity, count: p.items.length, pages: p.pages, truncated: p.truncated, availability: availability({ truncated: p.truncated, count: p.items.length, errored: p.errored }) };
   };
   const volumes: EntityVolume[] = [

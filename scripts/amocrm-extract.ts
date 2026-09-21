@@ -71,7 +71,9 @@ async function main() {
   console.log(`  базовый хост: ${client.baseHost()}`);
   console.log(`  форма токена: ${shape.kind} (длина ${shape.length}) — ${shape.hint}\n`);
 
-  const extract = await runAmoExtract(client, cfg.accessToken);
+  // Бюджет времени 20 мин: гарантированно оставляем ~10 мин от 30-мин лимита job на сборку XLSX и загрузку
+  // артефакта. Если аккаунт огромный и раздел не успел — он помечается PARTIAL, пакет всё равно отдаётся.
+  const extract = await runAmoExtract(client, cfg.accessToken, { budgetMs: 20 * 60 * 1000 });
   const tables = buildAmoTables(extract);
 
   await rm(OUT_DIR, { recursive: true, force: true });
