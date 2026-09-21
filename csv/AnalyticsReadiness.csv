@@ -1,0 +1,10 @@
+﻿metric,source_data,coverage_pct,reliability,availability,dms_must_collect
+Кол-во сделок / период,leads.created_at,100,HIGH,AVAILABLE,created_at фиксируется системой при создании — уже надёжно
+Конверсия по воронке (стадия→стадия),events.lead_status_changed,70.2,MEDIUM,PARTIAL,DMS обязан писать КАЖДЫЙ переход стадии как событие (occurred_at) с сегодняшнего дня
+Время в стадии / скорость сделки,events (entered/exited),70.2,LOW,PARTIAL,entered_at/exited_at на каждый переход — иначе time-in-stage посчитать нельзя
+Сумма/стоимость сделки,leads.price,0.8,LOW,PARTIAL,"сумма — из подтверждённого финфакта DMS/Finance, не из CRM (CRM = намерение)"
+Атрибуция по сотруднику,leads.responsible_user_id,100,MEDIUM,AVAILABLE,"ответственный на момент КАЖДОГО этапа (история смены владельца), не только текущий"
+Источник/канал лида,custom field / utm / tag,6,MEDIUM,AVAILABLE,структурированный справочник источников + UTM на входящем лиде
+Причины отказа,leads.loss_reason,6.7,MEDIUM,PARTIAL,обязательная причина отказа из справочника при переходе в LOST
+Активность (звонки/задачи),tasks + notes(call_in/out),100,LOW,PARTIAL,"активность — вторичный индикатор; связывать с исходом, а не рейтинговать по кол-ву звонков"
+Привязка к объекту (Unit),custom field (объект/квартира),,LOW,NOT_AVAILABLE,DMS должен вести deal.unit_id; авто-матчинг по имени НЕ делаем — нужен маппинг-репорт

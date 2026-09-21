@@ -1,0 +1,17 @@
+﻿metric,value
+account,Roof Top Hall (rooftophall)
+generated_at,2026-09-21T10:15:27.935Z
+users,6
+pipelines,12
+deals_total,11006
+deals_won,61
+deals_lost,9553
+deals_open,1392
+win_rate_pct,0.6
+contacts_total,14249
+companies_total,462
+tasks_total,3959
+notes_total,7205
+stage_history_events,7730
+custom_fields_total,63
+any_truncated,"ДА — часть данных усечена лимитом страниц, см. volumes"

@@ -1,0 +1,10 @@
+﻿entity,count,pages,truncated,availability
+users,6,1,нет,AVAILABLE
+pipelines,12,1,нет,AVAILABLE
+leads,11006,45,нет,AVAILABLE
+contacts,14249,57,нет,AVAILABLE
+companies,462,2,нет,AVAILABLE
+tasks,3959,16,нет,AVAILABLE
+notes_leads,3835,16,нет,AVAILABLE
+notes_contacts,3370,14,нет,AVAILABLE
+events,100000,400,да,PARTIAL

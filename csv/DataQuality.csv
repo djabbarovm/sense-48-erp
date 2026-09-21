@@ -1,0 +1,13 @@
+﻿metric,value,note
+leads_total,11006,полностью
+leads_without_responsible,0,нельзя атрибутировать сотруднику
+leads_without_pipeline,0,не попадают в воронку
+leads_without_contacts,16,нет связи с человеком/компанией
+leads_without_price,10914,сумма 0/пусто — сумма сделки ненадёжна
+leads_without_created_at,0,нет времени создания
+lost_without_reason,8911,причина отказа не заполнена
+contacts_total,14249,полностью
+contacts_without_name,507,
+contacts_without_phone_or_email,7283,нельзя связаться/дедуплицировать
+companies_total,462,полностью
+stage_history_events,7730,PARTIAL
