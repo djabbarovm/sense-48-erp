@@ -76,9 +76,11 @@ jobs:
           HOST: ${{ secrets.DEPLOY_HOST }}
           TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TGU: ${{ secrets.TELEGRAM_BOT_USERNAME }}
+          AMO_SUB: ${{ secrets.AMOCRM_SUBDOMAIN }}
+          AMO_TOK: ${{ secrets.AMOCRM_LONG_TOKEN }}
         run: |
           sshpass -e ssh -o StrictHostKeyChecking=no root@"$HOST" \
-            "PUBLIC_HOST='$PUBLIC_HOST' TG='$TG' TGU='$TGU' bash -s" <<'REMOTE'
+            "PUBLIC_HOST='$PUBLIC_HOST' TG='$TG' TGU='$TGU' AMO_SUB='$AMO_SUB' AMO_TOK='$AMO_TOK' bash -s" <<'REMOTE'
             set -e
             cd /opt/finance-os
             if [ ! -f .env.prod ]; then
@@ -100,6 +102,8 @@ jobs:
             if ! grep -Eq '^TELEGRAM_WEBHOOK_SECRET=.+' .env.prod; then setenv TELEGRAM_WEBHOOK_SECRET "$(openssl rand -hex 16)"; echo 'TELEGRAM_WEBHOOK_SECRET создан'; fi
             if [ -n "$TG" ]; then setenv TELEGRAM_BOT_TOKEN "$TG"; echo 'TELEGRAM_BOT_TOKEN обновлён из секрета'; fi
             if [ -n "$TGU" ]; then setenv TELEGRAM_BOT_USERNAME "$TGU"; fi
+            if [ -n "$AMO_SUB" ]; then setenv AMOCRM_SUBDOMAIN "$AMO_SUB"; echo 'AMOCRM_SUBDOMAIN обновлён из секрета'; fi
+            if [ -n "$AMO_TOK" ]; then setenv AMOCRM_LONG_TOKEN "$AMO_TOK"; echo 'AMOCRM_LONG_TOKEN обновлён из секрета'; fi
             grep -q '^TELEGRAM_BOT_TOKEN=' .env.prod || echo TELEGRAM_BOT_TOKEN= >> .env.prod
             echo "ключи .env.prod: $(cut -d= -f1 .env.prod | tr '\n' ' ')"
           REMOTE

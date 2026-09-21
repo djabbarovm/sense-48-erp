@@ -1,0 +1,34 @@
+# amoCRM DRY-RUN (READ-ONLY) — запуск вручную. Runner GitHub Actions имеет доступ к amocrm.ru
+# (dev-песочница — нет). Только GET-запросы: каталог воронок/полей/пользователей, объёмы,
+# качество данных, предложение маппинга воронка→DMS. Ничего не пишет ни в amoCRM, ни в БД.
+# Секреты: AMOCRM_SUBDOMAIN, AMOCRM_LONG_TOKEN (GitHub → Settings → Secrets and variables → Actions).
+name: amoCRM Dry-Run
+on:
+  workflow_dispatch: {}
+
+jobs:
+  dryrun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Dry-run (только чтение)
+        env:
+          AMOCRM_SUBDOMAIN: ${{ secrets.AMOCRM_SUBDOMAIN }}
+          AMOCRM_LONG_TOKEN: ${{ secrets.AMOCRM_LONG_TOKEN }}
+        run: pnpm --filter @finance-os/db exec tsx "$GITHUB_WORKSPACE/scripts/amocrm-dryrun.ts"
+      - name: Отчёт (артефакт)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: amocrm-dryrun
+          path: scripts/out/amocrm-dryrun.json
+          if-no-files-found: ignore
