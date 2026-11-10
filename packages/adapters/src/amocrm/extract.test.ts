@@ -184,3 +184,75 @@ describe('amoCRM extract — исторический экстракт (READ-ONL
     expect(JSON.stringify(x)).not.toContain('secret-token');
   });
 });
+
+describe('amoCRM extract — область по воронкам и счёт общих статусов', () => {
+  /** Две воронки (100 — ORDO, 200 — чужая); системный «успешно» (142) общий для обеих. */
+  function twoPipelines(): { fetchImpl: typeof fetch; eventQueries: string[] } {
+    const eventQueries: string[] = [];
+    const body = (obj: unknown) => new Response(JSON.stringify(obj), { status: 200, headers: { 'content-type': 'application/json' } });
+    const fetchImpl = (async (input: string) => {
+      const u = new URL(String(input));
+      const path = u.pathname;
+      if (path.endsWith('/api/v4/account')) return body({ id: 1, name: 'X', subdomain: 'x' });
+      if (path.endsWith('/api/v4/users')) return body({ _embedded: { users: [{ id: 1, name: 'U' }] } });
+      if (path.endsWith('/api/v4/leads/pipelines')) return body({ _embedded: { pipelines: [
+        { id: 100, name: 'Piramit apartments', sort: 1, _embedded: { statuses: [{ id: 1000, name: 'Первичный контакт', sort: 1 }, { id: 142, name: 'Успешно реализовано', sort: 2 }] } },
+        { id: 200, name: 'RoofTop Hall', sort: 2, _embedded: { statuses: [{ id: 2000, name: 'Первичный контакт', sort: 1 }, { id: 142, name: 'Успешно реализовано', sort: 2 }] } },
+      ] } });
+      if (path.includes('/custom_fields')) return body({ _embedded: { custom_fields: [] } });
+      if (path.endsWith('/api/v4/leads')) return body({ _embedded: { leads: [
+        { id: 1, pipeline_id: 100, status_id: 142, created_at: 1700000000, _embedded: { contacts: [{ id: 9 }] } },
+        { id: 2, pipeline_id: 100, status_id: 1000, created_at: 1700000000 },
+        { id: 3, pipeline_id: 200, status_id: 142, created_at: 1700000000, _embedded: { contacts: [{ id: 10 }] } },
+        { id: 4, pipeline_id: 200, status_id: 142, created_at: 1700000000 },
+      ] } });
+      if (path.endsWith('/api/v4/contacts')) return body({ _embedded: { contacts: [{ id: 9, name: 'ORDO-клиент' }, { id: 10, name: 'Гость Rooftop' }] } });
+      if (path.endsWith('/api/v4/companies')) return body({ _embedded: { companies: [{ id: 5, name: 'Не связана' }] } });
+      if (path.endsWith('/api/v4/tasks')) return body({ _embedded: { tasks: [
+        { id: 1, entity_type: 'leads', entity_id: 1, responsible_user_id: 1, created_at: 1700000000 },
+        { id: 2, entity_type: 'leads', entity_id: 3, responsible_user_id: 1, created_at: 1700000000 },
+      ] } });
+      if (path.endsWith('/api/v4/leads/notes')) return body({ _embedded: { notes: [
+        { id: 1, entity_id: 1, note_type: 'call_out', created_by: 1, created_at: 1700000000 },
+        { id: 2, entity_id: 4, note_type: 'call_out', created_by: 1, created_at: 1700000000 },
+      ] } });
+      if (path.endsWith('/api/v4/contacts/notes')) return body({ _embedded: { notes: [] } });
+      if (path.endsWith('/api/v4/events')) {
+        eventQueries.push(u.searchParams.get('filter[type]') ?? '');
+        return body({ _embedded: { events: [
+          { id: 'e1', type: 'lead_status_changed', entity_id: 1, entity_type: 'lead', created_at: 1700050000, created_by: 1,
+            value_before: [{ lead_status: { id: 1000, pipeline_id: 100 } }], value_after: [{ lead_status: { id: 142, pipeline_id: 100 } }] },
+          { id: 'e2', type: 'lead_status_changed', entity_id: 3, entity_type: 'lead', created_at: 1700050000, created_by: 1,
+            value_before: [{ lead_status: { id: 2000, pipeline_id: 200 } }], value_after: [{ lead_status: { id: 142, pipeline_id: 200 } }] },
+        ] } });
+      }
+      return new Response(null, { status: 204 });
+    }) as unknown as typeof fetch;
+    return { fetchImpl, eventQueries };
+  }
+
+  it('без области: «успешно» считается в своей воронке, а не во всех сразу', async () => {
+    const { fetchImpl } = twoPipelines();
+    const x = await runAmoExtract(new AmoCrmClient({ subdomain: 'x', fetchImpl }), 't');
+    const won = (pid: number) => x.funnel.find((f) => f.pipeline_id === pid && f.stage_id === 142)!;
+    expect(won(100).leads_currently_here).toBe(1);
+    expect(won(200).leads_currently_here).toBe(2);
+    expect(won(100).leads_ever_reached).toBe(1);
+    expect(won(200).leads_ever_reached).toBe(1);
+  });
+
+  it('область по воронкам: остаются только сделки ORDO и связанное с ними', async () => {
+    const { fetchImpl, eventQueries } = twoPipelines();
+    const x = await runAmoExtract(new AmoCrmClient({ subdomain: 'x', fetchImpl }), 't', { pipelineIds: [100] });
+    expect(x.deals.map((d) => d.lead_id).sort()).toEqual([1, 2]);
+    expect(x.pipelines.map((p) => p.id)).toEqual([100]);
+    expect(x.funnel.every((f) => f.pipeline_id === 100)).toBe(true);
+    expect(x.stageHistory.map((h) => h.lead_id)).toEqual([1]);
+    expect(x.summary['contacts_total']).toBe(1); // только контакт сделки ORDO
+    expect(x.summary['companies_total']).toBe(0); // несвязанная компания отброшена
+    expect(x.summary['tasks_total']).toBe(1);
+    expect(x.summary['notes_total']).toBe(1);
+    expect(String(x.summary['scope'])).toContain('Piramit apartments');
+    expect(eventQueries).toContain('lead_status_changed'); // история стадий берётся фильтром по типу
+  });
+});

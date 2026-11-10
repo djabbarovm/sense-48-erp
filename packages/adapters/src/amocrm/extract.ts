@@ -35,6 +35,12 @@ export interface ExtractOptions {
   withEvents?: boolean;
   /** бюджет времени на всю выгрузку, мс. По истечении текущая сущность обрывается (PARTIAL), пакет пишется. */
   budgetMs?: number;
+  /**
+   * Область выгрузки: только эти воронки (например, воронки ORDO/Piramit). Сделки других воронок
+   * отбрасываются, а контакты, компании, задачи, примечания и события остаются только связанные
+   * с оставшимися сделками. Пусто — весь аккаунт.
+   */
+  pipelineIds?: number[];
 }
 
 export interface EntityVolume {
@@ -166,6 +172,7 @@ export interface NormalizedDeal {
 
 export interface StageHistoryRow {
   lead_id: number;
+  to_pipeline_id: number | null;  // воронка, в которую пришла сделка (из события или по стадии)
   from_status_id: number | null;
   from_status_name: string | null;
   to_status_id: number | null;
@@ -297,14 +304,22 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   const pipesRaw = await pull<{ id: number; name: string; is_main?: boolean; _embedded?: { statuses?: { id: number; name: string; sort: number }[] } }>(
     client, token, '/leads/pipelines', 'pipelines', cap, { ...dl },
   );
-  const pipelines = pipesRaw.items.map((p) => ({
+  const allPipelines = pipesRaw.items.map((p) => ({
     id: p.id, name: p.name, isMain: !!p.is_main,
     statuses: (p._embedded?.statuses ?? []).map((s) => ({ id: s.id, name: s.name, sort: s.sort })),
   }));
-  const pipeName = nameById(pipelines);
+  const scope = options.pipelineIds?.length ? new Set(options.pipelineIds) : null;
+  const pipelines = scope ? allPipelines.filter((p) => scope.has(p.id)) : allPipelines;
+  // Имена стадий и воронок — по ВСЕМ воронкам: сделка могла прийти из чужой воронки, и её переход
+  // должен читаться по-человечески. Системные 142/143 общие для всех воронок, поэтому они не
+  // попадают в statusPipeline (их воронку определяет само событие или сделка).
+  const pipeName = nameById(allPipelines);
   const statusName = new Map<number, string>();
   const statusPipeline = new Map<number, number>();
-  for (const p of pipelines) for (const s of p.statuses) { statusName.set(s.id, s.name); statusPipeline.set(s.id, p.id); }
+  for (const p of allPipelines) for (const s of p.statuses) {
+    statusName.set(s.id, s.name);
+    if (s.id !== AMO_WON && s.id !== AMO_LOST) statusPipeline.set(s.id, p.id);
+  }
 
   // кастом-поля (каталог) — лёгкие, тянем рано, чтобы каталог всегда был в пакете
   const cfRaw: { entity: 'leads' | 'contacts' | 'companies'; f: AmoCustomField }[] = [];
@@ -330,9 +345,33 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
 
   let eventsRaw: Pulled<AmoEvent> = { items: [], pages: 0, truncated: false, errored: false };
   if (withEvents) {
-    eventsRaw = await pull<AmoEvent>(client, token, '/events', 'events', cap, { ...dl });
+    // Только смены стадий: так лимит страниц тратится на историю воронки, а не на все события
+    // аккаунта, и история уходит глубже. Если amoCRM не принял фильтр — берём все события.
+    eventsRaw = await pull<AmoEvent>(client, token, '/events', 'events', cap, { params: { 'filter[type]': 'lead_status_changed' }, ...dl });
+    if (eventsRaw.errored && eventsRaw.items.length === 0) {
+      notes.push(`Фильтр событий по типу не принят (${eventsRaw.errorMsg}); выгружены все события.`);
+      eventsRaw = await pull<AmoEvent>(client, token, '/events', 'events', cap, { ...dl });
+    }
   } else {
     notes.push('События (история стадий) не выгружались (withEvents=false).');
+  }
+
+  // ── область выгрузки: только выбранные воронки ──
+  if (scope) {
+    leadsRaw.items = leadsRaw.items.filter((l) => l.pipeline_id != null && scope.has(l.pipeline_id));
+    const leadIds = new Set(leadsRaw.items.map((l) => l.id));
+    const contactIds = new Set(leadsRaw.items.flatMap((l) => (l._embedded?.contacts ?? []).map((c) => c.id)));
+    const companyIds = new Set(leadsRaw.items.flatMap((l) => (l._embedded?.companies ?? []).map((c) => c.id)));
+    contactsRaw.items = contactsRaw.items.filter((c) => contactIds.has(c.id));
+    for (const c of contactsRaw.items) for (const co of c._embedded?.companies ?? []) companyIds.add(co.id);
+    companiesRaw.items = companiesRaw.items.filter((c) => companyIds.has(c.id));
+    const linked = (type: string | undefined, id: number | undefined): boolean =>
+      id != null && ((type === 'leads' && leadIds.has(id)) || (type === 'contacts' && contactIds.has(id)) || (type === 'companies' && companyIds.has(id)));
+    tasksRaw.items = tasksRaw.items.filter((t) => linked(t.entity_type, t.entity_id));
+    notesLeads.items = notesLeads.items.filter((n) => n.entity_id != null && leadIds.has(n.entity_id));
+    notesContacts.items = notesContacts.items.filter((n) => n.entity_id != null && contactIds.has(n.entity_id));
+    eventsRaw.items = eventsRaw.items.filter((e) => (e.entity_type ?? 'lead') === 'lead' && e.entity_id != null && leadIds.has(e.entity_id));
+    notes.push(`Область выгрузки: только воронки ${pipelines.map((p) => `«${p.name}»`).join(', ')}. Контакты, компании, задачи, примечания и события — только связанные с их сделками.`);
   }
 
   // ── нормализация сделок ──
@@ -391,11 +430,20 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
     }
     return null;
   };
+  const pipelineFromEventValue = (v: unknown): number | null => {
+    if (!Array.isArray(v) || !v.length) return null;
+    const first = v[0] as Record<string, unknown>;
+    const ls = (first?.['lead_status'] ?? first) as Record<string, unknown> | undefined;
+    const pid = ls?.['pipeline_id'];
+    return typeof pid === 'number' ? pid : null;
+  };
   const stageHistory: StageHistoryRow[] = stageEvents.map((e) => {
     const fromId = statusFromEventValue(e.value_before);
     const toId = statusFromEventValue(e.value_after);
+    const toPipe = pipelineFromEventValue(e.value_after) ?? (toId != null ? statusPipeline.get(toId) ?? null : null);
     return {
       lead_id: e.entity_id ?? 0,
+      to_pipeline_id: toPipe,
       from_status_id: fromId,
       from_status_name: fromId != null ? (statusName.get(fromId) ?? null) : null,
       to_status_id: toId,
@@ -413,17 +461,24 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   }
 
   // ── воронка ──
-  const currentByStage = new Map<number, number>();
-  for (const d of deals) if (d.source_stage_id != null) currentByStage.set(d.source_stage_id, (currentByStage.get(d.source_stage_id) ?? 0) + 1);
-  const everReached = new Map<number, Set<number>>(); // stage_id → set(lead_id)
+  // Ключ — воронка + стадия: системные «успешно» (142) и «закрыто» (143) общие для всех воронок,
+  // и ключ только по стадии засчитывал их в каждую воронку.
+  const stageKey = (pipelineId: number | null, statusId: number) => `${pipelineId ?? '?'}:${statusId}`;
+  const currentByStage = new Map<string, number>();
+  for (const d of deals) if (d.source_stage_id != null) {
+    const k = stageKey(d.pipeline_id, d.source_stage_id);
+    currentByStage.set(k, (currentByStage.get(k) ?? 0) + 1);
+  }
+  const everReached = new Map<string, Set<number>>(); // воронка:стадия → set(lead_id)
   for (const h of stageHistory) if (h.to_status_id != null) {
-    if (!everReached.has(h.to_status_id)) everReached.set(h.to_status_id, new Set());
-    everReached.get(h.to_status_id)!.add(h.lead_id);
+    const k = stageKey(h.to_pipeline_id, h.to_status_id);
+    if (!everReached.has(k)) everReached.set(k, new Set());
+    everReached.get(k)!.add(h.lead_id);
   }
   const funnel: FunnelRow[] = [];
   for (const p of pipelines) {
     for (const s of [...p.statuses].sort((a, b) => a.sort - b.sort)) {
-      const ever = everReached.get(s.id);
+      const ever = everReached.get(stageKey(p.id, s.id));
       funnel.push({
         pipeline_id: p.id,
         pipeline_name: p.name,
@@ -431,7 +486,7 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
         stage_name: s.name,
         sort: s.sort,
         normalized_stage: suggestStageMapping(s.name).stage,
-        leads_currently_here: currentByStage.get(s.id) ?? 0,
+        leads_currently_here: currentByStage.get(stageKey(p.id, s.id)) ?? 0,
         leads_ever_reached: stageHistoryAvail === 'NOT_AVAILABLE' ? null : (ever ? ever.size : 0),
         ever_reached_availability: stageHistoryAvail,
       });
@@ -591,6 +646,7 @@ export async function runAmoExtract(client: AmoCrmClient, token: string, options
   const open = deals.filter((d) => d.is_open).length;
   const summary: Record<string, string | number> = {
     account: account ? `${account.name} (${account.subdomain})` : '—',
+    scope: scope ? `только воронки: ${pipelines.map((p) => p.name).join(', ')}` : 'весь аккаунт',
     generated_at: syncedAt,
     users: users.length,
     pipelines: pipelines.length,

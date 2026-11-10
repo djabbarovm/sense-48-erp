@@ -33,6 +33,9 @@ jobs:
           AMOCRM_SUBDOMAIN: ${{ secrets.AMOCRM_SUBDOMAIN }}
           AMOCRM_LONG_TOKEN: ${{ secrets.AMOCRM_LONG_TOKEN }}
           AMOCRM_DOMAIN: ${{ secrets.AMOCRM_DOMAIN }}
+          # Область: только воронки ORDO/Piramit (apartments, Call центр, привлечение арендаторов,
+          # услуги арендаторам, собственники, Clients). Пусто — весь аккаунт.
+          AMOCRM_PIPELINES: '10848598,11292122,11273034,11292090,11292150,10848606'
         run: pnpm --filter @finance-os/db exec tsx "$GITHUB_WORKSPACE/scripts/amocrm-extract.ts"
       - name: Собрать XLSX из csv/
         if: always()
@@ -49,6 +52,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: amocrm-extract
+          name: amocrm-extract-ordo
           path: scripts/out/amocrm-extract/**
           if-no-files-found: ignore

@@ -39,6 +39,7 @@ function readme(x: AmoExtract, tables: AmoTable[]): string {
   L.push('READ-ONLY выгрузка из amoCRM. Ничего не импортировано в рабочие сущности DMS.', '');
   L.push(`- Аккаунт: ${x.account ? `${x.account.name} (${x.account.subdomain})` : '—'}`);
   L.push(`- Сформировано: ${x.generatedAt}`);
+  L.push(`- Область: ${x.summary['scope']}`);
   L.push(`- Сделок: ${x.summary['deals_total']} · контактов: ${x.summary['contacts_total']} · компаний: ${x.summary['companies_total']}`);
   L.push(`- Усечение лимитом страниц: ${x.summary['any_truncated']}`, '');
   L.push('## Модель времени', '', x.timeNote, '');
@@ -73,7 +74,10 @@ async function main() {
 
   // Бюджет времени 20 мин: гарантированно оставляем ~10 мин от 30-мин лимита job на сборку XLSX и загрузку
   // артефакта. Если аккаунт огромный и раздел не успел — он помечается PARTIAL, пакет всё равно отдаётся.
-  const extract = await runAmoExtract(client, cfg.accessToken, { budgetMs: 20 * 60 * 1000 });
+  // AMOCRM_PIPELINES — id воронок через запятую (область выгрузки, например только ORDO); пусто — весь аккаунт.
+  const pipelineIds = (process.env.AMOCRM_PIPELINES ?? '').split(',').map((x) => Number(x.trim())).filter((n) => Number.isInteger(n) && n > 0);
+  if (pipelineIds.length) console.log(`  область: воронки ${pipelineIds.join(', ')}\n`);
+  const extract = await runAmoExtract(client, cfg.accessToken, { budgetMs: 20 * 60 * 1000, ...(pipelineIds.length ? { pipelineIds } : {}) });
   const tables = buildAmoTables(extract);
 
   await rm(OUT_DIR, { recursive: true, force: true });
