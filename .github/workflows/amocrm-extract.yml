@@ -1,7 +1,7 @@
 # amoCRM HISTORICAL EXTRACT (READ-ONLY) — исторический экстракт + аналитика → скачиваемый пакет.
 # Runner GitHub Actions имеет доступ к amocrm.ru/.com (dev-песочница — нет). Только GET.
 # Строит scripts/out/amocrm-extract/ (JSON + csv/ + README), затем собирает единый XLSX (лист=таблица)
-# и грузит всё артефактом «amocrm-extract» (скачать: Actions → этот run → Artifacts).
+# и грузит архивом «amocrm-extract-<бизнес>» (скачать: Actions → этот run → Artifacts).
 # Секреты: AMOCRM_SUBDOMAIN, AMOCRM_LONG_TOKEN, [AMOCRM_DOMAIN] (Settings → Secrets and variables → Actions).
 name: amoCRM Extract
 on:
@@ -15,6 +15,18 @@ on:
 
 jobs:
   extract:
+    # Одна выгрузка на каждый бизнес: свой набор воронок, свой архив.
+    strategy:
+      fail-fast: false
+      max-parallel: 1   # по очереди: у amoCRM лимит запросов на весь аккаунт
+      matrix:
+        include:
+          # ORDO/Piramit: apartments, Call центр, привлечение арендаторов, услуги арендаторам, собственники, Clients
+          - scope: ordo
+            pipelines: '10848598,11292122,11273034,11292090,11292150,10848606'
+          # Rooftop: RoofTop Hall (main), RoofTOPHall, Пост-сервис, 2026 (банкетная воронка)
+          - scope: rooftop
+            pipelines: '10416130,10063610,10063774,11309210'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -33,9 +45,8 @@ jobs:
           AMOCRM_SUBDOMAIN: ${{ secrets.AMOCRM_SUBDOMAIN }}
           AMOCRM_LONG_TOKEN: ${{ secrets.AMOCRM_LONG_TOKEN }}
           AMOCRM_DOMAIN: ${{ secrets.AMOCRM_DOMAIN }}
-          # Область: только воронки ORDO/Piramit (apartments, Call центр, привлечение арендаторов,
-          # услуги арендаторам, собственники, Clients). Пусто — весь аккаунт.
-          AMOCRM_PIPELINES: '10848598,11292122,11273034,11292090,11292150,10848606'
+          # Область выгрузки — воронки этого бизнеса (см. matrix). Пусто — весь аккаунт.
+          AMOCRM_PIPELINES: ${{ matrix.pipelines }}
         run: pnpm --filter @finance-os/db exec tsx "$GITHUB_WORKSPACE/scripts/amocrm-extract.ts"
       - name: Собрать XLSX из csv/
         if: always()
@@ -52,6 +63,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: amocrm-extract-ordo
+          name: amocrm-extract-${{ matrix.scope }}
           path: scripts/out/amocrm-extract/**
           if-no-files-found: ignore
